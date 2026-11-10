@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# ozi - everyday system commands for OziOS.
+set -euo pipefail
+
+helper() {
+  if command -v paru >/dev/null; then echo paru; else echo yay; fi
+}
+
+# Take a snapshot before anything that changes packages, so it can be undone.
+snapshot() {
+  command -v snapper >/dev/null || return 0
+  sudo snapper list-configs 2>/dev/null | grep -q '^root' || return 0
+  sudo snapper -c root create -d "ozi: before $1" >/dev/null && echo "Snapshot taken."
+}
+
+usage() {
+  cat <<'EOF'
+usage: ozi <command>
+
+  update               update the system (takes a snapshot first)
+  install <pkg...>     install packages from the repos or the AUR
+  remove <pkg...>      remove packages
+  search <term>        search for packages
+  rollback             list snapshots
+  winsetup             set up the Windows guest
+  reboot-windows       reboot into real Windows (dual boot only)
+  hw                   show what this machine supports
+EOF
+}
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  update)
+    snapshot update
+    sudo pacman -Syu "$@"
+    if command -v "$(helper)" >/dev/null; then "$(helper)" -Sua; fi
+    ;;
+  install)
+    snapshot install
+    "$(helper)" -S --needed "$@"
+    ;;
+  remove)
+    snapshot remove
+    sudo pacman -Rns "$@"
+    ;;
+  search)
+    "$(helper)" -Ss "$@"
+    ;;
+  rollback)
+    sudo snapper -c root list
+    ;;
+  winsetup)
+    exec ozi-winsetup "$@"
+    ;;
+  reboot-windows)
+    entry="$(efibootmgr | awk '/Windows Boot Manager/ { gsub(/Boot|\*/, "", $1); print $1; exit }')"
+    if [ -z "$entry" ]; then
+      echo "ozi: no Windows Boot Manager entry found; is Windows installed next to OziOS?" >&2
+      exit 1
+    fi
+    sudo efibootmgr --bootnext "$entry" && systemctl reboot
+    ;;
+  hw)
+    for dir in /usr/share/ozios /usr/local/share/ozios; do
+      [ -f "$dir/vfio/detect-iommu.sh" ] && exec bash "$dir/vfio/detect-iommu.sh"
+    done
+    echo "ozi: detect-iommu.sh is not installed" >&2
+    exit 1
+    ;;
+  help | -h | --help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

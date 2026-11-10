@@ -1,0 +1,17 @@
+#!/bin/sh
+# Run by Calamares near the end of an installation: install the OziOS package
+# into the freshly installed system. Always exits 0 so a problem here can not
+# fail an otherwise good install.
+root="$(findmnt -rno TARGET | grep -m1 '^/tmp/calamares-root-')"
+pkg="$(ls /opt/ozios/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
+
+if [ -z "$root" ] || [ -z "$pkg" ]; then
+  echo "ozios: nothing to do (target: '${root}', package: '${pkg}')"
+  exit 0
+fi
+
+pacman --root "$root" --noconfirm -U "$pkg" || echo "ozios: could not install $pkg into $root"
+
+# Keep a copy so the package can be reinstalled without the live medium.
+mkdir -p "$root/opt/ozios" && cp -f "$pkg" "$root/opt/ozios/"
+exit 0

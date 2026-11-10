@@ -1,0 +1,20 @@
+#!/bin/sh
+# os-release is not ours to ship, so it is rewritten in place, again after
+# every update that touches it. ID stays as it is: CachyOS tools look at it
+# to decide whether they are on a supported system.
+version="$(tr -d '[:space:]' < /usr/share/ozios/VERSION 2>/dev/null)"
+for file in /etc/os-release /usr/lib/os-release; do
+  [ -f "$file" ] || continue
+  if [ -n "$version" ]; then
+    # One line of our own; the standard VERSION fields stay as the base system has them.
+    sed -i --follow-symlinks '/^OZIOS_VERSION=/d' "$file"
+    echo "OZIOS_VERSION=$version" >> "$file"
+  fi
+  sed -i --follow-symlinks \
+    -e 's/^NAME=.*/NAME="OziOS"/' \
+    -e 's/^PRETTY_NAME=.*/PRETTY_NAME="OziOS"/' \
+    -e 's/^LOGO=.*/LOGO=ozios/' \
+    -e 's/^ANSI_COLOR=.*/ANSI_COLOR="38;2;0;229;255"/' \
+    "$file"
+done
+exit 0

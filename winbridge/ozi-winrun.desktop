@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Run with Windows
+Name[tr]=Windows ile Çalıştır
+Comment=Open Windows programs in the OziOS Windows guest
+Comment[tr]=Windows programlarını OziOS Windows katmanında açar
+Exec=ozi-winrun %f
+Icon=windows
+Terminal=false
+Categories=System;
+MimeType=application/x-ms-dos-executable;application/vnd.microsoft.portable-executable;application/x-msdownload;application/x-msi;application/x-ms-installer;application/x-bat;

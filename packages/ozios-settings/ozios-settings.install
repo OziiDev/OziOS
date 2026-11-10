@@ -1,0 +1,8 @@
+post_install() {
+  /usr/lib/ozios/identity
+  /usr/lib/ozios/patch-installer
+}
+
+post_upgrade() {
+  post_install
+}

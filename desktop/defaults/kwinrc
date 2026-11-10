@@ -1,0 +1,10 @@
+[Plugins]
+blurEnabled=true
+wobblywindowsEnabled=true
+magiclampEnabled=true
+overviewEnabled=true
+slideEnabled=true
+squashEnabled=false
+
+[Compositing]
+LatencyPolicy=Low

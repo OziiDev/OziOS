@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Run a Windows program or file in the OziOS Windows guest.
+#
+# Tries a seamless RemoteApp window first, then a full Windows desktop
+# window, then gives up and points at the reboot option.
+#
+# Not tested against a real guest yet.
+set -u
+
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/ozi/winbridge.conf"
+VM="ozi-win"
+RDP_HOST=""        # empty: ask libvirt for the guest's address
+RDP_PORT="3389"
+RDP_USER="ozi"
+RDP_PASS_CMD="secret-tool lookup service ozi-winvm"   # keeps the password out of this file
+SHARE='\\tsclient\home'   # $HOME, redirected into the session by the RDP client
+[ -f "$conf" ] && . "$conf"
+
+target="${1:-}"
+if [ -z "$target" ]; then
+  echo "usage: ozi-winrun <file.exe | file.msi | program>" >&2
+  exit 2
+fi
+
+notify() {
+  command -v notify-send >/dev/null && notify-send "OziOS" "$1"
+  echo "$1" >&2
+}
+
+start_guest() {
+  local state
+  state="$(virsh -c qemu:///system domstate "$VM" 2>/dev/null || echo missing)"
+  case "$state" in
+    running) ;;
+    missing) exec ozi-winsetup --gui ;;
+    *) virsh -c qemu:///system start "$VM" >/dev/null || { notify "Could not start Windows."; exit 4; } ;;
+  esac
+  # A cold boot needs time both to get an address and to bring RDP up.
+  for _ in $(seq 1 120); do
+    [ -n "$RDP_HOST" ] || RDP_HOST="$(guest_address)"
+    if [ -n "$RDP_HOST" ] && (exec 3<>"/dev/tcp/$RDP_HOST/$RDP_PORT") 2>/dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+guest_address() {
+  virsh -c qemu:///system domifaddr "$VM" 2>/dev/null |
+    awk '$3 == "ipv4" { sub(/\/.*/, "", $4); print $4; exit }'
+}
+
+# Files under $HOME are already visible in the guest; anything else is copied
+# into a shared inbox first.
+guest_path() {
+  local rel
+  case "$1" in
+    "$HOME"/*)
+      rel="${1#"$HOME"/}"
+      printf '%s\\%s' "$SHARE" "${rel//\//\\}"
+      ;;
+    *)
+      mkdir -p "$HOME/.cache/ozi/inbox" && cp -f "$1" "$HOME/.cache/ozi/inbox/" || return 1
+      printf '%s\\.cache\\ozi\\inbox\\%s' "$SHARE" "$(basename "$1")"
+      ;;
+  esac
+}
+
+rdp() {
+  xfreerdp3 /v:"$RDP_HOST":"$RDP_PORT" /u:"$RDP_USER" /p:"$($RDP_PASS_CMD)" \
+    /cert:ignore +clipboard /sound /drive:home,"$HOME" "$@"
+}
+
+start_guest || { notify "Windows did not answer on RDP."; exit 5; }
+
+if [ -e "$target" ]; then
+  winpath="$(guest_path "$(readlink -f "$target")")" || { notify "Could not share $target with Windows."; exit 5; }
+else
+  winpath="$target"
+fi
+
+if rdp /app:program:"cmd.exe",cmd:"/c start \"\" \"$winpath\"",name:"$(basename "$target")" /dynamic-resolution; then
+  exit 0
+fi
+
+notify "Could not open the app window. Opening the Windows desktop instead."
+rdp /dynamic-resolution /size:1600x900 && exit 0
+command -v virt-viewer >/dev/null && virt-viewer -c qemu:///system "$VM" && exit 0
+
+notify "Could not open a Windows window. To boot real Windows: ozi reboot-windows"
+exit 6

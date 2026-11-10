@@ -1,0 +1,99 @@
+name: Build the OziOS kernel
+
+# Builds linux-ozios from the CachyOS kernel recipe. With "publish" on, the
+# packages are attached to a GitHub release tagged kernel-<version>-ozios<revision>.
+
+on:
+  workflow_dispatch:
+    inputs:
+      cpu:
+        description: "CPU level (generic_v2 runs on nearly every PC, generic_v3 needs 2013 or newer)"
+        default: generic_v2
+      lto:
+        description: "LTO (none, thin, full). thin may not finish inside the 6 hour limit."
+        default: none
+      recipe_date:
+        description: "Use the CachyOS kernel recipe as of this day (YYYY-MM-DD), to match an older ISO. Empty means latest."
+        default: ""
+      nvidia:
+        description: "Build the NVIDIA open modules (yes/no)"
+        default: "yes"
+      zfs:
+        description: "Build the ZFS modules (yes/no)"
+        default: "yes"
+      revision:
+        description: "OziOS revision of this kernel version, raised when the same version is rebuilt with other settings"
+        default: "1"
+      publish:
+        description: "Create a GitHub release from the result"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make room
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force > /dev/null
+          df -h /
+
+      - name: Build in an Arch container
+        run: |
+          mkdir -p out
+          sudo docker run --rm -v "$PWD:/src" \
+            -e OZI_CPU="${{ inputs.cpu }}" -e OZI_LTO="${{ inputs.lto }}" \
+            -e OZI_KERNEL_DATE="${{ inputs.recipe_date }}" -e OZI_NVIDIA="${{ inputs.nvidia }}" -e OZI_ZFS="${{ inputs.zfs }}" \
+            archlinux:base-devel bash /src/kernel/ci.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-ozios
+          path: out/kernel/
+          retention-days: 30
+
+  release:
+    needs: kernel
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-ozios
+          path: kernel
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ inputs.revision }}
+        run: |
+          version="$(sed -n 's/^version: //p' kernel/BUILDINFO.txt)"
+          [ -n "$version" ] || { echo "BUILDINFO.txt has no version line" >&2; exit 1; }
+          tag="kernel-${version}-ozios${REVISION}"
+          notes="$(mktemp)"
+          {
+            echo "OziOS kernel ${version}, revision ${REVISION}."
+            echo
+            echo "The CachyOS kernel recipe built under the name linux-ozios."
+            echo "Install with: sudo pacman -U linux-ozios-*.pkg.tar.zst"
+            echo
+            echo '```'
+            cat kernel/BUILDINFO.txt
+            echo '```'
+            echo
+            echo "SHA-256:"
+            echo '```'
+            cat kernel/SHA256SUMS
+            echo '```'
+          } > "$notes"
+          gh release create "$tag" kernel/linux-ozios*.pkg.tar.* kernel/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --title "linux-ozios ${version} (r${REVISION})" --notes-file "$notes"

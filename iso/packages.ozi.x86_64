@@ -1,0 +1,38 @@
+# Packages OziOS adds on top of the CachyOS live ISO list.
+# Names checked against the CachyOS repos on 2026-11-09.
+# looking-glass is AUR-only; it will be built into the OziOS repo instead.
+# Windows guest
+qemu-full
+libvirt
+virt-manager
+edk2-ovmf
+swtpm
+dnsmasq
+freerdp
+virt-viewer
+libsecret
+# Gaming
+steam
+lutris
+gamemode
+lib32-gamemode
+mangohud
+lib32-mangohud
+# System
+snapper
+snap-pac
+btrfs-assistant
+paru
+efibootmgr
+# Explicit picks where pacman would otherwise ask or choose badly. Steam needs a
+# 32-bit Vulkan driver; the default provider is a legacy NVIDIA package that
+# conflicts with the nvidia-utils the live ISO already ships.
+lib32-nvidia-utils
+lib32-vulkan-intel
+lib32-vulkan-radeon
+noto-fonts-emoji
+qt6-multimedia-ffmpeg
+tesseract-data-eng
+# Needed by ozi-winsetup.
+virt-install
+libisoburn

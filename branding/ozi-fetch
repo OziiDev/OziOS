@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""ozi-fetch - spinning tesseract and system summary for the OziOS terminal.
+
+usage: ozi-fetch [--pin | --unpin | --loop | --static] [--ascii]
+
+  (default)  spin until a key is pressed; the key is left for the shell
+  --pin      keep the tesseract spinning in a header above the prompt
+  --unpin    remove the pinned header from this terminal
+  --loop     spin until Ctrl+C
+  --static   print one frame and exit
+  --ascii    draw with plain ASCII instead of braille
+
+environment: OZI_FETCH_ASCII=1, OZI_FETCH_MAX=<seconds>, NO_COLOR
+"""
+import math
+import os
+import platform
+import shutil
+import signal
+import struct
+import sys
+import time
+
+CYAN = (0, 229, 255)
+ICE = (244, 252, 255)
+DIM = (0, 70, 92)
+
+FULL = (40, 19)       # greeting size, in cells
+COMPACT = (26, 11)    # pinned header size
+INFO_W = 38
+MIN_SHELL_ROWS = 10   # rows that must stay free below a pinned header
+
+VERTS = [(x, y, z, w) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1) for w in (-1, 1)]
+EDGES = [(a, b) for a in range(16) for b in range(a + 1, 16) if bin(a ^ b).count("1") == 1]
+
+# A braille cell is 2x4 dots. BRAILLE[col][row] is the bit for that dot.
+BRAILLE = ((0x01, 0x02, 0x04, 0x40), (0x08, 0x10, 0x20, 0x80))
+
+
+def rotate(a, b, angle):
+    c, s = math.cos(angle), math.sin(angle)
+    return a * c - b * s, a * s + b * c
+
+
+def project(t, w, h):
+    """Project the 16 vertices to cell coordinates. Returns (x, y, depth 0..1)."""
+    unit = min(2 * w, 4 * h) / 3.0    # dots per model unit; dots are square
+    points = []
+    for x, y, z, u in VERTS:
+        x, u = rotate(x, u, t * 0.80)
+        y, z = rotate(y, z, t * 0.55)
+        x, y = rotate(x, y, t * 0.25)
+        k = 2.6 / (3.4 - u)           # 4D -> 3D
+        x, y, z = x * k, y * k, z * k
+        k = 3.2 / (4.6 - z)           # 3D -> 2D
+        depth = (u + 1.5) / 3.0 * 0.6 + (z + 2.0) / 4.0 * 0.4
+        points.append((w / 2 + x * k * unit / 2, h / 2 + y * k * unit / 4,
+                       max(0.0, min(1.0, depth))))
+    return points
+
+
+def draw_braille(t, w, h):
+    mask = [[0] * w for _ in range(h)]
+    shade = [[0.0] * w for _ in range(h)]
+
+    def dot(px, py, value):
+        px, py = int(round(px)), int(round(py))
+        if 0 <= px < w * 2 and 0 <= py < h * 4:
+            cx, cy = px >> 1, py >> 2
+            mask[cy][cx] |= BRAILLE[px & 1][py & 3]
+            shade[cy][cx] = max(shade[cy][cx], value)
+
+    points = [(x * 2, y * 4, d) for x, y, d in project(t, w, h)]
+    for a, b in EDGES:
+        x0, y0, d0 = points[a]
+        x1, y1, d1 = points[b]
+        steps = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+        for i in range(steps + 1):
+            f = i / steps
+            dot(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, (d0 + (d1 - d0) * f) * 0.92)
+    for x, y, d in points:
+        for ox in (-1, 0, 1):
+            for oy in (-1, 0, 1):
+                dot(x + ox, y + oy, 1.0 + d)
+    return [[(chr(0x2800 + mask[r][c]), shade[r][c]) if mask[r][c] else None
+             for c in range(w)] for r in range(h)]
+
+
+def draw_ascii(t, w, h):
+    grid = [[None] * w for _ in range(h)]
+
+    def put(x, y, ch, value):
+        x, y = int(round(x)), int(round(y))
+        if 0 <= x < w and 0 <= y < h and (grid[y][x] is None or value >= grid[y][x][1]):
+            grid[y][x] = (ch, value)
+
+    points = project(t, w, h)
+    for a, b in EDGES:
+        x0, y0, d0 = points[a]
+        x1, y1, d1 = points[b]
+        dx, dy = x1 - x0, y1 - y0
+        slope = math.degrees(math.atan2(dy * 2, dx)) % 180   # cells are twice as tall as wide
+        ch = "-" if slope < 22.5 or slope >= 157.5 else "\\" if slope < 67.5 else "|" if slope < 112.5 else "/"
+        steps = int(max(abs(dx), abs(dy)) * 1.5) + 1
+        for i in range(steps + 1):
+            f = i / steps
+            put(x0 + dx * f, y0 + dy * f, ch, (d0 + (d1 - d0) * f) * 0.92)
+    for x, y, d in points:
+        put(x, y, "o", 1.0 + d)
+    return grid
+
+
+def fg(rgb):
+    return "\x1b[38;2;%d;%d;%dm" % rgb
+
+
+def paint(grid, color):
+    """Turn a grid into strings. Values above 1.0 mark vertices."""
+    lines = []
+    for row in grid:
+        out, last = [], None
+        for cell in row:
+            if cell is None:
+                out.append(" ")
+                continue
+            ch, value = cell
+            if color:
+                if value > 1.0:
+                    code = "\x1b[1m" + fg(ICE)
+                else:
+                    level = round(value * 6) / 6
+                    code = "\x1b[22m" + fg(tuple(int(DIM[i] + (CYAN[i] - DIM[i]) * level) for i in range(3)))
+                if code != last:
+                    out.append(code)
+                    last = code
+            out.append(ch)
+        if color:
+            out.append("\x1b[0m")
+        lines.append("".join(out))
+    return lines
+
+
+def proc_field(path, key):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith(key):
+                    return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return None
+
+
+def ozios_version():
+    for path in ("/usr/share/ozios/VERSION", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION")):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                return fh.read().strip()
+        except OSError:
+            continue
+    return ""
+
+
+def sysinfo():
+    info = [("OS", "OziOS " + ozios_version()), ("Kernel", platform.release())]
+    desktop = os.environ.get("XDG_CURRENT_DESKTOP")
+    if desktop:
+        session = os.environ.get("XDG_SESSION_TYPE")
+        info.append(("Desktop", "%s (%s)" % (desktop, session) if session else desktop))
+    if os.environ.get("SHELL"):
+        info.append(("Shell", os.path.basename(os.environ["SHELL"])))
+    cpu = proc_field("/proc/cpuinfo", "model name")
+    if cpu:
+        info.append(("CPU", cpu.replace("(R)", "").replace("(TM)", "").replace(" CPU", "")))
+    total, free = proc_field("/proc/meminfo", "MemTotal"), proc_field("/proc/meminfo", "MemAvailable")
+    if total and free:
+        total, free = int(total.split()[0]) / 1048576, int(free.split()[0]) / 1048576
+        info.append(("Memory", "%.1f / %.1f GB" % (total - free, total)))
+    try:
+        info.append(("Packages", str(sum(1 for e in os.scandir("/var/lib/pacman/local") if e.is_dir()))))
+    except OSError:
+        pass
+    try:
+        with open("/proc/uptime") as fh:
+            up = int(float(fh.read().split()[0]))
+        info.append(("Uptime", "%dh %dm" % (up // 3600, up % 3600 // 60)))
+    except OSError:
+        pass
+    if shutil.which("virsh") is None:
+        windows = "not installed"
+    elif os.path.exists("/run/libvirt/qemu/ozi-win.pid"):
+        windows = "running"
+    else:
+        windows = "stopped"
+    info.append(("Windows", windows))
+    return info
+
+
+def info_lines(color, swatch=True):
+    cyan, ice, bold, reset = (fg(CYAN), fg(ICE), "\x1b[1m", "\x1b[0m") if color else ("", "", "", "")
+    lines = [bold + ice + "O z i O S" + reset, cyan + "-" * 9 + reset]
+    for key, value in sysinfo():
+        if len(value) > INFO_W - 10:
+            value = value[:INFO_W - 11] + "…"
+        lines.append("%s%-9s%s %s%s%s" % (cyan, key, reset, ice, value, reset))
+    if color and swatch:
+        lines += ["", "".join("\x1b[48;2;%d;%d;%dm   " % c for c in ((8, 11, 16), DIM, CYAN, ICE)) + reset]
+    return lines
+
+
+def compose(t, size, info, color, ascii_mode, side):
+    w, h = size
+    rows = paint((draw_ascii if ascii_mode else draw_braille)(t, w, h), color)
+    if side:
+        top = max(0, (h - len(info)) // 2)
+        for i, line in enumerate(info[:h - top]):
+            rows[top + i] += "  " + line
+    return rows
+
+
+# --- greeting: spins in place, then leaves the last frame in the scrollback ---
+
+def key_waiter():
+    """Return (wait, restore), or (None, None) without a usable tty.
+
+    wait(seconds) reports whether a key arrived, without reading it, so the
+    first thing typed still reaches the shell. Echo is off meanwhile so the
+    key doesn't land on top of the drawing.
+    """
+    try:
+        import select
+        import termios
+        fd = sys.stdin.fileno()
+        saved = termios.tcgetattr(fd)
+        raw = termios.tcgetattr(fd)
+        raw[3] &= ~(termios.ICANON | termios.ECHO)
+        termios.tcsetattr(fd, termios.TCSANOW, raw)
+    except Exception:
+        return None, None
+    return (lambda seconds: bool(select.select([fd], [], [], seconds)[0]),
+            lambda: termios.tcsetattr(fd, termios.TCSANOW, saved))
+
+
+def greet(args, ascii_mode):
+    w, h = FULL
+    tty = sys.stdout.isatty()
+    color = tty and "NO_COLOR" not in os.environ
+    term = shutil.get_terminal_size((80, 24))
+    info = info_lines(color)
+    if term.columns < w or term.lines < h + 2:
+        print("\n".join(info))
+        return 0
+    side = term.columns >= w + 2 + INFO_W
+    out = sys.stdout
+
+    def finish():
+        if not side:
+            out.write("\n".join(info) + "\n")
+        out.flush()
+
+    if not tty or "--static" in args:
+        out.write("\n".join(compose(3.3, FULL, info, color, ascii_mode, side)) + "\n")
+        finish()
+        return 0
+
+    loop = "--loop" in args
+    try:
+        limit = float(os.environ.get("OZI_FETCH_MAX", "0"))
+    except ValueError:
+        limit = 0.0
+    wait, restore = (None, None) if loop else key_waiter()
+    fps, start, t, done = 20, time.monotonic(), 0.9, False
+    try:
+        out.write("\x1b[?25l")
+        while True:
+            elapsed = time.monotonic() - start
+            t = 0.9 + elapsed
+            out.write("\n".join(r + "\x1b[K" for r in compose(t, FULL, info, color, ascii_mode, side)) + "\n")
+            out.flush()
+            if done:
+                break
+            out.write("\x1b[%dA" % h)
+            if wait:
+                done = wait(1 / fps)
+            else:
+                time.sleep(1 / fps)
+                done = not loop and elapsed >= 2.4
+            if limit and elapsed >= limit:
+                done = True
+    except KeyboardInterrupt:
+        # The cursor sits at the top of the frame while we sleep; repaint so
+        # the prompt ends up below it.
+        out.write("\r" + "\n".join(r + "\x1b[K" for r in compose(t, FULL, info, color, ascii_mode, side)) + "\n")
+    finally:
+        if restore:
+            restore()
+        out.write("\x1b[?25h\x1b[0m")
+        finish()
+    return 0
+
+
+# --- pinned header -----------------------------------------------------------
+#
+# The top rows of the terminal are taken out of the scroll region and a
+# detached child repaints them. Origin mode plus a shrunken tty size make
+# everything else (shell, pagers, curses programs) treat the rest of the
+# window as the whole terminal. The child only paints while the shell itself
+# is in the foreground, so command output is never interleaved with a frame.
+
+def get_winsize(fd):
+    import fcntl
+    import termios
+    return struct.unpack("HHHH", fcntl.ioctl(fd, termios.TIOCGWINSZ, b"\0" * 8))
+
+
+def set_winsize(fd, rows, cols, xpixel, ypixel):
+    import fcntl
+    import termios
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, xpixel, ypixel))
+
+
+def pidfile(fd):
+    name = os.ttyname(fd).strip("/").replace("/", "-")
+    return os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "ozi-fetch-%s.pid" % name)
+
+
+def pinned_pid(path):
+    try:
+        with open(path) as fh:
+            pid = int(fh.read())
+        with open("/proc/%d/cmdline" % pid, "rb") as fh:
+            return pid if b"ozi-fetch" in fh.read() else None
+    except (OSError, ValueError):
+        return None
+
+
+def shell_in_foreground(shell):
+    """True/False, or None once the shell is gone."""
+    try:
+        with open("/proc/%d/stat" % shell) as fh:
+            fields = fh.read().rsplit(")", 1)[1].split()
+    except (OSError, IndexError):
+        return None
+    return fields[2] == fields[5]     # pgrp == tpgid
+
+
+def region_on(h, rows, keep_cursor=True):
+    seq = "\x1b[%d;%dr\x1b[?6h" % (h + 1, rows)
+    return ("\x1b7" + seq + "\x1b8" if keep_cursor else seq).encode()
+
+
+REGION_OFF = b"\x1b7\x1b[r\x1b[?6l\x1b8"
+
+
+def header_frame(rows):
+    body = "".join("\x1b[%d;1H%s\x1b[K" % (i + 1, row) for i, row in enumerate(rows))
+    return ("\x1b[?2026h\x1b7\x1b[?6l" + body + "\x1b[0m\x1b[?6h\x1b8\x1b[?2026l").encode()
+
+
+def can_pin():
+    return (os.name == "posix" and sys.stdout.isatty() and os.path.isdir("/proc")
+            and os.environ.get("TERM", "dumb") not in ("dumb", "linux")
+            and not os.environ.get("TMUX") and not os.environ.get("STY"))
+
+
+def pin(ascii_mode):
+    if not can_pin():
+        return 1
+    fd = os.dup(sys.stdout.fileno())
+    path = pidfile(fd)
+    if pinned_pid(path):
+        return 0                       # nested shell in an already pinned terminal
+    w, h = COMPACT
+    rows, cols, xpixel, ypixel = get_winsize(fd)
+    if rows < h + MIN_SHELL_ROWS or cols < w + 2:
+        return 1
+    shell = os.getppid()
+    color = "NO_COLOR" not in os.environ
+
+    os.write(fd, b"\n" * h)
+    set_winsize(fd, rows - h, cols, xpixel, ypixel)
+    os.write(fd, region_on(h, rows, keep_cursor=False))
+    if os.fork():
+        return 0
+
+    os.setsid()
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    signal.signal(signal.SIGHUP, lambda *_: sys.exit(0))
+    try:
+        with open(path, "w") as fh:
+            fh.write(str(os.getpid()))
+    except OSError:
+        pass
+
+    start = time.monotonic()
+    info, info_age, paused = [], -60.0, False
+    try:
+        while True:
+            foreground = shell_in_foreground(shell)
+            if foreground is None:
+                break
+            size = get_winsize(fd)
+            if size[:2] != (rows - h, cols):          # the window itself was resized
+                rows, cols, xpixel, ypixel = size
+                if rows < h + MIN_SHELL_ROWS or cols < w + 2:
+                    break
+                set_winsize(fd, rows - h, cols, xpixel, ypixel)
+                os.write(fd, region_on(h, rows))
+            if not foreground:
+                paused = True
+                time.sleep(0.2)
+                continue
+            if paused:                                 # a program may have reset the region
+                os.write(fd, region_on(h, rows))
+                paused = False
+            now = time.monotonic()
+            if now - info_age > 5:
+                info, info_age = info_lines(color, swatch=False), now
+            side = cols >= w + 2 + INFO_W
+            os.write(fd, header_frame(compose(0.9 + now - start, COMPACT, info, color, ascii_mode, side)))
+            time.sleep(1 / 15)
+    except OSError:
+        pass                                           # terminal closed
+    finally:
+        try:
+            set_winsize(fd, rows, cols, xpixel, ypixel)
+            os.write(fd, REGION_OFF)
+        except OSError:
+            pass
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    os._exit(0)
+
+
+def unpin():
+    if not (os.name == "posix" and sys.stdout.isatty()):
+        return 1
+    pid = pinned_pid(pidfile(sys.stdout.fileno()))
+    if pid:
+        os.kill(pid, signal.SIGTERM)
+        return 0
+    sys.stdout.write(REGION_OFF.decode())
+    print("ozi-fetch: no pinned header on this terminal")
+    return 1
+
+
+def main():
+    args = set(sys.argv[1:])
+    if args & {"-h", "--help"}:
+        print(__doc__.strip())
+        return 0
+    ascii_mode = "--ascii" in args or os.environ.get("OZI_FETCH_ASCII") == "1"
+    if "--unpin" in args:
+        return unpin()
+    if "--pin" in args:
+        return pin(ascii_mode)
+    return greet(args, ascii_mode)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

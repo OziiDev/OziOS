@@ -1,0 +1,11 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Id": "org.ozios.desktop",
+        "Name": "OziOS",
+        "Description": "The OziOS desktop: top bar, floating dock, cyan on ink",
+        "License": "MIT",
+        "Version": "0.1"
+    },
+    "X-Plasma-APIVersion": "2"
+}

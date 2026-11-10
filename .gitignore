@@ -1,0 +1,8 @@
+*.iso
+*.qcow2
+*.vdi
+docs/vm-report.txt
+out/
+.bridge/
+__pycache__/
+*.pyc

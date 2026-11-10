@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 260" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>OziOS</title>
+  <!-- tesseract: outer cube, inner cube, eight connectors -->
+  <g stroke="#00E5FF" stroke-width="5">
+    <path d="M60 90H180V210H60Z"/>
+    <path d="M100 50H220V170H100Z" opacity=".55"/>
+    <path d="M60 90L100 50M180 90L220 50M180 210L220 170M60 210L100 170" opacity=".8"/>
+  </g>
+  <g stroke="#00E5FF" stroke-width="3" opacity=".6">
+    <path d="M60 90L104 112M180 90L158 112M180 210L158 166M60 210L104 166"/>
+    <path d="M100 50L122 94M220 50L176 94M220 170L176 148M100 170L122 148"/>
+  </g>
+  <g stroke="#F4FCFF" stroke-width="4">
+    <path d="M104 112H158V166H104Z"/>
+    <path d="M122 94H176V148H122Z" opacity=".7"/>
+    <path d="M104 112L122 94M158 112L176 94M158 166L176 148M104 166L122 148" opacity=".85"/>
+  </g>
+  <g fill="#F4FCFF" stroke="none">
+    <circle cx="60" cy="90" r="6"/><circle cx="180" cy="90" r="6"/><circle cx="180" cy="210" r="6"/><circle cx="60" cy="210" r="6"/>
+    <circle cx="100" cy="50" r="5"/><circle cx="220" cy="50" r="5"/><circle cx="220" cy="170" r="5"/><circle cx="100" cy="170" r="5"/>
+  </g>
+</svg>

@@ -1,0 +1,18 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Path
+Target = usr/lib/os-release
+Target = etc/calamares/*
+Target = usr/share/calamares/*
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = ozios-settings
+
+[Action]
+Description = Applying OziOS identity...
+When = PostTransaction
+Exec = /bin/sh -c '/usr/lib/ozios/identity; /usr/lib/ozios/patch-installer'

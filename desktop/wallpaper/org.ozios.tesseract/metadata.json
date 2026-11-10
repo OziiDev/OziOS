@@ -1,0 +1,11 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Id": "org.ozios.tesseract",
+        "Name": "OziOS Tesseract",
+        "Description": "A slowly turning tesseract",
+        "License": "MIT",
+        "Version": "0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

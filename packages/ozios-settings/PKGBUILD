@@ -1,0 +1,61 @@
+pkgname=ozios-settings
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="OziOS identity, desktop look and system tools"
+arch=(any)
+license=(MIT)
+depends=(bash python)
+optdepends=(
+  'freerdp: open Windows programs from the desktop'
+  'libvirt: run the Windows guest'
+  'virt-install: set up the Windows guest'
+  'libisoburn: set up the Windows guest'
+  'snapper: snapshots before package changes'
+)
+install=ozios-settings.install
+options=(!strip !debug)
+
+# Built from a checkout rather than a tarball: iso/build.sh points OZI_SRC at it.
+package() {
+  local src="${OZI_SRC:?OZI_SRC must point at the OziOS source tree}"
+  local here="$src/packages/ozios-settings"
+  local share="$pkgdir/usr/share/ozios"
+
+  install -Dm644 "$src/VERSION" "$share/VERSION"
+  install -Dm755 "$src/packages/ozi-cli/ozi"   "$pkgdir/usr/bin/ozi"
+  install -Dm755 "$src/branding/ozi-fetch"     "$pkgdir/usr/bin/ozi-fetch"
+  install -Dm755 "$src/winbridge/ozi-winrun"   "$pkgdir/usr/bin/ozi-winrun"
+  install -Dm755 "$src/winbridge/ozi-winsetup" "$pkgdir/usr/bin/ozi-winsetup"
+  install -Dm644 "$src/winbridge/ozi-winrun.desktop" "$pkgdir/usr/share/applications/ozi-winrun.desktop"
+
+  install -Dm755 "$src/branding/ozi-fetch"       "$share/branding/ozi-fetch"
+  install -Dm644 -t "$share/branding"            "$src/branding/OziOS.colors" "$src/branding/logo.svg" "$src/branding/wallpaper.svg"
+  install -Dm644 -t "$share/branding/konsole"    "$src"/branding/konsole/*
+  install -Dm755 "$src/tools/apply-branding.sh"  "$share/tools/apply-branding.sh"
+  install -Dm755 "$src/vfio/detect-iommu.sh"     "$share/vfio/detect-iommu.sh"
+  install -Dm644 -t "$share/winimage"            "$src/winimage/autounattend.xml" "$src/winimage/ozi-setup.ps1"
+
+  install -Dm644 "$src/branding/OziOS.colors" "$pkgdir/usr/share/color-schemes/OziOS.colors"
+  install -Dm644 -t "$pkgdir/usr/share/konsole" "$src"/branding/konsole/*
+  install -Dm644 "$src/branding/logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/ozios.svg"
+
+  local wallpaper=org.ozios.tesseract
+  install -Dm644 "$src/desktop/wallpaper/$wallpaper/metadata.json" \
+    "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/metadata.json"
+  install -Dm644 -t "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/contents/ui" \
+    "$src/desktop/wallpaper/$wallpaper"/contents/ui/*.qml
+
+  # Global theme: colours, panel layout, splash. The splash reuses the
+  # wallpaper's figure, so that one file is installed into both.
+  local theme="$pkgdir/usr/share/plasma/look-and-feel/org.ozios.desktop"
+  local theme_src="$src/desktop/look-and-feel/org.ozios.desktop"
+  install -Dm644 "$theme_src/metadata.json" "$theme/metadata.json"
+  install -Dm644 "$theme_src/contents/defaults" "$theme/contents/defaults"
+  install -Dm644 -t "$theme/contents/layouts" "$theme_src"/contents/layouts/*.js
+  install -Dm644 -t "$theme/contents/splash" "$theme_src/contents/splash/Splash.qml" \
+    "$src/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml"
+
+  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target"
+  install -Dm644 "$here/ozios.hook" "$pkgdir/usr/share/libalpm/hooks/90-ozios.hook"
+  install -Dm644 "$here/first-login.desktop" "$pkgdir/etc/xdg/autostart/ozios-first-login.desktop"
+}

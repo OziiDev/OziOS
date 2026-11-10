@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+# Create the OziOS Windows guest from a Windows ISO you supply.
+#
+#   ozi-winsetup <windows.iso> [--virtio <virtio-win.iso>] [--disk <GB>]
+#                [--ram <MB>] [--cpus <n>] [--win11]
+#
+# Installation is unattended. Running this accepts the Microsoft licence terms
+# for that copy of Windows on your behalf; activation is left to you.
+set -euo pipefail
+
+vm=ozi-win
+user=ozi
+share=/usr/share/ozios/winimage
+images=/var/lib/libvirt/images
+conn=qemu:///system
+
+die() { echo "ozi-winsetup: $*" >&2; exit 1; }
+
+# First-run flow for people who just double-clicked a Windows program: explain
+# what is about to happen, get consent, ask for the ISO, then run the normal
+# setup in a terminal so progress and the password prompt are visible.
+gui() {
+  command -v kdialog >/dev/null || die "the graphical setup needs kdialog"
+  local title="Windows on OziOS" picked flag=""
+
+  if [ ! -e /dev/kvm ]; then
+    kdialog --title "$title" --error "This computer has hardware virtualization turned off.\n\nTurn on VT-x or SVM in the firmware setup, then try again."
+    exit 1
+  fi
+
+  kdialog --title "$title" --yes-label "Accept and continue" --no-label "Cancel" --warningyesno \
+"<html><p><b>Windows programs need a copy of Windows.</b></p>
+<p>OziOS does not ship Windows. It installs your own copy inside this system and opens Windows programs as normal windows.</p>
+<p>You need a Windows ISO and a licence for it. Continuing means you accept the
+<a href='https://www.microsoft.com/useterms'>Microsoft Software Licence Terms</a> for that copy.</p>
+<p>The install runs by itself. Telemetry is turned off and bundled apps are removed. It needs about 64 GB of disk and takes a while.</p></html>" || exit 1
+
+  if ! kdialog --title "$title" --yes-label "Choose ISO" --no-label "Get Windows" \
+       --yesno "Do you already have a Windows ISO file?"; then
+    xdg-open "https://www.microsoft.com/software-download/windows11" >/dev/null 2>&1 &
+    kdialog --title "$title" --msgbox "Download the ISO from Microsoft, then open your Windows program again."
+    exit 0
+  fi
+
+  picked="$(kdialog --title "Choose your Windows ISO" --getopenfilename "$HOME" "Disc images (*.iso)")" || exit 1
+  [ -f "$picked" ] || exit 1
+  case "${picked,,}" in *win11* | *windows11* | *windows_11* | *windows-11*) flag=--win11 ;; esac
+  exec konsole --hold -e "$0" "$picked" $flag
+}
+
+if [ "${1:-}" = "--gui" ]; then
+  gui
+fi
+
+iso="" virtio="" disk=64 ram="" cpus="" drivers=w10 variant=win10
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --virtio) virtio="${2:?}"; shift 2 ;;
+    --disk)   disk="${2:?}"; shift 2 ;;
+    --ram)    ram="${2:?}"; shift 2 ;;
+    --cpus)   cpus="${2:?}"; shift 2 ;;
+    --win11)  drivers=w11 variant=win11; shift ;;
+    -h | --help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*) die "unknown option $1" ;;
+    *) iso="$1"; shift ;;
+  esac
+done
+
+[ -n "$iso" ] || die "give the path to a Windows ISO"
+[ -f "$iso" ] || die "$iso does not exist"
+iso="$(readlink -f "$iso")"
+[ -e /dev/kvm ] || die "no /dev/kvm: turn on virtualization in the firmware setup"
+
+# The virtualization stack is large and most people never use it, so it is
+# installed here, on first use, instead of shipping on every system.
+needed=()
+have() { command -v "$1" >/dev/null; }
+have virsh        || needed+=(libvirt dnsmasq)
+have virt-install || needed+=(virt-install)
+have qemu-system-x86_64 || needed+=(qemu-desktop)
+have swtpm        || needed+=(swtpm)
+have xorriso      || needed+=(libisoburn)
+have secret-tool  || needed+=(libsecret)
+have xfreerdp3    || needed+=(freerdp)
+have virt-viewer  || needed+=(virt-viewer)
+[ -f /usr/share/edk2/x64/OVMF_CODE.4m.fd ] || needed+=(edk2-ovmf)
+if [ "${#needed[@]}" -gt 0 ]; then
+  echo "Installing: ${needed[*]}"
+  sudo pacman -S --needed "${needed[@]}"
+fi
+for tool in virsh virt-install xorriso secret-tool openssl; do
+  have "$tool" || die "$tool is still missing"
+done
+[ -f "$share/autounattend.xml" ] || die "$share is missing; reinstall ozios-settings"
+
+# Half the machine by default, within sane limits.
+if [ -z "$ram" ]; then
+  total="$(awk '/MemTotal/ { print int($2 / 1024) }' /proc/meminfo)"
+  ram=$((total / 2))
+  [ "$ram" -gt 16384 ] && ram=16384
+  [ "$ram" -ge 3072 ] || die "not enough memory for a Windows guest (${total} MB total)"
+fi
+if [ -z "$cpus" ]; then
+  cpus=$(( $(nproc) / 2 ))
+  [ "$cpus" -ge 2 ] || cpus=2
+fi
+
+if [ -z "$virtio" ]; then
+  for candidate in "$(dirname "$iso")"/virtio-win*.iso /usr/share/virtio/virtio-win.iso; do
+    [ -f "$candidate" ] && { virtio="$candidate"; break; }
+  done
+fi
+
+sudo systemctl enable --now libvirtd.service
+sudo virsh -c "$conn" dominfo "$vm" >/dev/null 2>&1 && die "a guest named $vm already exists (remove it with: sudo virsh undefine $vm --nvram)"
+sudo virsh -c "$conn" net-autostart default >/dev/null 2>&1 || true
+sudo virsh -c "$conn" net-start default >/dev/null 2>&1 || true
+id -nG "$USER" | grep -qw libvirt || sudo usermod -aG libvirt "$USER"
+
+# The account password never touches a config file; it lives in the keyring
+# and, during setup only, in the answer file on a throwaway CD image.
+password="$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 20)"
+printf '%s' "$password" | secret-tool store --label="OziOS Windows guest" service ozi-winvm
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+sed -e "s/@USER@/$user/g" -e "s/@PASSWORD@/$password/g" -e "s/@DRIVERS@/$drivers/g" \
+  "$share/autounattend.xml" > "$tmp/autounattend.xml"
+cp "$share/ozi-setup.ps1" "$tmp/"
+xorriso -as mkisofs -quiet -J -r -V OZISETUP -o "$tmp/ozi-setup.iso" "$tmp/autounattend.xml" "$tmp/ozi-setup.ps1"
+sudo install -m644 "$tmp/ozi-setup.iso" "$images/ozi-setup.iso"
+
+# Without the virtio CD Windows Setup cannot see a virtio disk, so fall back
+# to emulated SATA and e1000e. Slower, but it installs.
+if [ -n "$virtio" ]; then
+  bus=virtio nic=virtio
+  extra=(--disk "path=$(readlink -f "$virtio"),device=cdrom,bus=sata")
+else
+  echo "ozi-winsetup: no virtio-win ISO found, using slower emulated devices" >&2
+  bus=sata nic=e1000e
+  extra=()
+fi
+
+tpm=()
+[ "$variant" = win11 ] && tpm=(--tpm backend.type=emulator,backend.version=2.0,model=tpm-crb)
+
+sudo virt-install --connect "$conn" \
+  --name "$vm" \
+  --memory "$ram" \
+  --vcpus "$cpus" \
+  --cpu host-passthrough \
+  --machine q35 \
+  --boot uefi \
+  --os-variant "$variant" \
+  --disk "path=$images/$vm.qcow2,size=$disk,format=qcow2,bus=$bus,discard=unmap" \
+  --cdrom "$iso" \
+  "${extra[@]}" \
+  --disk "path=$images/ozi-setup.iso,device=cdrom,bus=sata" \
+  --network "network=default,model=$nic" \
+  --graphics spice \
+  --video qxl \
+  --channel spicevmc \
+  "${tpm[@]}" \
+  --noautoconsole
+
+cat <<EOF
+
+Windows is installing in the background. It needs no input and takes a while.
+Watch it with:   virt-viewer -c $conn $vm
+It is ready when the guest has restarted and C:\\ozi-ready.txt exists.
+
+Log out and back in once so your account can talk to the guest without sudo.
+After that, double-click any .exe, or run: ozi-winrun <file.exe>
+EOF
