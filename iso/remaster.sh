@@ -136,6 +136,9 @@ if [ -n "$kernel" ]; then
   done
   [ "${#old_pkgs[@]}" -eq 0 ] || "${pm[@]}" -Rdd "${old_pkgs[@]}"
   "${pm[@]}" -U "${new_pkgs[@]}"
+  # Keep the packages on the medium: the installer puts them into the new system.
+  rm -f "$root"/opt/ozios/linux-ozios*.pkg.tar.*
+  install -Dm644 -t "$root/opt/ozios" "${new_pkgs[@]}"
 
   kver="$(ls "$root/usr/lib/modules" | grep -- '-ozios$' | head -n1)"
   [ -n "$kver" ] || die "the kernel package installed no modules"

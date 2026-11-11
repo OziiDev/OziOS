@@ -1,17 +1,45 @@
 #!/bin/sh
-# Run by Calamares near the end of an installation: install the OziOS package
-# into the freshly installed system. Always exits 0 so a problem here can not
-# fail an otherwise good install.
+# Run by Calamares near the end of an installation: put OziOS into the freshly
+# installed system. Always exits 0 so a problem here can not fail an
+# otherwise good install.
+#
+# 1. the ozios-settings package (theme, commands, apps)
+# 2. the linux-ozios kernel packages, when the medium carries them. The
+#    CachyOS kernel the installer put there stays as a fallback entry.
 root="$(findmnt -rno TARGET | grep -m1 '^/tmp/calamares-root-')"
-pkg="$(ls /opt/ozios/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
+settings="$(ls /opt/ozios/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
 
-if [ -z "$root" ] || [ -z "$pkg" ]; then
-  echo "ozios: nothing to do (target: '${root}', package: '${pkg}')"
+if [ -z "$root" ] || [ -z "$settings" ]; then
+  echo "ozios: nothing to do (target: '${root}', package: '${settings}')"
   exit 0
 fi
 
-pacman --root "$root" --noconfirm -U "$pkg" || echo "ozios: could not install $pkg into $root"
+pacman --root "$root" --noconfirm -U "$settings" || echo "ozios: could not install $settings into $root"
 
 # Keep a copy so the package can be reinstalled without the live medium.
-mkdir -p "$root/opt/ozios" && cp -f "$pkg" "$root/opt/ozios/"
+mkdir -p "$root/opt/ozios" && cp -f "$settings" "$root/opt/ozios/"
+
+kernel_pkgs="$(ls /opt/ozios/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$')"
+if [ -n "$kernel_pkgs" ]; then
+  # Install one by one: the NVIDIA modules need the exact driver version and
+  # may not match what the installer fetched; that must not block the kernel.
+  for pkg in $(echo "$kernel_pkgs" | sort); do
+    arch-chroot "$root" true 2>/dev/null || break
+    cp -f "$pkg" "$root/tmp/" &&
+      arch-chroot "$root" pacman --noconfirm --needed -U "/tmp/$(basename "$pkg")" ||
+      echo "ozios: could not install $(basename "$pkg")"
+    rm -f "$root/tmp/$(basename "$pkg")"
+  done
+  mkdir -p "$root/opt/ozios" && cp -f $kernel_pkgs "$root/opt/ozios/"
+
+  # Rebuild the boot menu so the new kernel is listed. Only what is present is touched.
+  if [ -f "$root/boot/grub/grub.cfg" ]; then
+    arch-chroot "$root" grub-mkconfig -o /boot/grub/grub.cfg || echo "ozios: grub-mkconfig failed"
+  elif [ -d "$root/boot/loader/entries" ] || [ -d "$root/efi/loader/entries" ]; then
+    version="$(ls "$root/usr/lib/modules" | grep -- '-ozios$' | head -n1)"
+    [ -n "$version" ] && command -v kernel-install >/dev/null &&
+      arch-chroot "$root" kernel-install add "$version" "/usr/lib/modules/$version/vmlinuz" ||
+      echo "ozios: left the boot menu as it was"
+  fi
+fi
 exit 0
