@@ -33,6 +33,9 @@ Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch
 Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch
 EOF
 
+# A link left over from an earlier run points at the live database, which
+# pacman would then try to treat as part of the scratch one.
+rm -rf "$work/db/local"
 pacman --config "$work/pacman.conf" --dbpath "$work/db" --logfile /dev/null -Sy
 # --dbpath would hide what is installed, so pacman only learns about it from
 # the real local database, linked in next to the scratch sync databases.
