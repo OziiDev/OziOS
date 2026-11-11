@@ -4,6 +4,8 @@
     ozi-pkg install FILE.deb       install a Debian/Ubuntu package into its own box
     ozi-pkg install FILE.pkg.tar.* install a reviewed Arch package on the system
     ozi-pkg get|uninstall NAME...  repository packages, through the privileged helper
+    ozi-pkg aur NAME...            build AUR packages in a throwaway container, then install
+    ozi-pkg search TERM            search the AUR
     ozi-pkg upgrade | undo N       update the system, or roll back to snapshot N
     ozi-pkg list                   installed boxes
     ozi-pkg perms APP [options]    show or change what an app may reach
@@ -19,7 +21,10 @@ import os
 import subprocess
 import sys
 
-from . import archives, box, paths, perms as permissions, risk
+import shutil
+import time
+
+from . import archives, aur, box, paths, perms as permissions, risk
 from .i18n import tr
 
 
@@ -150,6 +155,79 @@ def install_arch(path, out=print, ask=input, yes=False, force=False, caller=call
     return facts.name
 
 
+def pacman_has(name):
+    """True when a repository (or an installed package) provides `name`."""
+    for flags in ("-Si", "-Qi", "-Sp"):
+        try:
+            if subprocess.run(["pacman", flags, "--", name], capture_output=True, timeout=60).returncode == 0:
+                return True
+        except (OSError, subprocess.SubprocessError):
+            return False
+    return False
+
+
+def install_aur(names, out=print, ask=input, yes=False, force=False, fetch=aur.default_fetch, runner=box.run,
+                caller=call_helper, in_repo=pacman_has, workdir=None, now=None, driver=None):
+    """Review, build in a box and install AUR packages. Returns the installed file names."""
+    now = time.time() if now is None else now
+    order = aur.resolve(names, fetch, in_repo)
+    if not order:
+        raise CliError(tr("Everything asked for is already in the repositories. Use: ozi-pkg get"))
+    recipes, worst = {}, "normal"
+    for record in order:
+        base = record["PackageBase"]
+        files = aur.fetch_recipe(base, fetch)
+        findings = aur.review_recipe(files, record, now)
+        recipes[base] = files
+        out("== %s %s (AUR)" % (record["Name"], record.get("Version", "")))
+        if not findings:
+            out(tr("Nothing known-bad was found."))
+        for finding in findings:
+            out("[%s] %s" % (finding.severity, finding.title))
+            if finding.evidence:
+                out("    %s: %s" % (finding.where, finding.evidence))
+        if risk.verdict(findings) == "danger":
+            worst = "danger"
+    if worst == "danger" and not force:
+        raise CliError(tr("The review found something dangerous. Use --force to build anyway."))
+    out("")
+    out(tr("The recipes run in a throwaway container. The built packages are then installed on the system with full rights."))
+    if not yes and ask(tr("Build and install {n} package(s)? [y/N] ", n=len(order))).strip().lower() not in ("y", "yes", "e", "evet"):
+        raise CliError(tr("Cancelled."))
+
+    root = workdir or str(paths.state_dir() / "aur")
+    deps = os.path.join(root, "deps")
+    shutil.rmtree(root, ignore_errors=True)
+    os.makedirs(deps, exist_ok=True)
+    driver = driver or box.storage_driver()
+    installed, done = [], set()
+    for record in order:
+        base = record["PackageBase"]
+        if base in done:
+            continue
+        done.add(base)
+        build_dir = os.path.join(root, base)
+        os.makedirs(build_dir)
+        for name, text in recipes[base].items():
+            with open(os.path.join(build_dir, name), "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+        out(tr("Building {name}...", name=record["Name"]))
+        built = runner(aur.build_command(build_dir, deps if os.listdir(deps) else None, driver=driver))
+        if built.returncode != 0:
+            raise CliError(tr("The build of {name} failed.", name=record["Name"]))
+        packages = [p for p in aur.built_packages(build_dir) if "-debug-" not in os.path.basename(p)]
+        if not packages:
+            raise CliError(tr("The build of {name} produced no package.", name=record["Name"]))
+        for package in packages:
+            shutil.copy(package, deps)
+            status = caller("install-file", [package, archives.sha256_file(package)], out=out)
+            if status:
+                raise CliError(tr("Installing {name} failed.", name=os.path.basename(package)))
+            installed.append(os.path.basename(package))
+    shutil.rmtree(root, ignore_errors=True)
+    return installed
+
+
 # --- install --------------------------------------------------------------
 
 def applications_dir():
@@ -265,6 +343,14 @@ def build_parser():
     p = sub.add_parser("uninstall", help="remove packages from the system")
     p.add_argument("names", nargs="+")
 
+    p = sub.add_parser("aur", help="build packages from the AUR in a box and install them")
+    p.add_argument("names", nargs="+")
+    p.add_argument("-y", "--yes", action="store_true", help="do not ask")
+    p.add_argument("--force", action="store_true", help="build even if the review found something dangerous")
+
+    p = sub.add_parser("search", help="search the AUR")
+    p.add_argument("term")
+
     sub.add_parser("upgrade", help="update the whole system")
 
     p = sub.add_parser("undo", help="roll the system back to a snapshot")
@@ -305,6 +391,12 @@ def main(argv=None, out=print):
                 install_arch(args.file, out=out, yes=args.yes, force=args.force)
             else:
                 install_deb(args.file, apply_flags(permissions.Permissions(), args), yes=args.yes, force=args.force, out=out)
+        elif args.command == "aur":
+            install_aur(args.names, out=out, yes=args.yes, force=args.force)
+        elif args.command == "search":
+            for record in aur.search(args.term)[:30]:
+                out("%-32s %-14s %4d votes  %s" % (record["Name"], record.get("Version", ""), record.get("NumVotes", 0),
+                                                   record.get("Description") or ""))
         elif args.command in ("get", "uninstall", "upgrade", "undo"):
             verb = {"get": "install-repo", "uninstall": "remove"}.get(args.command, args.command)
             rest = getattr(args, "names", None) or ([args.number] if args.command == "undo" else [])
@@ -328,7 +420,7 @@ def main(argv=None, out=print):
             return run_box(args.app, extra)
         elif args.command == "remove":
             remove_box(args.app, out=out)
-    except (CliError, box.BoxError, ValueError) as err:
+    except (CliError, box.BoxError, aur.AurError, ValueError) as err:
         print("ozi-pkg: %s" % err, file=sys.stderr)
         return 1
     return 0
