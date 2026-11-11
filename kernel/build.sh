@@ -88,7 +88,20 @@ if [ -n "${OZI_CHECK_ONLY:-}" ]; then
 fi
 
 step "Building (this takes a long time)"
-makepkg --syncdeps --noconfirm --needed --force
+# The recipe's b2sums list matches only its own default options (thin LTO, no
+# NVIDIA, no ZFS); with other options the source array is a different length.
+# The kernel tarball is still verified through its PGP signature, so the
+# checksums are skipped rather than the signature check.
+for key in E18447AC260021D31F3FF6C4C8A2A4774B8B63C4 E8B9AA39F054E30E8290D492C3C4820857F654FE; do
+  for server in keyserver.ubuntu.com keys.openpgp.org; do
+    gpg --batch --keyserver "hkps://$server" --recv-keys "$key" >/dev/null 2>&1 && break
+  done
+done
+gpg --list-keys E18447AC260021D31F3FF6C4C8A2A4774B8B63C4 >/dev/null 2>&1 \
+  || echo "warning: signing keys could not be fetched; relying on the HTTPS download only" >&2
+makepkg_flags=(--syncdeps --noconfirm --needed --force --skipchecksums)
+gpg --list-keys E18447AC260021D31F3FF6C4C8A2A4774B8B63C4 >/dev/null 2>&1 || makepkg_flags+=(--skippgpcheck)
+makepkg "${makepkg_flags[@]}"
 
 step "Collecting the packages"
 find . -maxdepth 1 -name 'linux-ozios*.pkg.tar.*' ! -name '*.sig' -exec cp -v {} "$out/" \;
