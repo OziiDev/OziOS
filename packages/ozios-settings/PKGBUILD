@@ -29,6 +29,7 @@ package() {
   install -d "$pkgdir/usr/lib/ozios/python"
   cp -r "$src/python/ozipkg" "$pkgdir/usr/lib/ozios/python/"
   find "$pkgdir/usr/lib/ozios/python" -name __pycache__ -prune -exec rm -rf {} +
+  install -Dm644 "$src/data/i18n/tr.json" "$share/data/i18n/tr.json"
   install -Dm755 "$src/branding/ozi-fetch"     "$pkgdir/usr/bin/ozi-fetch"
   install -Dm755 "$src/winbridge/ozi-winrun"   "$pkgdir/usr/bin/ozi-winrun"
   install -Dm755 "$src/winbridge/ozi-winsetup" "$pkgdir/usr/bin/ozi-winsetup"
