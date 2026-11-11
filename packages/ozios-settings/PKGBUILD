@@ -52,6 +52,10 @@ package() {
   install -Dm644 -t "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/contents/ui" \
     "$src/desktop/wallpaper/$wallpaper"/contents/ui/*.qml
 
+  local control=org.ozios.control
+  install -Dm644 "$src/desktop/plasmoids/$control/metadata.json" "$pkgdir/usr/share/plasma/plasmoids/$control/metadata.json"
+  install -Dm644 "$src/desktop/plasmoids/$control/contents/ui/main.qml" "$pkgdir/usr/share/plasma/plasmoids/$control/contents/ui/main.qml"
+
   # Global theme: colours, panel layout, splash. The splash reuses the
   # wallpaper's figure, so that one file is installed into both.
   local theme="$pkgdir/usr/share/plasma/look-and-feel/org.ozios.desktop"

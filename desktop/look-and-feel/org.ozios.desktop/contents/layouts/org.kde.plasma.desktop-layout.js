@@ -13,6 +13,7 @@ bar.addWidget("org.kde.plasma.pager")
 bar.addWidget("org.kde.plasma.panelspacer")
 bar.addWidget("org.kde.plasma.digitalclock")
 bar.addWidget("org.kde.plasma.panelspacer")
+bar.addWidget("org.ozios.control")
 bar.addWidget("org.kde.plasma.systemtray")
 
 var dock = new Panel

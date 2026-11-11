@@ -41,17 +41,17 @@ It works as far as the package list but was not finished.
 ## Not done yet
 
 - Installing from the ISO is untested. The installer gets an extra step that
-  installs `ozios-settings` into the new system; whether it runs is unknown.
-- The kernel build (`kernel/`) was checked against the upstream recipe but has
-  not been built. A system installed from the ISO still gets the CachyOS
-  kernel.
+  installs `ozios-settings` and, when present, the `linux-ozios` packages into
+  the new system, then rebuilds the GRUB menu; whether it runs is unknown.
+- The kernel build (`kernel/`) is being exercised on GitHub Actions; no ISO
+  has carried the kernel yet.
 - Package installer: `ozipkg` has the review rules, package inspection,
   permissions model and container command builders with tests, and the
   `ozi-pkg` command line tool installs .deb packages into boxes (tested with
   a stand-in for podman, not yet on a real system). The privileged helper with
-  polkit for host installs, AUR support and the graphical app are still to be
-  written.
-- The welcome app is still CachyOS Hello.
+  polkit, AUR support, and the graphical apps (Software, Welcome, the control
+  widget) are written and unit tested where they have no Qt in them, but the
+  Qt Quick files have only been checked for structure, not started.
 - Windows guest: scripts exist (`winbridge/`, `winimage/`) but have never run
   against a real guest. GPU passthrough is not automated.
 - Boot menu images, login screen and installer artwork are still CachyOS's.

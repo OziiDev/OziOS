@@ -2,6 +2,10 @@
 # ozi - everyday system commands for OziOS.
 set -euo pipefail
 
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ozios"
+game_flag="$state_dir/game-mode"
+qdbus="$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus || true)"
+
 helper() {
   if command -v paru >/dev/null; then echo paru; else echo yay; fi
 }
@@ -19,16 +23,97 @@ usage: ozi <command>
 
   update               update the system (takes a snapshot first)
   install <pkg...>     install packages from the repos or the AUR
+  remove <pkg...>      remove packages
+  search <term>        search for packages
   review <file>        check a .deb, .pkg.tar.zst or AppImage before installing
   box <file.deb>       install a Debian/Ubuntu package into its own box
   apps                 list boxed apps
-  remove <pkg...>      remove packages
-  search <term>        search for packages
   rollback             list snapshots
+  effects <level>      window effects: full, light or off
+  mode game on|off     game mode: performance profile, no compositing effects
+  status [--json]      version, kernel, effects, game mode, Windows guest, updates
   winsetup             set up the Windows guest
   reboot-windows       reboot into real Windows (dual boot only)
   hw                   show what this machine supports
 EOF
+}
+
+kwin_effect() {  # kwin_effect <name> <true|false>
+  kwriteconfig6 --file kwinrc --group Plugins --key "${1}Enabled" "$2"
+  [ -n "$qdbus" ] || return 0
+  local method=unloadEffect
+  [ "$2" = true ] && method=loadEffect
+  "$qdbus" org.kde.KWin /Effects "org.kde.kwin.Effects.$method" "$1" >/dev/null 2>&1 || true
+}
+
+set_effects() {  # set_effects full|light|off
+  case "$1" in
+    full)
+      kwin_effect magiclamp true; kwin_effect wobblywindows true; kwin_effect blur true
+      kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 1 ;;
+    light)
+      kwin_effect magiclamp true; kwin_effect wobblywindows false; kwin_effect blur false
+      kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.5 ;;
+    off)
+      kwin_effect magiclamp false; kwin_effect wobblywindows false; kwin_effect blur false
+      kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0 ;;
+    *) echo "ozi: effects takes full, light or off" >&2; exit 2 ;;
+  esac
+  [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
+  echo "Effects: $1"
+}
+
+effects_level() {
+  local factor blur
+  factor="$(kreadconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor --default 1 2>/dev/null || echo 1)"
+  blur="$(kreadconfig6 --file kwinrc --group Plugins --key blurEnabled --default true 2>/dev/null || echo true)"
+  if [ "$factor" = 0 ]; then echo off
+  elif [ "$blur" = false ]; then echo light
+  else echo full; fi
+}
+
+game_mode() {  # game_mode on|off
+  mkdir -p "$state_dir"
+  case "$1" in
+    on)
+      effects_level > "$game_flag"                       # remember what to come back to
+      command -v powerprofilesctl >/dev/null && powerprofilesctl set performance 2>/dev/null || true
+      set_effects off >/dev/null
+      [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /Compositor suspend >/dev/null 2>&1 || true
+      echo "Game mode on." ;;
+    off)
+      [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /Compositor resume >/dev/null 2>&1 || true
+      command -v powerprofilesctl >/dev/null && powerprofilesctl set balanced 2>/dev/null || true
+      set_effects "$(cat "$game_flag" 2>/dev/null || echo full)" >/dev/null
+      rm -f "$game_flag"
+      echo "Game mode off." ;;
+    *) echo "usage: ozi mode game on|off" >&2; exit 2 ;;
+  esac
+}
+
+status() {
+  local version kernel effects game power guest updates
+  version="$(tr -d '[:space:]' < /usr/share/ozios/VERSION 2>/dev/null || echo unknown)"
+  kernel="$(uname -r)"
+  effects="$(effects_level)"
+  [ -e "$game_flag" ] && game=true || game=false
+  power="$(powerprofilesctl get 2>/dev/null || echo unknown)"
+  guest="$(virsh -c qemu:///system domstate ozi-win 2>/dev/null | head -n1 || true)"
+  [ -n "$guest" ] || guest=missing
+  updates="$(checkupdates 2>/dev/null | wc -l || echo 0)"
+  if [ "${1:-}" = "--json" ]; then
+    python3 - "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates" <<'PY'
+import json, sys
+keys = ("version", "kernel", "effects", "game_mode", "power_profile", "windows_guest", "updates")
+values = list(sys.argv[1:])
+values[3] = values[3] == "true"
+values[6] = int(values[6].strip() or 0)
+print(json.dumps(dict(zip(keys, values))))
+PY
+  else
+    printf 'OziOS %s, kernel %s\neffects: %s, game mode: %s, power: %s\nWindows guest: %s, updates waiting: %s\n' \
+      "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates"
+  fi
 }
 
 cmd="${1:-help}"
@@ -48,6 +133,9 @@ case "$cmd" in
     snapshot remove
     sudo pacman -Rns "$@"
     ;;
+  search)
+    "$(helper)" -Ss "$@"
+    ;;
   review)
     exec ozi-pkg review "$@"
     ;;
@@ -57,11 +145,18 @@ case "$cmd" in
   apps)
     exec ozi-pkg list
     ;;
-  search)
-    "$(helper)" -Ss "$@"
-    ;;
   rollback)
     sudo snapper -c root list
+    ;;
+  effects)
+    set_effects "${1:-}"
+    ;;
+  mode)
+    [ "${1:-}" = game ] || { usage >&2; exit 2; }
+    game_mode "${2:-}"
+    ;;
+  status)
+    status "${1:-}"
     ;;
   winsetup)
     exec ozi-winsetup "$@"

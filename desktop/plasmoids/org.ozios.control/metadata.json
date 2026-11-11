@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.ozios.control",
+        "Name": "OziOS Control",
+        "Description": "Game mode, effects, Windows guest and updates in one place",
+        "Icon": "ozios",
+        "Category": "System Information",
+        "License": "MIT",
+        "Version": "0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

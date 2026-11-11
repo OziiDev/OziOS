@@ -68,6 +68,9 @@ if [ -d "$root/desktop/look-and-feel/$theme" ]; then   # source checkout
   rm -rf "$data/plasma/look-and-feel/$theme" "$data/plasma/wallpapers/$wallpaper"
   cp -r "$root/desktop/look-and-feel/$theme" "$data/plasma/look-and-feel/"
   cp -r "$root/desktop/wallpaper/$wallpaper" "$data/plasma/wallpapers/"
+  mkdir -p "$data/plasma/plasmoids"
+  rm -rf "$data/plasma/plasmoids/org.ozios.control"
+  cp -r "$root/desktop/plasmoids/org.ozios.control" "$data/plasma/plasmoids/"
   # The splash screen reuses the wallpaper's figure.
   cp "$root/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml" \
      "$data/plasma/look-and-feel/$theme/contents/splash/"

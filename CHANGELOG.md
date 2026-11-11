@@ -17,6 +17,21 @@ boots to the OziOS desktop in a virtual machine.
   into its own rootless box, `perms`, `run`, `list`, `remove`. Also reachable
   as `ozi review`, `ozi box`, `ozi apps`. Boxed apps start from the menu
   through `ozi-box`.
+- Privileged helper (`ozi-pkg-helper`) with a polkit action: installs reviewed
+  Arch packages by SHA-256, repository packages, removals, upgrades and
+  snapshots, with strict argument checks. `ozi-pkg get|uninstall|upgrade|undo`.
+- AUR support: `ozi-pkg aur` resolves dependencies, reviews each recipe
+  (PKGBUILD rules, lookalike names, new or orphaned packages), builds in a
+  throwaway container and installs the result through the helper.
+- Turkish translations for every message (`data/i18n/tr.json`), checked for
+  completeness by a test.
+- Apps: Software (review and install packages, search, boxed apps and their
+  permissions, system updates) and Welcome, both Qt Quick, sharing the
+  OziUi components. CachyOS Hello is hidden for the user.
+- Control widget `org.ozios.control` in the top bar; `ozi effects`,
+  `ozi mode game` and `ozi status --json`.
+- The installer step also installs the `linux-ozios` packages into the new
+  system when the medium carries them.
 - Windows guest scripts: unattended setup, launcher with fallbacks.
 - `linux-ozios` kernel build (CachyOS recipe under the OziOS name), GitHub
   workflow with release publishing.
