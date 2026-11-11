@@ -93,14 +93,16 @@ game_mode() {  # game_mode on|off
 
 status() {
   local version kernel effects game power guest updates
-  version="$(tr -d '[:space:]' < /usr/share/ozios/VERSION 2>/dev/null || echo unknown)"
+  version=unknown
+  [ -r /usr/share/ozios/VERSION ] && version="$(tr -d '[:space:]' < /usr/share/ozios/VERSION)"
   kernel="$(uname -r)"
   effects="$(effects_level)"
   [ -e "$game_flag" ] && game=true || game=false
   power="$(powerprofilesctl get 2>/dev/null || echo unknown)"
   guest="$(virsh -c qemu:///system domstate ozi-win 2>/dev/null | head -n1 || true)"
   [ -n "$guest" ] || guest=missing
-  updates="$(checkupdates 2>/dev/null | wc -l || echo 0)"
+  updates="$(checkupdates 2>/dev/null | wc -l || true)"
+  updates="${updates//[^0-9]/}"; : "${updates:=0}"
   if [ "${1:-}" = "--json" ]; then
     python3 - "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates" <<'PY'
 import json, sys
