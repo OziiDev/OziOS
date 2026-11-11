@@ -2,13 +2,16 @@
 
     ozi-pkg review FILE            what is inside, and what deserves a look
     ozi-pkg install FILE.deb       install a Debian/Ubuntu package into its own box
+    ozi-pkg install FILE.pkg.tar.* install a reviewed Arch package on the system
+    ozi-pkg get|uninstall NAME...  repository packages, through the privileged helper
+    ozi-pkg upgrade | undo N       update the system, or roll back to snapshot N
     ozi-pkg list                   installed boxes
     ozi-pkg perms APP [options]    show or change what an app may reach
     ozi-pkg run APP [args]         start a boxed app
     ozi-pkg remove APP             delete the box and its menu entries
 
-Arch packages and AppImages can be reviewed here; installing them on the host
-needs the privileged helper, which is not written yet.
+System changes go through the privileged helper (helper.py) with pkexec, after
+a snapshot. AppImages can be reviewed but not installed yet.
 """
 import argparse
 import json
@@ -93,6 +96,58 @@ def apply_flags(perms, args):
 def print_permissions(perms, out=print):
     for name, state in permissions.describe(perms):
         out("  %-30s %s" % (name, state))
+
+
+# --- the privileged helper ------------------------------------------------
+
+def call_helper(verb, args, out=print, runner=subprocess.Popen, snapshot=True):
+    """Run one helper verb through pkexec; print its output. Returns the exit status."""
+    def once(parts):
+        try:
+            proc = runner(["pkexec", paths.HELPER] + parts, stdout=subprocess.PIPE, text=True)
+        except FileNotFoundError:
+            raise CliError(tr("pkexec is not installed.")) from None
+        status = 1
+        for raw in proc.stdout:
+            try:
+                event = json.loads(raw)
+            except ValueError:
+                continue
+            kind = event.get("event")
+            if kind == "output":
+                out(event.get("line", ""))
+            elif kind == "error":
+                out("ozi-pkg: " + event.get("message", ""))
+            elif kind == "done":
+                status = event.get("status", 1)
+        proc.wait()
+        return status
+    if snapshot and verb in ("install-repo", "install-file", "remove", "upgrade"):
+        once(["snapshot", "ozi-pkg " + verb])       # a failed snapshot must not block the change
+    return once([verb] + list(args))
+
+
+def install_arch(path, out=print, ask=input, yes=False, force=False, caller=call_helper):
+    """Install a reviewed Arch package on the host through the helper."""
+    path = os.path.abspath(path)
+    try:
+        facts = archives.inspect(path)
+    except (OSError, archives.ArchiveError) as err:
+        raise CliError(tr("Cannot read {path}: {err}", path=path, err=err)) from None
+    if facts.kind != "arch":
+        raise CliError(tr("This is not an Arch package."))
+    findings = review(facts, contained=False)
+    out(format_review(facts, findings))
+    if risk.verdict(findings) == "danger" and not force:
+        raise CliError(tr("The review found something dangerous. Use --force to install anyway."))
+    out("")
+    out(tr("This installs {name} on the system itself, with full rights.", name=facts.name))
+    if not yes and ask(tr("Install {app}? [y/N] ", app=facts.name)).strip().lower() not in ("y", "yes", "e", "evet"):
+        raise CliError(tr("Cancelled."))
+    status = caller("install-file", [path, facts.sha256], out=out)
+    if status:
+        raise CliError(tr("The install failed."))
+    return facts.name
 
 
 # --- install --------------------------------------------------------------
@@ -204,6 +259,17 @@ def build_parser():
     p.add_argument("--force", action="store_true", help="install even if the review found something dangerous")
     add_permission_flags(p)
 
+    p = sub.add_parser("get", help="install packages from the Arch repositories")
+    p.add_argument("names", nargs="+")
+
+    p = sub.add_parser("uninstall", help="remove packages from the system")
+    p.add_argument("names", nargs="+")
+
+    sub.add_parser("upgrade", help="update the whole system")
+
+    p = sub.add_parser("undo", help="roll the system back to a snapshot")
+    p.add_argument("number")
+
     sub.add_parser("list", help="installed boxes")
 
     p = sub.add_parser("perms", help="show or change what an app may reach")
@@ -235,7 +301,14 @@ def main(argv=None, out=print):
                 out(format_review(facts, findings))
             return 1 if risk.verdict(findings) == "danger" else 0
         if args.command == "install":
-            install_deb(args.file, apply_flags(permissions.Permissions(), args), yes=args.yes, force=args.force, out=out)
+            if ".pkg.tar" in args.file.lower():
+                install_arch(args.file, out=out, yes=args.yes, force=args.force)
+            else:
+                install_deb(args.file, apply_flags(permissions.Permissions(), args), yes=args.yes, force=args.force, out=out)
+        elif args.command in ("get", "uninstall", "upgrade", "undo"):
+            verb = {"get": "install-repo", "uninstall": "remove"}.get(args.command, args.command)
+            rest = getattr(args, "names", None) or ([args.number] if args.command == "undo" else [])
+            return call_helper(verb, rest, out=out)
         elif args.command == "list":
             boxes = box.installed()
             if not boxes:

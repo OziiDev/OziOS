@@ -1,0 +1,10 @@
+#!/usr/bin/python3 -I
+"""Privileged helper for ozi-pkg. Runs as root through pkexec; see ozipkg/helper.py."""
+import sys
+
+# Only the installed copy: a root process must not import code from a checkout.
+sys.path.insert(0, "/usr/lib/ozios/python")
+
+from ozipkg.helper import main  # noqa: E402
+
+sys.exit(main())

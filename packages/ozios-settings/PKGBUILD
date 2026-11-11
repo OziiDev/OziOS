@@ -4,7 +4,7 @@ pkgrel=1
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python)
+depends=(bash python polkit)
 optdepends=(
   'freerdp: open Windows programs from the desktop'
   'libvirt: run the Windows guest'
@@ -61,7 +61,8 @@ package() {
   install -Dm644 -t "$theme/contents/splash" "$theme_src/contents/splash/Splash.qml" \
     "$src/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml"
 
-  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target"
+  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper"
+  install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
   install -Dm644 "$here/ozios.hook" "$pkgdir/usr/share/libalpm/hooks/90-ozios.hook"
   install -Dm644 "$here/first-login.desktop" "$pkgdir/etc/xdg/autostart/ozios-first-login.desktop"
 }
