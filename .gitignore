@@ -6,3 +6,4 @@ out/
 .bridge/
 __pycache__/
 *.pyc
+.kernel-pkgs/

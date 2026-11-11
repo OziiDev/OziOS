@@ -2,7 +2,13 @@
 # Turn a CachyOS live ISO into an OziOS live ISO without rebuilding it.
 #
 #   sudo iso/remaster.sh [--iso <file-or-device>] [--work <dir>] [--add "<pkg> ..."]
-#                        [--kernel <dir>] [--keep-root]
+#                        [--archive <YYYY/MM/DD>] [--kernel <dir>] [--keep-root]
+#
+#   --add "<pkg> ..."   extra packages for the image. The OziOS package needs
+#                       python-pyqt6; podman runs boxed .deb apps.
+#   --archive <date>    take the --add packages from the Arch Linux Archive
+#                       snapshot of that day (the ISO's build date) instead of
+#                       today's mirrors, so they match the image's libraries.
 #
 #   --kernel <dir>  directory with the packages built by kernel/build.sh
 #                   (linux-ozios, linux-ozios-nvidia-open, linux-ozios-zfs).
@@ -20,13 +26,14 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
-src="" work="" add="" keep=false kernel=""
+src="" work="" add="" keep=false kernel="" archive=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --keep-root) keep=true; shift ;;   # reuse the root unpacked by an earlier run
     --iso)  src="${2:?}"; shift 2 ;;
     --work) work="${2:?}"; shift 2 ;;
     --add)  add="${2:?}"; shift 2 ;;
+    --archive) archive="${2:?}"; shift 2 ;;
     --kernel) kernel="${2:?}"; shift 2 ;;
     *) echo "remaster: unknown argument $1" >&2; exit 2 ;;
   esac
@@ -104,6 +111,25 @@ mount --bind "$work/pkgcache" "$root/var/cache/pacman/pkg"
 # The image has no pacman keyring of its own (the live system creates one at
 # boot), so verify with the keyring of the system we are running on.
 pm=(pacman --root "$root" --gpgdir /etc/pacman.d/gnupg --cachedir "$work/pkgcache" --noconfirm)
+if [ -n "$archive" ]; then
+  cat > "$work/pacman-archive.conf" <<CONF
+[options]
+Architecture = x86_64
+SigLevel = Required DatabaseOptional
+LocalFileSigLevel = Optional
+ParallelDownloads = 3
+
+[core]
+Server = https://archive.archlinux.org/repos/$archive/\$repo/os/\$arch
+
+[extra]
+Server = https://archive.archlinux.org/repos/$archive/\$repo/os/\$arch
+
+[multilib]
+Server = https://archive.archlinux.org/repos/$archive/\$repo/os/\$arch
+CONF
+  pm+=(--config "$work/pacman-archive.conf")
+fi
 if [ -n "$add" ]; then
   # shellcheck disable=SC2086
   "${pm[@]}" -Sy --needed $add
