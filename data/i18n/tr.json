@@ -109,6 +109,7 @@
   "This is not an Arch package.": "Bu bir Arch paketi değil.",
   "This pattern is used to give someone else a command line on this computer.": "Bu kalıp, başkasına bu bilgisayarda komut satırı vermek için kullanılır.",
   "This stays inside the app's own box.": "Bu, uygulamanın kendi kutusunun içinde kalır.",
+  "This kind of file cannot be installed yet.": "Bu tür dosya henüz kurulamıyor.",
   "Touches SSH keys": "SSH anahtarlarına dokunur",
   "Type: {kind}": "Tür: {kind}",
   "What gets installed is not fully contained in the package you looked at.": "Kurulan şeyin tamamı baktığın paketin içinde değil.",
