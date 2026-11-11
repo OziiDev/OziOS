@@ -132,6 +132,15 @@ def call_helper(verb, args, out=print, runner=subprocess.Popen, snapshot=True):
     return once([verb] + list(args))
 
 
+def ensure_subids(out=print, caller=call_helper, check=box.has_subids):
+    """Boxes need a sub-id range for the user; ask the helper for one if it is missing."""
+    if check():
+        return
+    out(tr("Setting up the user ids that boxes need..."))
+    if caller("subids", [], out=out, snapshot=False) or not check():
+        raise CliError(tr("Could not set up the user ids that boxes need."))
+
+
 def install_arch(path, out=print, ask=input, yes=False, force=False, caller=call_helper):
     """Install a reviewed Arch package on the host through the helper."""
     path = os.path.abspath(path)
@@ -167,7 +176,7 @@ def pacman_has(name):
 
 
 def install_aur(names, out=print, ask=input, yes=False, force=False, fetch=aur.default_fetch, runner=box.run,
-                caller=call_helper, in_repo=pacman_has, workdir=None, now=None, driver=None):
+                caller=call_helper, in_repo=pacman_has, workdir=None, now=None, driver=None, ensure=ensure_subids):
     """Review, build in a box and install AUR packages. Returns the installed file names."""
     now = time.time() if now is None else now
     order = aur.resolve(names, fetch, in_repo)
@@ -195,6 +204,7 @@ def install_aur(names, out=print, ask=input, yes=False, force=False, fetch=aur.d
     if not yes and ask(tr("Build and install {n} package(s)? [y/N] ", n=len(order))).strip().lower() not in ("y", "yes", "e", "evet"):
         raise CliError(tr("Cancelled."))
 
+    ensure(out)
     root = workdir or str(paths.state_dir() / "aur")
     deps = os.path.join(root, "deps")
     shutil.rmtree(root, ignore_errors=True)
@@ -235,7 +245,7 @@ def applications_dir():
     return os.path.join(base, "applications")
 
 
-def install_deb(path, perms, runner=box.run, ask=input, out=print, yes=False, force=False, driver=None):
+def install_deb(path, perms, runner=box.run, ask=input, out=print, yes=False, force=False, driver=None, ensure=ensure_subids):
     """Install a .deb into a new box. Returns the app id."""
     path = os.path.abspath(path)
     try:
@@ -258,6 +268,7 @@ def install_deb(path, perms, runner=box.run, ask=input, out=print, yes=False, fo
     if not yes and ask(tr("Install {app} into its own box? [y/N] ", app=app_id)).strip().lower() not in ("y", "yes", "e", "evet"):
         raise CliError(tr("Cancelled."))
 
+    ensure(out)
     driver = driver or box.storage_driver()
     image = box.image_name(app_id)
     container = "ozi-build-" + app_id

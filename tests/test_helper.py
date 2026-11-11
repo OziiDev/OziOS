@@ -148,5 +148,50 @@ class Client(unittest.TestCase):
             cli.call_helper("upgrade", [], out=print, runner=runner)
 
 
+class SubIds(unittest.TestCase):
+    class User:
+        def __init__(self, name):
+            self.pw_name = name
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.files = [os.path.join(self.dir.name, "subuid"), os.path.join(self.dir.name, "subgid")]
+
+    def grant(self, uid, name="ozi"):
+        return helper.grant_subids(uid, files=self.files, lookup=lambda _: self.User(name))
+
+    def lines(self, index=0):
+        with open(self.files[index], encoding="ascii") as fh:
+            return fh.read().splitlines()
+
+    def test_adds_a_range_to_both_files_once(self):
+        self.assertTrue(self.grant("1000"))
+        self.assertEqual(self.lines(0), ["ozi:100000:65536"])
+        self.assertEqual(self.lines(1), ["ozi:100000:65536"])
+        self.assertFalse(self.grant("1000"))
+        self.assertEqual(self.lines(0), ["ozi:100000:65536"])
+
+    def test_next_range_follows_the_existing_ones(self):
+        for path in self.files:
+            with open(path, "w", encoding="ascii") as fh:
+                fh.write("other:100000:65536\n")
+        self.grant("1001")
+        self.assertEqual(self.lines(0)[-1], "ozi:165536:65536")
+
+    def test_only_ordinary_accounts_through_pkexec(self):
+        for uid in (None, "", "abc", "0", "999", "65534", "-1"):
+            with self.assertRaises(helper.HelperError, msg=repr(uid)):
+                self.grant(uid)
+        with self.assertRaises(helper.HelperError):
+            self.grant("1000", name="Bad Name")
+        self.assertFalse(os.path.exists(self.files[0]))
+
+    def test_the_verb_takes_no_arguments(self):
+        self.assertEqual(helper.plan(["subids"]), ([], []))
+        with self.assertRaises(helper.HelperError):
+            helper.plan(["subids", "root"])
+
+
 if __name__ == "__main__":
     unittest.main()

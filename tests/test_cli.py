@@ -95,6 +95,35 @@ class PermissionFlags(unittest.TestCase):
         self.assertEqual(p.folders, [])
 
 
+class SubIds(unittest.TestCase):
+    def test_nothing_happens_when_the_user_has_a_range(self):
+        calls = []
+        cli.ensure_subids(out=lambda _: None, caller=lambda *a, **k: calls.append(a), check=lambda: True)
+        self.assertEqual(calls, [])
+
+    def test_asks_the_helper_when_there_is_none(self):
+        state = {"ok": False}
+
+        def caller(verb, args, out, snapshot):
+            state["ok"] = True
+            self.assertEqual((verb, args, snapshot), ("subids", [], False))
+            return 0
+
+        cli.ensure_subids(out=lambda _: None, caller=caller, check=lambda: state["ok"])
+        self.assertTrue(state["ok"])
+
+    def test_fails_cleanly_when_the_helper_does(self):
+        with self.assertRaises(cli.CliError):
+            cli.ensure_subids(out=lambda _: None, caller=lambda *a, **k: 1, check=lambda: False)
+
+    def test_box_check_reads_the_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "subuid")
+            with open(path, "w", encoding="ascii") as fh:
+                fh.write("someone:100000:65536\n")
+            self.assertTrue(box.has_subids(uid=0, files=(path,)))   # root needs none
+
+
 class Install(Fixtures):
     def install(self, runner, **kwargs):
         return cli.install_deb(self.deb, perms.Permissions(), runner=runner, out=self.say, yes=True, driver="vfs", **kwargs)

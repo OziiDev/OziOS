@@ -38,6 +38,35 @@ def storage_driver(directory=None):
     return "overlay" if out in SAFE_FILESYSTEMS else "vfs"
 
 
+def has_subids(uid=None, files=("/etc/subuid", "/etc/subgid")):
+    """True when this user can map more than one id in a rootless container.
+
+    Without a range in /etc/subuid and /etc/subgid podman cannot unpack an
+    image (its files belong to many different users). Root needs none, and
+    systems without a POSIX user database are not asked.
+    """
+    if not hasattr(os, "getuid"):
+        return True
+    uid = os.getuid() if uid is None else uid
+    if uid == 0:
+        return True
+    try:
+        import pwd
+        name = pwd.getpwuid(uid).pw_name
+    except (ImportError, KeyError):
+        return True
+    for path in files:
+        try:
+            with open(path, encoding="ascii", errors="replace") as fh:
+                if not any(line.split(":")[0] in (name, str(uid)) for line in fh):
+                    return False
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return True
+    return True
+
+
 def podman(driver=None):
     return ["podman", "--storage-driver", driver or storage_driver()]
 

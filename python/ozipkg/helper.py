@@ -24,7 +24,10 @@ NAME = re.compile(r"^[a-z0-9@._+][a-z0-9@._+-]{0,99}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PKGFILE = re.compile(r"^[^\0]+\.pkg\.tar\.(zst|xz|gz|bz2|lz4)$")
 NUMBER = re.compile(r"^[0-9]{1,9}$")
-VERBS = ("install-repo", "install-file", "remove", "upgrade", "snapshot", "undo")
+VERBS = ("install-repo", "install-file", "remove", "upgrade", "snapshot", "undo", "subids")
+USERNAME = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
+SUBID_FILES = ("/etc/subuid", "/etc/subgid")
+SUBID_FIRST, SUBID_COUNT = 100000, 65536
 
 
 class HelperError(Exception):
@@ -94,6 +97,48 @@ def _remove(path):
         pass
 
 
+def grant_subids(uid, files=SUBID_FILES, lookup=None):
+    """Give the user that called pkexec a range of sub-ids, if they have none.
+
+    Rootless containers need one to map more than a single user. The user is
+    taken from PKEXEC_UID, never from an argument, and only ordinary accounts
+    qualify. Returns True when a range was added.
+    """
+    try:
+        uid = int(uid)
+    except (TypeError, ValueError):
+        raise HelperError("sub-ids can only be granted through pkexec") from None
+    if not 1000 <= uid < 60000:
+        raise HelperError("sub-ids are only granted to ordinary user accounts")
+    if lookup is None:
+        import pwd
+        lookup = pwd.getpwuid
+    try:
+        name = lookup(uid).pw_name
+    except KeyError:
+        raise HelperError("no such user") from None
+    if not USERNAME.match(name):
+        raise HelperError("unusual user name %r" % (name,))
+    added = False
+    for path in files:
+        taken, top = False, SUBID_FIRST
+        try:
+            with open(path, encoding="ascii", errors="replace") as fh:
+                for line in fh:
+                    parts = line.strip().split(":")
+                    if len(parts) != 3 or not (parts[1].isdigit() and parts[2].isdigit()):
+                        continue
+                    taken = taken or parts[0] in (name, str(uid))
+                    top = max(top, int(parts[1]) + int(parts[2]))
+        except FileNotFoundError:
+            pass
+        if not taken:
+            with open(path, "a", encoding="ascii") as fh:
+                fh.write("%s:%d:%d\n" % (name, top, SUBID_COUNT))
+            added = True
+    return added
+
+
 def plan(argv, staging=STAGING, stage=stage_file):
     """Turn a verb and its arguments into (commands, cleanup_paths).
 
@@ -102,6 +147,10 @@ def plan(argv, staging=STAGING, stage=stage_file):
     if not argv or argv[0] not in VERBS:
         raise HelperError("unknown verb; expected one of: " + ", ".join(VERBS))
     verb, args = argv[0], argv[1:]
+    if verb == "subids":
+        if args:
+            raise HelperError("subids takes no arguments")
+        return [], []                      # done by main(), which knows who called
     if verb == "install-repo":
         return [["pacman", "-S", "--needed", "--noconfirm", "--"] + check_names(args)], []
     if verb == "remove":
@@ -153,6 +202,9 @@ def main(argv=None, out=None, runner=run_streaming, geteuid=None):
     try:
         commands, cleanup = plan(argv)
         emit({"event": "start", "verb": argv[0]}, out)
+        if argv[0] == "subids":
+            added = grant_subids(os.environ.get("PKEXEC_UID"))
+            emit({"event": "output", "line": "sub-id range added" if added else "sub-id range already there"}, out)
         code = 0
         for cmd in commands:
             code = runner(cmd, out)
