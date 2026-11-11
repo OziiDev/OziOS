@@ -297,8 +297,9 @@ ApplicationWindow {
                                     spacing: 10
                                     model: window.review ? window.review.findings : []
                                     header: Text {
-                                        height: count === 0 ? 40 : 0
-                                        visible: count === 0
+                                        readonly property bool clean: window.review !== null && window.review.findings.length === 0
+                                        height: clean ? 40 : 0
+                                        visible: clean
                                         text: backend.tr("Nothing known-bad was found.")
                                         color: Theme.good
                                         font.family: Theme.family
