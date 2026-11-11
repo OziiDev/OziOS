@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome
+Name[tr]=Hoş geldin
+Comment=First steps with OziOS
+Comment[tr]=OziOS ile ilk adımlar
+Exec=ozi-welcome
+Icon=ozios
+Categories=System;
+Terminal=false
+StartupWMClass=ozi-welcome

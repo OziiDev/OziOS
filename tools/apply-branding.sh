@@ -43,6 +43,7 @@ if [ "${1:-}" = "--undo" ]; then
   drop_block "$fish_rc"
   command -v plasma-apply-lookandfeel >/dev/null &&
     plasma-apply-lookandfeel -a org.kde.breezedark.desktop --resetLayout >/dev/null 2>&1
+  rm -f "$conf/autostart/cachyos-hello.desktop"
   rm -f "$HOME/.local/bin/ozi-fetch" "$data/color-schemes/OziOS.colors" \
         "$data/konsole/OziOS.colorscheme" "$data/konsole/OziOS.profile"
   rm -rf "$data/ozios" "$data/plasma/look-and-feel/$theme" "$data/plasma/wallpapers/$wallpaper"
@@ -127,6 +128,12 @@ end
 $end
 EOF
 fi
+echo ok
+
+# OziOS has its own welcome app; keep the CachyOS one from opening beside it.
+say "Welcome app"
+mkdir -p "$conf/autostart"
+printf '[Desktop Entry]\nType=Application\nName=CachyOS Hello\nHidden=true\n' > "$conf/autostart/cachyos-hello.desktop"
 echo ok
 
 say "Window effects"

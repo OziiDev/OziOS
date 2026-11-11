@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+"""Software: review packages, install them, manage boxed apps."""
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+sys.path.insert(0, "/usr/lib/ozios/apps")
+
+import ozi_qt  # noqa: E402
+from ozipkg import service  # noqa: E402
+
+
+class StoreBackend(ozi_qt.Backend):
+    allowed = {
+        "review": (service.review_file, False),
+        "install": (service.install_file, True),
+        "apps": (service.list_apps, False),
+        "setPermissions": (service.set_permissions, False),
+        "remove": (service.remove_app, True),
+        "run": (service.run_app, False),
+        "searchRepos": (service.search_repos, False),
+        "searchAur": (service.search_aur, False),
+        "getRepo": (service.install_repo, True),
+        "getAur": (service.install_from_aur, True),
+        "update": (service.system_update, True),
+    }
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), StoreBackend(), "Software", "ozi-store"))

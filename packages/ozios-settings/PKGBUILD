@@ -4,7 +4,7 @@ pkgrel=1
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python polkit)
+depends=(bash python polkit python-pyqt6 qt6-declarative)
 optdepends=(
   'freerdp: open Windows programs from the desktop'
   'libvirt: run the Windows guest'
@@ -64,6 +64,20 @@ package() {
 
   install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper"
   install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
+  # Graphical apps: Software and Welcome, sharing the OziUi components.
+  local apps="$pkgdir/usr/lib/ozios/apps"
+  install -Dm644 "$src/apps/ozi_qt.py" "$apps/ozi_qt.py"
+  install -Dm644 -t "$apps/OziUi" "$src"/apps/OziUi/*
+  install -Dm755 "$src/apps/ozi-store/ozi-store" "$apps/ozi-store/ozi-store"
+  install -Dm644 "$src/apps/ozi-store/Main.qml" "$apps/ozi-store/Main.qml"
+  install -Dm755 "$src/apps/ozi-welcome/ozi-welcome" "$apps/ozi-welcome/ozi-welcome"
+  install -Dm644 "$src/apps/ozi-welcome/Main.qml" "$apps/ozi-welcome/Main.qml"
+  install -d "$pkgdir/usr/bin"
+  ln -s /usr/lib/ozios/apps/ozi-store/ozi-store "$pkgdir/usr/bin/ozi-store"
+  ln -s /usr/lib/ozios/apps/ozi-welcome/ozi-welcome "$pkgdir/usr/bin/ozi-welcome"
+  install -Dm644 "$src/apps/ozi-store.desktop" "$pkgdir/usr/share/applications/ozi-store.desktop"
+  install -Dm644 "$src/apps/ozi-welcome.desktop" "$pkgdir/usr/share/applications/ozi-welcome.desktop"
+  install -Dm644 "$src/apps/ozi-welcome-autostart.desktop" "$pkgdir/etc/xdg/autostart/ozi-welcome.desktop"
   install -Dm644 "$here/ozios.hook" "$pkgdir/usr/share/libalpm/hooks/90-ozios.hook"
   install -Dm644 "$here/first-login.desktop" "$pkgdir/etc/xdg/autostart/ozios-first-login.desktop"
 }

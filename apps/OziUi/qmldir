@@ -1,0 +1,6 @@
+module OziUi
+singleton Theme 1.0 Theme.qml
+OButton 1.0 OButton.qml
+OSwitch 1.0 OSwitch.qml
+Chip 1.0 Chip.qml
+Card 1.0 Card.qml

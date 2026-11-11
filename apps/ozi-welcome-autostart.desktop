@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=OziOS welcome
+Exec=sh -c 'sleep 10; exec ozi-welcome --if-wanted'
+OnlyShowIn=KDE;
+NoDisplay=true

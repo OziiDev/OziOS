@@ -1,0 +1,26 @@
+#!/usr/bin/python3
+"""Welcome: the first thing a new OziOS session shows."""
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+sys.path.insert(0, "/usr/lib/ozios/apps")
+
+import ozi_qt  # noqa: E402
+from ozipkg import welcome  # noqa: E402
+
+
+class WelcomeBackend(ozi_qt.Backend):
+    allowed = {
+        "info": (welcome.info, False),
+        "launch": (welcome.launch, False),
+        "showAtLogin": (welcome.set_show_at_login, False),
+    }
+
+
+if __name__ == "__main__":
+    # Autostart passes --if-wanted so a person who turned it off is left alone.
+    if "--if-wanted" in sys.argv and not welcome.show_at_login():
+        sys.exit(0)
+    here = os.path.dirname(os.path.realpath(__file__))
+    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), WelcomeBackend(), "Welcome", "ozi-welcome"))

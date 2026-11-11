@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Software
+Name[tr]=Yazılım
+Comment=Install and review software
+Comment[tr]=Yazılım kur ve incele
+Exec=ozi-store %f
+Icon=system-software-install
+Categories=System;PackageManager;Settings;
+MimeType=application/vnd.debian.binary-package;application/x-deb;application/vnd.appimage;
+Terminal=false
+StartupWMClass=ozi-store

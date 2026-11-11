@@ -29,6 +29,10 @@ def source_strings():
                     and node.elts[1].value in ("danger", "warning", "notice") \
                     and node.elts[0].value not in ("info", "notice", "warning", "danger"):
                 found.add(node.elts[3].value)
+    # QML files call backend.tr("...") for the same table
+    for path in glob.glob(os.path.join(ROOT, "apps", "**", "*.qml"), recursive=True):
+        with open(path, encoding="utf-8") as fh:
+            found.update(re.findall(r'backend\.tr\("((?:[^"\\]|\\.)*)"\)', fh.read()))
     return found
 
 
@@ -57,7 +61,8 @@ class Translations(unittest.TestCase):
     def test_nothing_is_left_empty_or_identical(self):
         for english, turkish in table().items():
             self.assertTrue(turkish.strip(), english)
-            self.assertNotEqual(english, turkish, english)
+            if english not in ("Terminal",):               # words that are the same in both languages
+                self.assertNotEqual(english, turkish, english)
 
 
 class Lookup(unittest.TestCase):
