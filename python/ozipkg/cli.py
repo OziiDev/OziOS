@@ -1,0 +1,265 @@
+"""The `ozi-pkg` command: review a package, install it into a box, manage boxes.
+
+    ozi-pkg review FILE            what is inside, and what deserves a look
+    ozi-pkg install FILE.deb       install a Debian/Ubuntu package into its own box
+    ozi-pkg list                   installed boxes
+    ozi-pkg perms APP [options]    show or change what an app may reach
+    ozi-pkg run APP [args]         start a boxed app
+    ozi-pkg remove APP             delete the box and its menu entries
+
+Arch packages and AppImages can be reviewed here; installing them on the host
+needs the privileged helper, which is not written yet.
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+from . import archives, box, paths, perms as permissions, risk
+from .i18n import tr
+
+
+class CliError(Exception):
+    pass
+
+
+# --- review ---------------------------------------------------------------
+
+def review(facts, contained=False):
+    """All findings for a package, worst first."""
+    findings = []
+    for name, text in sorted(facts.scripts.items()):
+        findings += risk.scan_script(text, name, contained)
+    findings += risk.scan_paths(facts.entries, contained)
+    return risk.sort_findings(findings)
+
+
+def format_review(facts, findings):
+    lines = [
+        "%s %s" % (facts.name, facts.version),
+        "  " + tr("Type: {kind}", kind=facts.kind),
+        "  SHA-256: " + facts.sha256,
+    ]
+    if facts.description:
+        lines.append("  " + facts.description.splitlines()[0])
+    if facts.maintainer:
+        lines.append("  " + tr("Maintainer: {who}", who=facts.maintainer))
+    if facts.kind == "arch":
+        lines.append("  " + (tr("Signature file found") if facts.signed else tr("No signature file next to the package")))
+    lines.append("")
+    if not findings:
+        lines.append(tr("Nothing known-bad was found."))
+    for finding in findings:
+        lines.append("[%s] %s" % (finding.severity, finding.title))
+        if finding.detail:
+            lines.append("    " + finding.detail)
+        if finding.evidence:
+            lines.append("    %s: %s" % (finding.where, finding.evidence))
+    for note in facts.notes:
+        lines.append(tr("Note: {text}", text=note))
+    lines.append("")
+    lines.append(tr("This is a check for known bad patterns. A package that passes can still be harmful."))
+    return "\n".join(lines)
+
+
+# --- permissions flags ----------------------------------------------------
+
+BOOL_FLAGS = ("network", "gpu", "sound", "camera", "devices", "x11", "nested_sandbox")
+
+
+def add_permission_flags(parser):
+    for name in BOOL_FLAGS:
+        parser.add_argument("--" + name.replace("_", "-"), dest=name, action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--files", choices=permissions.FILE_MODES)
+    parser.add_argument("--folder", action="append", default=None, metavar="DIR",
+                        help="a folder the app may use (implies --files chosen)")
+
+
+def apply_flags(perms, args):
+    for name in BOOL_FLAGS:
+        value = getattr(args, name, None)
+        if value is not None:
+            setattr(perms, name, value)
+    if args.folder:
+        perms.folders = permissions.clean_folders(perms.folders + args.folder)
+        if not args.files:
+            perms.files = "chosen"
+    if args.files:
+        perms.files = args.files
+    return perms
+
+
+def print_permissions(perms, out=print):
+    for name, state in permissions.describe(perms):
+        out("  %-30s %s" % (name, state))
+
+
+# --- install --------------------------------------------------------------
+
+def applications_dir():
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, "applications")
+
+
+def install_deb(path, perms, runner=box.run, ask=input, out=print, yes=False, force=False, driver=None):
+    """Install a .deb into a new box. Returns the app id."""
+    path = os.path.abspath(path)
+    try:
+        facts = archives.inspect(path)
+    except (OSError, archives.ArchiveError) as err:
+        raise CliError(tr("Cannot read {path}: {err}", path=path, err=err)) from None
+    if facts.kind != "deb":
+        raise CliError(tr("Only .deb packages can be installed into a box."))
+    findings = review(facts, contained=True)
+    verdict = risk.verdict(findings)
+    out(format_review(facts, findings))
+    out("")
+    out(tr("The app would get these rights:"))
+    print_permissions(perms, out)
+    if verdict == "danger" and not force:
+        raise CliError(tr("The review found something dangerous. Use --force to install anyway."))
+    app_id = box.app_id_for(facts.name)
+    if app_id in box.installed():
+        raise CliError(tr("{app} is already installed. Remove it first.", app=app_id))
+    if not yes and ask(tr("Install {app} into its own box? [y/N] ", app=app_id)).strip().lower() not in ("y", "yes", "e", "evet"):
+        raise CliError(tr("Cancelled."))
+
+    driver = driver or box.storage_driver()
+    image = box.image_name(app_id)
+    container = "ozi-build-" + app_id
+    out(tr("Building the box (this downloads the dependencies)..."))
+    built = runner(box.build_command(path, app_id, driver=driver))
+    if built.returncode != 0:
+        runner(box.podman(driver) + ["rm", "-f", container], capture_output=True)
+        raise CliError(tr("The install inside the box failed."))
+    committed = runner(box.podman(driver) + ["commit", container, image], capture_output=True)
+    runner(box.podman(driver) + ["rm", "-f", container], capture_output=True)
+    if committed.returncode != 0:
+        raise CliError(tr("Could not save the box image."))
+
+    command, entries = [facts.name], []
+    os.makedirs(applications_dir(), exist_ok=True)
+    for desktop in facts.desktop_files:
+        got = runner(box.podman(driver) + ["run", "--rm", "--network", "none", image, "cat", "/" + desktop],
+                     capture_output=True, text=True)
+        if got.returncode != 0 or not got.stdout:
+            continue
+        if not entries:
+            command = box.desktop_exec(got.stdout) or command
+        target = os.path.join(applications_dir(), "ozi-box-%s-%s" % (app_id, os.path.basename(desktop)))
+        with open(target, "w", encoding="utf-8") as fh:
+            fh.write(box.host_desktop_entry(app_id, got.stdout))
+        entries.append(target)
+    permissions.save(app_id, perms)
+    box.record(app_id, {"name": facts.name, "version": facts.version, "sha256": facts.sha256,
+                        "exec": command, "desktop": entries})
+    out(tr("Installed {app}. Start it from the menu or with: ozi-pkg run {app}", app=app_id))
+    return app_id
+
+
+def remove_box(app_id, runner=box.run, out=print, driver=None):
+    permissions.check_app_id(app_id)
+    info = box.installed().get(app_id)
+    if info is None:
+        raise CliError(tr("{app} is not installed.", app=app_id))
+    runner(box.podman(driver or box.storage_driver()) + ["rmi", "-f", box.image_name(app_id)], capture_output=True)
+    for entry in info.get("desktop", []):
+        try:
+            os.remove(entry)
+        except OSError:
+            pass
+    box.forget(app_id)
+    try:
+        os.remove(permissions.profile_path(app_id))
+    except OSError:
+        pass
+    out(tr("Removed {app}. Its private home folder was kept: {home}", app=app_id, home=permissions.private_home(app_id)))
+
+
+def run_box(app_id, extra, runner=box.run, driver=None, uid=None, gid=None):
+    permissions.check_app_id(app_id)
+    info = box.installed().get(app_id)
+    if info is None:
+        raise CliError(tr("{app} is not installed.", app=app_id))
+    perms = permissions.load(app_id)
+    os.makedirs(permissions.private_home(app_id), exist_ok=True)
+    argv = list(info.get("exec") or [info.get("name", app_id)]) + list(extra)
+    return runner(box.run_command(app_id, perms, argv, driver=driver, uid=uid, gid=gid)).returncode
+
+
+# --- command line ---------------------------------------------------------
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="ozi-pkg", description="Review and install software the careful way.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("review", help="show what is inside a package and what deserves a look")
+    p.add_argument("file")
+    p.add_argument("--json", action="store_true")
+
+    p = sub.add_parser("install", help="install a .deb into its own box")
+    p.add_argument("file")
+    p.add_argument("-y", "--yes", action="store_true", help="do not ask")
+    p.add_argument("--force", action="store_true", help="install even if the review found something dangerous")
+    add_permission_flags(p)
+
+    sub.add_parser("list", help="installed boxes")
+
+    p = sub.add_parser("perms", help="show or change what an app may reach")
+    p.add_argument("app")
+    add_permission_flags(p)
+
+    p = sub.add_parser("run", help="start a boxed app")
+    p.add_argument("app")
+    p.add_argument("args", nargs=argparse.REMAINDER)
+
+    p = sub.add_parser("remove", help="delete a box")
+    p.add_argument("app")
+    return parser
+
+
+def main(argv=None, out=print):
+    args = build_parser().parse_args(argv)
+    try:
+        if args.command == "review":
+            try:
+                facts = archives.inspect(args.file)
+            except (OSError, archives.ArchiveError) as err:
+                raise CliError(tr("Cannot read {path}: {err}", path=args.file, err=err)) from None
+            findings = review(facts, contained=facts.kind == "deb")
+            if args.json:
+                out(json.dumps({"name": facts.name, "version": facts.version, "kind": facts.kind, "sha256": facts.sha256,
+                                "verdict": risk.verdict(findings), "findings": [f.as_dict() for f in findings]}, indent=2))
+            else:
+                out(format_review(facts, findings))
+            return 1 if risk.verdict(findings) == "danger" else 0
+        if args.command == "install":
+            install_deb(args.file, apply_flags(permissions.Permissions(), args), yes=args.yes, force=args.force, out=out)
+        elif args.command == "list":
+            boxes = box.installed()
+            if not boxes:
+                out(tr("No boxed apps installed."))
+            for app_id, info in sorted(boxes.items()):
+                out("%-28s %s" % (app_id, info.get("version", "")))
+        elif args.command == "perms":
+            permissions.check_app_id(args.app)
+            if args.app not in box.installed():
+                raise CliError(tr("{app} is not installed.", app=args.app))
+            perms = apply_flags(permissions.load(args.app), args)
+            if any(getattr(args, name) is not None for name in BOOL_FLAGS) or args.files or args.folder:
+                permissions.save(args.app, perms)
+            print_permissions(perms, out)
+        elif args.command == "run":
+            extra = args.args[1:] if args.args[:1] == ["--"] else args.args
+            return run_box(args.app, extra)
+        elif args.command == "remove":
+            remove_box(args.app, out=out)
+    except (CliError, box.BoxError, ValueError) as err:
+        print("ozi-pkg: %s" % err, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

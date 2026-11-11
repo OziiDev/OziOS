@@ -1,0 +1,16 @@
+#!/usr/bin/python3
+"""ozi-box run APP [args]: what the menu entries of boxed apps call."""
+import os
+import sys
+
+for root in ("/usr/lib/ozios/python",
+             os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "python")):
+    if os.path.isdir(os.path.join(root, "ozipkg")):
+        sys.path.insert(0, root)
+        break
+
+from ozipkg.cli import main  # noqa: E402
+
+if len(sys.argv) < 3 or sys.argv[1] != "run":
+    sys.exit("usage: ozi-box run APP [args]")
+sys.exit(main(["run"] + sys.argv[2:]))

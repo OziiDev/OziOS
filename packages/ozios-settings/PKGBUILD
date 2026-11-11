@@ -11,6 +11,7 @@ optdepends=(
   'virt-install: set up the Windows guest'
   'libisoburn: set up the Windows guest'
   'snapper: snapshots before package changes'
+  'podman: run Debian and Ubuntu packages in boxes'
 )
 install=ozios-settings.install
 options=(!strip !debug)
@@ -23,6 +24,11 @@ package() {
 
   install -Dm644 "$src/VERSION" "$share/VERSION"
   install -Dm755 "$src/packages/ozi-cli/ozi"   "$pkgdir/usr/bin/ozi"
+  install -Dm755 "$src/packages/ozi-cli/ozi-pkg" "$pkgdir/usr/bin/ozi-pkg"
+  install -Dm755 "$src/packages/ozi-cli/ozi-box" "$pkgdir/usr/bin/ozi-box"
+  install -d "$pkgdir/usr/lib/ozios/python"
+  cp -r "$src/python/ozipkg" "$pkgdir/usr/lib/ozios/python/"
+  find "$pkgdir/usr/lib/ozios/python" -name __pycache__ -prune -exec rm -rf {} +
   install -Dm755 "$src/branding/ozi-fetch"     "$pkgdir/usr/bin/ozi-fetch"
   install -Dm755 "$src/winbridge/ozi-winrun"   "$pkgdir/usr/bin/ozi-winrun"
   install -Dm755 "$src/winbridge/ozi-winsetup" "$pkgdir/usr/bin/ozi-winsetup"

@@ -19,6 +19,9 @@ usage: ozi <command>
 
   update               update the system (takes a snapshot first)
   install <pkg...>     install packages from the repos or the AUR
+  review <file>        check a .deb, .pkg.tar.zst or AppImage before installing
+  box <file.deb>       install a Debian/Ubuntu package into its own box
+  apps                 list boxed apps
   remove <pkg...>      remove packages
   search <term>        search for packages
   rollback             list snapshots
@@ -44,6 +47,15 @@ case "$cmd" in
   remove)
     snapshot remove
     sudo pacman -Rns "$@"
+    ;;
+  review)
+    exec ozi-pkg review "$@"
+    ;;
+  box)
+    exec ozi-pkg install "$@"
+    ;;
+  apps)
+    exec ozi-pkg list
     ;;
   search)
     "$(helper)" -Ss "$@"

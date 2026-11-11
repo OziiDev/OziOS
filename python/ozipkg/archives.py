@@ -225,9 +225,16 @@ def inspect_appimage(path):
 def inspect(path):
     lower = path.lower()
     if lower.endswith(".deb"):
-        return inspect_deb(path)
-    if ".pkg.tar" in lower:
-        return inspect_arch(path)
-    if lower.endswith(".appimage"):
-        return inspect_appimage(path)
-    raise ArchiveError("unknown package type")
+        reader = inspect_deb
+    elif ".pkg.tar" in lower:
+        reader = inspect_arch
+    elif lower.endswith(".appimage"):
+        reader = inspect_appimage
+    else:
+        raise ArchiveError("unknown package type")
+    try:
+        return reader(path)
+    except (ArchiveError, OSError):
+        raise
+    except Exception as err:  # truncated or corrupt archives surface as many library error types
+        raise ArchiveError("the file is damaged or not a package (%s)" % type(err).__name__) from None

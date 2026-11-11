@@ -13,6 +13,10 @@ boots to the OziOS desktop in a virtual machine.
 - `ozios-settings` package: identity, theme, first-login setup, installer step.
 - `ozipkg`: package review rules, `.deb` and Arch package inspection, permission
   model, rootless container command builders. Unit tested.
+- `ozi-pkg` command: `review` a .deb, Arch package or AppImage, `install` a .deb
+  into its own rootless box, `perms`, `run`, `list`, `remove`. Also reachable
+  as `ozi review`, `ozi box`, `ozi apps`. Boxed apps start from the menu
+  through `ozi-box`.
 - Windows guest scripts: unattended setup, launcher with fallbacks.
 - `linux-ozios` kernel build (CachyOS recipe under the OziOS name), GitHub
   workflow with release publishing.

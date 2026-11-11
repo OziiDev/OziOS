@@ -46,9 +46,11 @@ It works as far as the package list but was not finished.
   not been built. A system installed from the ISO still gets the CachyOS
   kernel.
 - Package installer: `ozipkg` has the review rules, package inspection,
-  permissions model and container command builders with tests. The command
-  line tool, the privileged helper with polkit, AUR support and the graphical
-  app are still to be written.
+  permissions model and container command builders with tests, and the
+  `ozi-pkg` command line tool installs .deb packages into boxes (tested with
+  a stand-in for podman, not yet on a real system). The privileged helper with
+  polkit for host installs, AUR support and the graphical app are still to be
+  written.
 - The welcome app is still CachyOS Hello.
 - Windows guest: scripts exist (`winbridge/`, `winimage/`) but have never run
   against a real guest. GPU passthrough is not automated.

@@ -1,0 +1,15 @@
+#!/usr/bin/python3
+"""ozi-pkg: review packages and install them into boxes. See `ozi-pkg --help`."""
+import os
+import sys
+
+# Installed copy first, then a source checkout (python/ next to packages/).
+for root in ("/usr/lib/ozios/python",
+             os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "python")):
+    if os.path.isdir(os.path.join(root, "ozipkg")):
+        sys.path.insert(0, root)
+        break
+
+from ozipkg.cli import main  # noqa: E402
+
+sys.exit(main())
