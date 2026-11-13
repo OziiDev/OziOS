@@ -3,10 +3,11 @@
 All notable changes to OziOS. Versions follow [Semantic Versioning](https://semver.org/);
 the rules for releases are in [docs/RELEASING.md](docs/RELEASING.md).
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-13)
 
 First public version. Early development: a live ISO converted from CachyOS
-boots to the OziOS desktop in a virtual machine.
+boots to the OziOS desktop on the OziOS kernel in a virtual machine. Nothing
+has been run on real hardware yet.
 
 - Desktop: top bar, floating dock, tesseract wallpaper and login splash,
   colour scheme, terminal greeting with a pinned turning tesseract.
@@ -31,13 +32,18 @@ boots to the OziOS desktop in a virtual machine.
 - Boxes get a sub-id range for the user from the helper the first time one is
   needed, so rootless containers can unpack images on a fresh account.
 - Panel layouts: `ozi layout default|deck|classic`, also in the control widget.
+  Launchers for programs that are not installed are left out.
 - Apps: Software (review and install packages, search, boxed apps and their
   permissions, system updates) and Welcome, both Qt Quick, sharing the
-  OziUi components. CachyOS Hello is hidden for the user.
+  OziUi components. Welcome starts the installer when run from the live
+  medium. CachyOS Hello is hidden at the source (skeleton and live user).
 - Control widget `org.ozios.control` in the top bar; `ozi effects`,
   `ozi mode game` and `ozi status --json`.
-- The installer step also installs the `linux-ozios` packages into the new
-  system when the medium carries them.
+- The installer step installs `ozios-settings` and the `linux-ozios` packages
+  into the new system through its own pacman, makes the OziOS kernel the first
+  GRUB entry and names the menu OziOS. Tested against a base system with
+  `tools/test-install-target.sh`; a full run through the Calamares windows is
+  still open.
 - Windows guest scripts: unattended setup, launcher with fallbacks.
 - `linux-ozios` kernel build (CachyOS recipe under the OziOS name), GitHub
   workflow with release publishing.
