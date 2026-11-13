@@ -19,8 +19,11 @@ donanımda hiçbir şey denenmedi. Ayrıntılar: [docs/DEVELOPMENT.md](docs/DEVE
 - **Dosya yöneticisinden Windows programları** (devam ediyor): `.exe` ve `.msi`,
   kendi Windows ISO'nuzdan kurulan bir Windows konuğunda açılır. Windows
   dağıtılmaz.
-- **Kendi çekirdek adı:** CachyOS çekirdek tarifi `linux-ozios` adıyla
-  derlenir ve bu depodan yayımlanır.
+- **Kendi çekirdeği:** CachyOS çekirdek tarifi `linux-ozios` adıyla derlenir
+  ve bu depodan yayımlanır. İmajda ve kurulan sistemde CachyOS çekirdeği,
+  programı ya da görseli yok.
+- **Akıllı tahtalar için Eğitim sürümü:** tahta düzeni, ekran kalemi, beyaz
+  tahta, Türkçe varsayılanlar. Ayrıntılar: [docs/EDUCATION.md](docs/EDUCATION.md).
 
 Lisans: bu depodaki kod MIT. KDE, CachyOS ve diğer projelerden türeyen
 dosyalar kendi lisanslarını korur.

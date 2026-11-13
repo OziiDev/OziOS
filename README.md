@@ -26,8 +26,11 @@ and nothing has been tried on real hardware. See
 - **Windows programs from the file manager** (in progress). `.exe` and `.msi`
   files open through a Windows guest that is installed from your own Windows
   ISO, with telemetry and bundled apps removed. OziOS does not ship Windows.
-- **Its own kernel name.** The CachyOS kernel recipe, built as `linux-ozios`
-  and released from this repository.
+- **Its own kernel.** The CachyOS kernel recipe, built as `linux-ozios` and
+  released from this repository. The image and the installed system carry no
+  CachyOS kernel, program or artwork.
+- **An Education edition** for smart boards: board layout, a screen pen,
+  whiteboard, Turkish defaults. See [docs/EDUCATION.md](docs/EDUCATION.md).
 
 ## Layout
 
@@ -35,6 +38,7 @@ and nothing has been tried on real hardware. See
 |---|---|
 | `branding/` | logo, wallpaper, colour schemes, terminal greeting |
 | `desktop/` | Plasma theme, layout, splash and the wallpaper plugin |
+| `edu/` | the Education edition: board layout, school defaults, links |
 | `python/ozipkg/` | package review, containment and permissions (no GUI code) |
 | `packages/` | the `ozios-settings` package and the `ozi` command |
 | `winbridge/`, `winimage/` | Windows guest setup and launcher |

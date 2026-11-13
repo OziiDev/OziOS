@@ -13,7 +13,9 @@ under the GPL for that combination. The source for everything is public.
 
 ## What the ISO contains
 
-An OziOS image is a CachyOS live image with OziOS added. The packages inside keep
+An OziOS image is a CachyOS live image with OziOS added, and CachyOS's kernels,
+programs and artwork taken out. What remains of CachyOS (repositories, keyring,
+tuning packages, the installer build) is listed in `docs/DEVELOPMENT.md`. The packages inside keep
 their own licences, and their sources are available from the places they come from:
 
 | Part | Licence | Source |
@@ -26,6 +28,9 @@ their own licences, and their sources are available from the places they come fr
 | Qt 6 | LGPL-3.0 / GPL-3.0 | https://code.qt.io |
 | Podman, crun, netavark | Apache-2.0 | https://github.com/containers |
 | Bubblewrap | LGPL-2.0-or-later | https://github.com/containers/bubblewrap |
+| Education edition: Xournal++, Okular, KCalc, KolourPaint | GPL-2.0 or later | https://github.com/xournalpp, https://invent.kde.org |
+| Education edition: LibreOffice | MPL-2.0 | https://www.libreoffice.org |
+| Education edition: Maliit keyboard | LGPL-2.1 / BSD-3-Clause | https://github.com/maliit |
 
 `pacman -Qi <package>` shows the licence of any installed package, and
 `pacman -Qo <file>` tells which package a file belongs to.
