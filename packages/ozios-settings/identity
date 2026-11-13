@@ -20,6 +20,9 @@ for file in /etc/os-release /usr/lib/os-release; do
     -e 's|^SUPPORT_URL=.*|SUPPORT_URL="https://github.com/OziiDev/OziOS/issues"|' \
     -e 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/OziiDev/OziOS/issues"|' \
     "$file"
+  # The name a machine gets when nothing has set one.
+  sed -i --follow-symlinks '/^DEFAULT_HOSTNAME=/d' "$file"
+  echo 'DEFAULT_HOSTNAME=ozios' >> "$file"
   # An edition is named in os-release; the file is written by the edition's package.
   sed -i --follow-symlinks '/^VARIANT=/d;/^VARIANT_ID=/d' "$file"
   edition="$(tr -d '[:space:]' < /usr/share/ozios/edition 2>/dev/null)"

@@ -1,4 +1,5 @@
 # GRUB theme for OziOS: ink background, cyan selection.
+title-text: ""
 desktop-image: "background.png"
 desktop-color: "#080B10"
 terminal-font: "Unifont Regular 16"
