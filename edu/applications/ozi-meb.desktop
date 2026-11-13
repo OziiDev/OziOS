@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MEB
+Name[tr]=MEB
+Comment=Ministry of National Education
+Comment[tr]=Millî Eğitim Bakanlığı
+Exec=xdg-open https://www.meb.gov.tr
+Icon=internet-web-browser
+Categories=Education;Network;
+Terminal=false

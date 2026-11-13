@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=e-Okul
+Name[tr]=e-Okul
+Comment=School administration for teachers
+Comment[tr]=Öğretmenler için okul yönetim sistemi
+Exec=xdg-open https://e-okul.meb.gov.tr
+Icon=internet-web-browser
+Categories=Education;Network;
+Terminal=false

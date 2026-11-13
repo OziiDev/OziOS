@@ -14,7 +14,9 @@ root="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 old="$(tr -d '[:space:]' < "$root/VERSION")"
 
 printf '%s\n' "$new" > "$root/VERSION"
-sed -i "s/^pkgver=.*/pkgver=$new/; s/^pkgrel=.*/pkgrel=1/" "$root/packages/ozios-settings/PKGBUILD"
+for pkgbuild in "$root/packages/ozios-settings/PKGBUILD" "$root/packages/ozios-edu/PKGBUILD"; do
+  sed -i "s/^pkgver=.*/pkgver=$new/; s/^pkgrel=.*/pkgrel=1/" "$pkgbuild"
+done
 
 # A new heading for the changelog, below the introduction.
 if ! grep -q "^## $new" "$root/CHANGELOG.md"; then

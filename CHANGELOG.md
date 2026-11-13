@@ -3,6 +3,32 @@
 All notable changes to OziOS. Versions follow [Semantic Versioning](https://semver.org/);
 the rules for releases are in [docs/RELEASING.md](docs/RELEASING.md).
 
+## 0.1.1 (unreleased)
+
+CachyOS is out of the way: the OziOS image and the system the installer
+creates carry no CachyOS kernel, no CachyOS programs and no CachyOS artwork.
+The CachyOS repositories, keyring and mirror lists stay, because the installer
+and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
+
+- The long-term CachyOS kernel is gone from the ISO; the fallback entries of
+  the boot menu, BIOS included, start the OziOS kernel.
+- CachyOS Hello, its CLI installer and `cachy-chroot` are removed from the image.
+- The installer is rewritten at boot (`ozipkg/installer.py`): its own branding,
+  its own package list instead of the one the CachyOS project publishes (no
+  CachyOS kernels, programs or wallpapers), boot loader entry and host name
+  from OziOS, a GRUB theme and boot splash of our own.
+- The OziOS kernel and packages are installed early in the installation, before
+  the initramfs and boot loader steps, so they treat it like any other kernel.
+  If it can not be installed the Arch kernel is, so the new system always boots.
+- `os-release` and `lsb-release` name OziOS and point to this project; the hook
+  runs after CachyOS's own so the last word is ours.
+- Education edition (`ozios-edu`): board layout for smart boards, a screen pen
+  (`ozi-pen`), Turkish defaults, an on-screen keyboard, no screen lock or sleep
+  during a lesson, links to EBA, e-Okul and MEB, Xournal++ as whiteboard and
+  LibreOffice. A separate ISO, built with `iso/remaster.sh --edition edu`.
+- `ozi layout` takes any installed layout and waits for the desktop shell to
+  start.
+
 ## 0.1.0 (2026-11-13)
 
 First public version. Early development: a live ISO converted from CachyOS

@@ -1,60 +1,75 @@
 #!/bin/sh
-# Run by Calamares near the end of an installation: put OziOS into the freshly
-# installed system. Always exits 0 so a problem here can not fail an
-# otherwise good install.
+# Run by Calamares during an installation to put OziOS into the new system. It
+# always exits 0, so a problem here can not fail an otherwise good install.
 #
-# 1. the ozios-settings package (theme, commands, apps)
-# 2. the linux-ozios kernel packages, when the medium carries them. The
-#    CachyOS kernel the installer put there stays as a fallback entry.
+#   install-to-target early   after the extra packages and before the initramfs
+#                             and boot loader steps: the OziOS packages and kernel
+#   install-to-target late    right before the unmount: boot menu details
+#
+# The installer's package lists no longer name CachyOS kernels. The OziOS kernel
+# comes from the medium; if it can not be installed the Arch kernel is, so the
+# new system always has something to boot.
+stage="${1:-late}"
 root="$(findmnt -rno TARGET | grep -m1 '^/tmp/calamares-root-')"
-settings="$(ls /opt/ozios/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
 
-if [ -z "$root" ] || [ -z "$settings" ]; then
-  echo "ozios: nothing to do (target: '${root}', package: '${settings}')"
+if [ -z "$root" ]; then
+  echo "ozios: nothing to do, no installation target is mounted"
   exit 0
 fi
 
-# Inside the new system, so its own databases and mirrors can supply anything the
-# package depends on; from outside only what is already installed there counts.
 # arch-chroot mounts its own /tmp, so the file goes where the chroot can see it.
 install_pkg() {
   mkdir -p "$root/opt/ozios" && cp -f "$1" "$root/opt/ozios/" || return 1
   arch-chroot "$root" pacman --noconfirm --needed -U "/opt/ozios/$(basename "$1")"
 }
 
-install_pkg "$settings" ||
-  pacman --root "$root" --noconfirm --needed -U "$settings" ||
-  echo "ozios: could not install $settings into $root"
+early() {
+  settings="$(ls /opt/ozios/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
+  if [ -n "$settings" ]; then
+    # Inside the new system, so its own databases and mirrors can supply what the package depends on.
+    install_pkg "$settings" ||
+      pacman --root "$root" --noconfirm --needed -U "$settings" ||
+      echo "ozios: could not install $settings into $root"
+  fi
+  for edu in $(ls /opt/ozios/ozios-edu-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$'); do
+    install_pkg "$edu" || echo "ozios: could not install $(basename "$edu")"
+  done
 
-# Keep a copy so the package can be reinstalled without the live medium.
-mkdir -p "$root/opt/ozios" && cp -f "$settings" "$root/opt/ozios/"
-
-kernel_pkgs="$(ls /opt/ozios/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$')"
-if [ -n "$kernel_pkgs" ]; then
-  # Install one by one: the NVIDIA modules need the exact driver version and
-  # may not match what the installer fetched; that must not block the kernel.
-  for pkg in $(echo "$kernel_pkgs" | sort); do
-    arch-chroot "$root" true 2>/dev/null || break
+  # One by one: the NVIDIA modules need the exact driver version and may not
+  # match what the installer fetched; that must not block the kernel.
+  for pkg in $(ls /opt/ozios/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | sort); do
     install_pkg "$pkg" || echo "ozios: could not install $(basename "$pkg")"
   done
-  mkdir -p "$root/opt/ozios" && cp -f $kernel_pkgs "$root/opt/ozios/"
+  mkdir -p "$root/opt/ozios" && cp -f /opt/ozios/*.pkg.tar.* "$root/opt/ozios/" 2>/dev/null
 
-  # Rebuild the boot menu so the new kernel is listed, and first in the list
-  # when the installer had put the CachyOS kernel there. Only what is present is touched.
+  # A system without a kernel does not boot.
+  if ! ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
+    echo "ozios: no kernel was installed, falling back to the Arch kernel"
+    arch-chroot "$root" pacman --noconfirm --needed -S linux || echo "ozios: could not install the Arch kernel either"
+  fi
+
+  # What the installer may still have brought along from CachyOS.
+  unwanted="$(arch-chroot "$root" pacman -Qq 2>/dev/null | grep -E '^(linux-cachyos[a-z0-9.+-]*|cachyos-hello|cachyos-kernel-manager|cachyos-packageinstaller)$')"
+  if [ -n "$unwanted" ] && ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    arch-chroot "$root" pacman --noconfirm -Rdd $unwanted || echo "ozios: could not remove $unwanted"
+  fi
+}
+
+late() {
+  # The boot menu names the system and lists the OziOS kernel first.
   if [ -f "$root/boot/grub/grub.cfg" ]; then
     if [ -f "$root/etc/default/grub" ]; then
-      if grep -q '^GRUB_DISTRIBUTOR=' "$root/etc/default/grub"; then
-        sed -i 's|^GRUB_DISTRIBUTOR=.*|GRUB_DISTRIBUTOR="OziOS"|' "$root/etc/default/grub"
-      else
-        echo 'GRUB_DISTRIBUTOR="OziOS"' >> "$root/etc/default/grub"
-      fi
-    fi
-    if [ -f "$root/boot/vmlinuz-linux-ozios" ] && [ -f "$root/etc/default/grub" ]; then
-      if grep -q '^GRUB_TOP_LEVEL=' "$root/etc/default/grub"; then
-        sed -i 's|^GRUB_TOP_LEVEL=.*|GRUB_TOP_LEVEL="/boot/vmlinuz-linux-ozios"|' "$root/etc/default/grub"
-      else
-        echo 'GRUB_TOP_LEVEL="/boot/vmlinuz-linux-ozios"' >> "$root/etc/default/grub"
-      fi
+      for entry in 'GRUB_DISTRIBUTOR="OziOS"' 'GRUB_TOP_LEVEL="/boot/vmlinuz-linux-ozios"'; do
+        key="${entry%%=*}"
+        if grep -q "^$key=" "$root/etc/default/grub"; then
+          sed -i "s|^$key=.*|$entry|" "$root/etc/default/grub"
+        else
+          echo "$entry" >> "$root/etc/default/grub"
+        fi
+      done
+      [ -f "$root/usr/share/grub/themes/ozios/theme.txt" ] &&
+        sed -i 's|^#\{0,1\}GRUB_THEME=.*|GRUB_THEME="/usr/share/grub/themes/ozios/theme.txt"|' "$root/etc/default/grub"
     fi
     arch-chroot "$root" grub-mkconfig -o /boot/grub/grub.cfg || echo "ozios: grub-mkconfig failed"
   elif [ -d "$root/boot/loader/entries" ] || [ -d "$root/efi/loader/entries" ]; then
@@ -63,5 +78,11 @@ if [ -n "$kernel_pkgs" ]; then
       arch-chroot "$root" kernel-install add "$version" "/usr/lib/modules/$version/vmlinuz" ||
       echo "ozios: left the boot menu as it was"
   fi
-fi
+}
+
+case "$stage" in
+  early) early ;;
+  late) late ;;
+  *) echo "ozios: unknown stage '$stage'" ;;
+esac
 exit 0

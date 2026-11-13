@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Check the OziOS installer step without clicking through Calamares: build a
 # small target system on an empty disk, run /usr/lib/ozios/install-to-target
-# against it exactly as Calamares would, and look at the result.
+# against it in the two stages Calamares runs it in, and look at the result.
 #
 #   tools/test-install-target.sh <disk> <YYYY/MM/DD>
 #
@@ -52,15 +52,19 @@ sed -i '/^Server/d;/^#Server/d' "$root/etc/pacman.d/mirrorlist"
 echo "Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch" >> "$root/etc/pacman.d/mirrorlist"
 arch-chroot "$root" pacman -Sy --noconfirm >/dev/null
 
-step "Installing the boot loader, as Calamares does before our step"
+step "Early OziOS step (packages and kernel), as Calamares runs it before the boot loader"
+mkdir -p /opt/ozios
+ls -la /opt/ozios
+script="${INSTALL_SCRIPT:-/usr/lib/ozios/install-to-target}"
+bash -x "$script" early || true
+
+step "Installing the boot loader, as Calamares does"
 arch-chroot "$root" grub-install --target=x86_64-efi --efi-directory=/boot --removable
 arch-chroot "$root" grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tail -n 3
 echo "root:ozi" | arch-chroot "$root" chpasswd
 
-step "Running the OziOS installer step"
-mkdir -p /opt/ozios
-ls -la /opt/ozios
-bash -x "${INSTALL_SCRIPT:-/usr/lib/ozios/install-to-target}" || true
+step "Late OziOS step (boot menu details)"
+bash -x "$script" late || true
 
 step "What ended up in the target"
 arch-chroot "$root" pacman -Q ozios-settings linux-ozios python-pyqt6 2>&1 || true

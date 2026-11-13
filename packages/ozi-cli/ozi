@@ -29,7 +29,7 @@ usage: ozi <command>
   box <file.deb>       install a Debian/Ubuntu package into its own box
   apps                 list boxed apps
   rollback             list snapshots
-  layout <name>        panel layout: default, deck or classic
+  layout <name>        panel layout: default, deck, classic (board in the Education edition)
   effects <level>      window effects: full, light or off
   mode game on|off     game mode: performance profile, no compositing effects
   status [--json]      version, kernel, effects, game mode, Windows guest, updates
@@ -64,26 +64,25 @@ set_effects() {  # set_effects full|light|off
   echo "Effects: $1"
 }
 
-layout_dir() {
+layout_file() {  # layout_file <name>: the script of a layout, from the installed or the checkout tree
   local here dir
   here="$(dirname "$(readlink -f "$0")")"
-  for dir in /usr/share/ozios/layouts "$here/../../desktop/layouts"; do
-    [ -d "$dir" ] && { echo "$dir"; return 0; }
+  for dir in /usr/share/ozios/layouts "$here/../../desktop/layouts" "$here/../../edu/layouts"; do
+    [ -f "$dir/$1.js" ] && { echo "$dir/$1.js"; return 0; }
   done
   return 1
 }
 
-set_layout() {  # set_layout default|deck|classic
-  local name="${1:-}" dir
+set_layout() {  # set_layout <name>: default, deck, classic, and board in the Education edition
+  local name="${1:-}" file
   case "$name" in
-    default | deck | classic) ;;
-    *) echo "ozi: layout takes default, deck or classic" >&2; exit 2 ;;
+    *[!a-z]* | "") echo "ozi: layout takes the name of a layout, for example default, deck or classic" >&2; exit 2 ;;
   esac
-  dir="$(layout_dir)" || { echo "ozi: the layout scripts are not installed" >&2; exit 1; }
+  file="$(layout_file "$name")" || { echo "ozi: there is no layout called $name" >&2; exit 2; }
   [ -n "$qdbus" ] || { echo "ozi: no qdbus found; run this inside the desktop session" >&2; exit 1; }
   # Launchers for programs that are not installed would show as blank icons.
   local script
-  script="$(python3 - "$dir/$name.js" <<'PY'
+  script="$(python3 - "$file" <<'PY'
 import os, re, sys
 home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
 dirs = [home] + (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":")
@@ -98,8 +97,13 @@ for line in open(sys.argv[1], encoding="utf-8"):
 sys.stdout.write("".join(lines))
 PY
 )"
-  "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$script" >/dev/null ||
-    { echo "ozi: the desktop shell did not accept the layout" >&2; exit 1; }
+  # Right after login the shell may not be listening yet.
+  local tries=0
+  until "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$script" >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 6 ] || { echo "ozi: the desktop shell did not accept the layout" >&2; exit 1; }
+    sleep 3
+  done
   mkdir -p "$state_dir"
   echo "$name" > "$state_dir/layout"
   echo "Layout: $name"

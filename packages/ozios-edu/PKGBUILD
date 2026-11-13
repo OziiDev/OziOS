@@ -1,0 +1,30 @@
+pkgname=ozios-edu
+pkgver=0.1.1
+pkgrel=1
+pkgdesc="OziOS Education: smart board desktop, screen pen and school defaults"
+arch=(any)
+license=(MIT)
+depends=(ozios-settings xournalpp okular kcalc kolourpaint maliit-keyboard
+         libreoffice-still libreoffice-still-tr hunspell-tr)
+install=ozios-edu.install
+options=(!strip !debug)
+
+# Built from a checkout, like ozios-settings: OZI_SRC points at it.
+package() {
+  local src="${OZI_SRC:?OZI_SRC must point at the OziOS source tree}"
+  local share="$pkgdir/usr/share/ozios"
+
+  echo edu > "$srcdir/edition"
+  install -Dm644 "$srcdir/edition" "$share/edition"
+  install -Dm644 "$src/edu/layouts/board.js" "$share/layouts/board.js"
+  install -Dm755 "$src/edu/apply-edu.sh" "$share/edu/apply-edu.sh"
+  install -Dm644 -t "$pkgdir/usr/share/applications" "$src"/edu/applications/*.desktop
+
+  # The screen pen.
+  local apps="$pkgdir/usr/lib/ozios/apps"
+  install -Dm755 "$src/apps/ozi-pen/ozi-pen" "$apps/ozi-pen/ozi-pen"
+  install -Dm644 "$src/apps/ozi-pen/Main.qml" "$apps/ozi-pen/Main.qml"
+  install -d "$pkgdir/usr/bin"
+  ln -s /usr/lib/ozios/apps/ozi-pen/ozi-pen "$pkgdir/usr/bin/ozi-pen"
+  install -Dm644 "$src/apps/ozi-pen.desktop" "$pkgdir/usr/share/applications/ozi-pen.desktop"
+}

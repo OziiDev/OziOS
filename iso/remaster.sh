@@ -2,7 +2,7 @@
 # Turn a CachyOS live ISO into an OziOS live ISO without rebuilding it.
 #
 #   sudo iso/remaster.sh [--iso <file-or-device>] [--work <dir>] [--add "<pkg> ..."]
-#                        [--archive <YYYY/MM/DD>] [--kernel <dir>] [--keep-root]
+#                        [--archive <YYYY/MM/DD>] [--kernel <dir>] [--edition edu] [--keep-root]
 #
 #   --add "<pkg> ..."   extra packages for the image. The OziOS package needs
 #                       python-pyqt6; podman runs boxed .deb apps.
@@ -10,6 +10,9 @@
 #                       snapshot of that day (the ISO's build date) instead of
 #                       today's mirrors, so they match the image's libraries.
 #
+#   --edition edu  the Education edition for smart boards: adds the ozios-edu
+#                   package and what it needs, Turkish defaults for the live
+#                   session, and names the ISO ozios-edu-*.
 #   --kernel <dir>  directory with the packages built by kernel/build.sh
 #                   (linux-ozios, linux-ozios-nvidia-open, linux-ozios-zfs).
 #                   They replace the linux-cachyos* ones, and the live boot
@@ -26,7 +29,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
-src="" work="" add="" keep=false kernel="" archive=""
+src="" work="" add="" keep=false kernel="" archive="" edition=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --keep-root) keep=true; shift ;;   # reuse the root unpacked by an earlier run
@@ -35,11 +38,17 @@ while [ $# -gt 0 ]; do
     --add)  add="${2:?}"; shift 2 ;;
     --archive) archive="${2:?}"; shift 2 ;;
     --kernel) kernel="${2:?}"; shift 2 ;;
+    --edition) edition="${2:?}"; shift 2 ;;
     *) echo "remaster: unknown argument $1" >&2; exit 2 ;;
   esac
 done
 
 die() { echo "remaster: $*" >&2; exit 1; }
+case "$edition" in "" | edu) ;; *) die "unknown edition: $edition (only edu exists)" ;; esac
+# What the Education edition needs besides what ozios-edu itself ships.
+if [ "$edition" = edu ]; then
+  add="$add xournalpp okular kcalc kolourpaint maliit-keyboard libreoffice-still libreoffice-still-tr hunspell-tr"
+fi
 step() { printf '\n==> %s (%s)\n' "$*" "$(date +%H:%M:%S)"; }
 
 [ "$(id -u)" = 0 ] || die "run as root"
@@ -89,6 +98,17 @@ chown -R "$builder" "$work/pkgbuild" "$work/makepkg" "$work/pkg"
 (cd "$work/pkgbuild" && sudo -u "$builder" env OZI_SRC="$repo" BUILDDIR="$work/makepkg" PKGDEST="$work/pkg" makepkg -f --nodeps)
 package="$(find "$work/pkg" -name 'ozios-settings-*.pkg.tar.*' ! -name '*.sig' | head -n1)"
 [ -n "$package" ] || die "makepkg produced nothing"
+edu_package=""
+if [ "$edition" = edu ]; then
+  step "Building the Education package"
+  rm -rf "$work/pkgbuild-edu"
+  mkdir -p "$work/pkgbuild-edu"
+  cp "$repo/packages/ozios-edu/PKGBUILD" "$repo/packages/ozios-edu/ozios-edu.install" "$work/pkgbuild-edu/"
+  chown -R "$builder" "$work/pkgbuild-edu"
+  (cd "$work/pkgbuild-edu" && sudo -u "$builder" env OZI_SRC="$repo" BUILDDIR="$work/makepkg" PKGDEST="$work/pkg" makepkg -f --nodeps)
+  edu_package="$(find "$work/pkg" -name 'ozios-edu-*.pkg.tar.*' ! -name '*.sig' | head -n1)"
+  [ -n "$edu_package" ] || die "makepkg produced no Education package"
+fi
 
 step "Unpacking the root image"
 if $keep && [ -f "$root/etc/os-release" ]; then
@@ -135,10 +155,40 @@ if [ -n "$add" ]; then
   "${pm[@]}" -Sy --needed $add
   rm -rf "$root"/var/lib/pacman/sync/*
 fi
-"${pm[@]}" -U "$package"
-rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.*
+"${pm[@]}" -U "$package" ${edu_package:+"$edu_package"}
+rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*.pkg.tar.*
 install -Dm644 "$package" "$root/opt/ozios/$(basename "$package")"
+[ -z "$edu_package" ] || install -Dm644 "$edu_package" "$root/opt/ozios/$(basename "$edu_package")"
 echo ozios > "$root/etc/hostname"
+
+if [ "$edition" = edu ]; then
+  step "Turkish defaults for the live session"
+  sed -i 's/^#\(tr_TR.UTF-8\)/\1/' "$root/etc/locale.gen"
+  chroot "$root" locale-gen
+  echo 'LANG=tr_TR.UTF-8' > "$root/etc/locale.conf"
+  echo 'KEYMAP=trq' > "$root/etc/vconsole.conf"
+  ln -sf /usr/share/zoneinfo/Europe/Istanbul "$root/etc/localtime"
+fi
+
+step "Removing CachyOS programs and branding"
+drop=()
+for name in cachyos-hello cachyos-cli-installer-new cachy-chroot; do
+  pacman --root "$root" -Qq "$name" >/dev/null 2>&1 && drop+=("$name")
+done
+[ "${#drop[@]}" -eq 0 ] || "${pm[@]}" -Rdd "${drop[@]}"
+rm -f "$root/etc/skel/.config/autostart/cachyos-hello.desktop" \
+      "$root/home/liveuser/.config/autostart/cachyos-hello.desktop" "$root/etc/cachyos-release"
+cat > "$root/etc/motd" <<'MOTD'
+Welcome to OziOS.
+
+You are running from the install medium. Open the Welcome window to install it
+on this computer, or look around first. Everything here is gone after a reboot.
+
+  ozi status      what this system is running
+  ozi --help      the everyday commands
+MOTD
+[ ! -f "$root/etc/skel/.config/alacritty/alacritty.toml" ] ||
+  sed -i 's|^title = .*|title = "Alacritty@OziOS"|' "$root/etc/skel/.config/alacritty/alacritty.toml"
 
 boot_maps=()
 kernel_sed=()
@@ -156,8 +206,11 @@ if [ -n "$kernel" ]; then
       echo "note: no $name package; that module set will be missing"
     fi
   done
+  # Every CachyOS kernel goes, the long-term one included: the image carries
+  # one kernel, ours, and the fallback entries in the boot menu use it too.
   old_pkgs=()
-  for name in linux-cachyos linux-cachyos-nvidia-open linux-cachyos-zfs; do
+  for name in linux-cachyos linux-cachyos-headers linux-cachyos-nvidia-open linux-cachyos-zfs \
+              linux-cachyos-lts linux-cachyos-lts-headers linux-cachyos-lts-nvidia-open linux-cachyos-lts-zfs; do
     pacman --root "$root" -Qq "$name" >/dev/null 2>&1 && old_pkgs+=("$name")
   done
   [ "${#old_pkgs[@]}" -eq 0 ] || "${pm[@]}" -Rdd "${old_pkgs[@]}"
@@ -181,12 +234,14 @@ if [ -n "$kernel" ]; then
   bootdir="$(dirname "$(find "$mnt" -name 'vmlinuz-linux-cachyos' | head -n1)")"
   [ -d "$bootdir" ] || die "no vmlinuz-linux-cachyos on the source medium"
   bootdir="${bootdir#"$mnt"}"
-  boot_maps+=(-rm "$bootdir/vmlinuz-linux-cachyos" "$bootdir/initramfs-linux-cachyos.img" --
+  boot_maps+=(-rm "$bootdir/vmlinuz-linux-cachyos" "$bootdir/initramfs-linux-cachyos.img" \
+                  "$bootdir/vmlinuz-linux-cachyos-lts" "$bootdir/initramfs-linux-cachyos-lts.img" --
               -map "$work/boot/vmlinuz-linux-ozios" "$bootdir/vmlinuz-linux-ozios"
               -map "$work/boot/initramfs-linux-ozios.img" "$bootdir/initramfs-linux-ozios.img")
-  # The long-term kernel (-lts) keeps its name; only the main kernel is ours.
-  kernel_sed=(-e 's#(vmlinuz-linux)-cachyos([^-[:alnum:]]|$)#\1-ozios\2#g'
-              -e 's#(initramfs-linux)-cachyos(\.img)#\1-ozios\2#g')
+  # Both CachyOS kernels give way to ours; the long-term kernel's own menu entry
+  # becomes a duplicate and is dropped below.
+  kernel_sed=(-e 's#(vmlinuz-linux)-cachyos(-lts)?([^-[:alnum:]]|$)#\1-ozios\3#g'
+              -e 's#(initramfs-linux)-cachyos(-lts)?(\.img)#\1-ozios\3#g')
 fi
 cleanup
 
@@ -215,11 +270,16 @@ fi
 # system finds its medium through them.
 mkdir -p "$work/cfg"
 n=0
+product=OziOS
+[ "$edition" != edu ] || product="OziOS Education"
 while IFS= read -r cfg; do
   if grep -qE '^[[:space:]]*(menuentry|submenu|title|MENU LABEL|MENU TITLE).*CachyOS' "$cfg" ||
-     { [ -n "$kernel" ] && grep -qE 'linux-cachyos([^-]|$)' "$cfg"; }; then
+     { [ -n "$kernel" ] && grep -qE 'linux-cachyos' "$cfg"; }; then
     n=$((n + 1))
-    sed -E "${kernel_sed[@]}" -e '/^[[:space:]]*(menuentry|submenu|title|MENU LABEL|MENU TITLE)/ s/CachyOS/OziOS/g' "$cfg" > "$work/cfg/$n"
+    # The long-term kernel's own entry ("... LTS Kernel") would now start the same
+    # kernel as the first one, so it is dropped.
+    sed -E "${kernel_sed[@]}" -e '/^[[:space:]]*(menuentry|submenu|title|MENU LABEL|MENU TITLE)/ s/CachyOS/'"$product"'/g' "$cfg" |
+      awk '/^menuentry .*LTS Kernel/ { skip = 1 } skip { if ($0 ~ /^}/) skip = 0; next } { print }' > "$work/cfg/$n"
     maps+=(-map "$work/cfg/$n" "${cfg#"$mnt"}")
   fi
 done < <(find "$mnt" -maxdepth 5 -type f \( -name '*.cfg' -o -name '*.conf' \) -size -200k)
@@ -227,7 +287,9 @@ echo "boot menu files retitled: $n"
 
 step "Writing the ISO"
 version="$(tr -d '[:space:]' < "$repo/VERSION")"
-out="$work/ozios-$version-$(date +%y%m%d)-x86_64.iso"
+name=ozios
+[ "$edition" != edu ] || name=ozios-edu
+out="$work/$name-$version-$(date +%y%m%d)-x86_64.iso"
 rm -f "$out"
 # The boot loaders look the medium up by its volume id, which is its creation
 # time. A fresh timestamp would leave the new ISO unable to find itself.

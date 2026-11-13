@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=EBA
+Name[tr]=EBA
+Comment=Education Information Network
+Comment[tr]=Eğitim Bilişim Ağı
+Exec=xdg-open https://eba.gov.tr
+Icon=internet-web-browser
+Categories=Education;Network;
+Terminal=false

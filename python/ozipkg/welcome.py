@@ -20,6 +20,10 @@ ACTIONS = {
     "network": ["systemsettings", "kcm_networkmanagement"],
     "display": ["systemsettings", "kcm_kscreen"],
     "install": [INSTALLER],
+    # Education edition
+    "pen": ["ozi-pen"],
+    "whiteboard": ["xournalpp"],
+    "eba": ["xdg-open", "https://eba.gov.tr"],
 }
 MARKER = "ozi-welcome-hidden"
 
@@ -62,10 +66,19 @@ def set_show_at_login(value):
     return {"show": bool(value)}
 
 
+def edition(path="/usr/share/ozios/edition"):
+    """"edu" on the Education edition, "" on the ordinary one."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
 def is_live(root="/run/archiso", installer=INSTALLER):
     """True in a live session that can install the system."""
     return os.path.isdir(root) and os.access(installer, os.X_OK)
 
 
 def info(log=lambda line: None):
-    return {"version": version(), "show": show_at_login(), "live": is_live()}
+    return {"version": version(), "show": show_at_login(), "live": is_live(), "edu": edition() == "edu"}

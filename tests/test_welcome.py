@@ -63,6 +63,19 @@ class Welcome(unittest.TestCase):
                 self.assertTrue(welcome.is_live(root=tmp, installer=script))
             self.assertFalse(welcome.is_live(root=tmp, installer=os.path.join(tmp, "missing")))
 
+    def test_the_education_edition_is_read_from_its_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = os.path.join(tmp, "edition")
+            self.assertEqual(welcome.edition(path=marker), "")
+            with open(marker, "w", encoding="utf-8") as fh:
+                fh.write("edu\n")
+            self.assertEqual(welcome.edition(path=marker), "edu")
+
+    def test_the_education_buttons_start_the_pen_the_whiteboard_and_eba(self):
+        self.assertEqual(welcome.ACTIONS["pen"], ["ozi-pen"])
+        self.assertEqual(welcome.ACTIONS["whiteboard"], ["xournalpp"])
+        self.assertEqual(welcome.ACTIONS["eba"], ["xdg-open", "https://eba.gov.tr"])
+
     def test_version_comes_from_the_version_file(self):
         self.assertRegex(welcome.version(), r"^\d+\.\d+\.\d+$")
 

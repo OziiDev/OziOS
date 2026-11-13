@@ -1,5 +1,5 @@
 pkgname=ozios-settings
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
@@ -66,6 +66,15 @@ package() {
   install -Dm644 -t "$theme/contents/splash" "$theme_src/contents/splash/Splash.qml" \
     "$src/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml"
 
+  # The installer's look, and the boot menu and boot loader splash.
+  local branding="$pkgdir/usr/share/calamares/branding/ozios"
+  install -Dm644 -t "$branding" "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml}
+  sed "s/@VERSION@/$pkgver/g" "$src/branding/calamares/ozios/branding.desc" > "$srcdir/branding.desc"
+  install -Dm644 "$srcdir/branding.desc" "$branding/branding.desc"
+  install -Dm644 "$src/branding/boot/theme.txt" "$pkgdir/usr/share/grub/themes/ozios/theme.txt"
+  install -Dm644 "$src/branding/boot/background.png" "$pkgdir/usr/share/grub/themes/ozios/background.png"
+  install -Dm644 "$src/branding/boot/limine-splash.png" "$share/branding/limine-splash.png"
+
   install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper"
   install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
   # Graphical apps: Software and Welcome, sharing the OziUi components.
@@ -82,6 +91,7 @@ package() {
   install -Dm644 "$src/apps/ozi-store.desktop" "$pkgdir/usr/share/applications/ozi-store.desktop"
   install -Dm644 "$src/apps/ozi-welcome.desktop" "$pkgdir/usr/share/applications/ozi-welcome.desktop"
   install -Dm644 "$src/apps/ozi-welcome-autostart.desktop" "$pkgdir/etc/xdg/autostart/ozi-welcome.desktop"
-  install -Dm644 "$here/ozios.hook" "$pkgdir/usr/share/libalpm/hooks/90-ozios.hook"
+  # Named to sort after the CachyOS hook that writes os-release, so ours has the last word.
+  install -Dm644 "$here/zz-ozios.hook" "$pkgdir/usr/share/libalpm/hooks/zz-ozios.hook"
   install -Dm644 "$here/first-login.desktop" "$pkgdir/etc/xdg/autostart/ozios-first-login.desktop"
 }

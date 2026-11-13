@@ -1,0 +1,35 @@
+---
+componentName: ozios
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 1100px,520px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName:         OziOS
+    shortProductName:    OziOS
+    version:             @VERSION@
+    shortVersion:        @VERSION@
+    versionedName:       OziOS @VERSION@
+    shortVersionedName:  OziOS @VERSION@
+    bootloaderEntryName: OziOS
+    productUrl:          https://github.com/OziiDev/OziOS
+    supportUrl:          https://github.com/OziiDev/OziOS/issues
+    releaseNotesUrl:     https://github.com/OziiDev/OziOS/blob/main/CHANGELOG.md
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "icon.png"
+    productWelcome:      "welcome.png"
+
+style:
+    SidebarBackground:        "#080B10"
+    SidebarText:              "#F4FCFF"
+    SidebarTextCurrent:       "#080B10"
+    SidebarBackgroundCurrent: "#00E5FF"
+
+slideshow:               "show.qml"
+slideshowAPI: 2

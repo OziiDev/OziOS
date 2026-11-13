@@ -64,10 +64,30 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
 - Windows guest: scripts exist (`winbridge/`, `winimage/`) but have never run
   against a real guest, because the development machine cannot run one. GPU
   passthrough is not automated; `ozi hw` only reports what the machine can do.
-- Boot menu images, login screen and installer artwork are still CachyOS's.
+- The login screen is still the one the installer sets up.
 - Nothing has been run on real hardware.
+
+## What is still CachyOS
+
+The image and the installed system carry no CachyOS kernel, program or artwork.
+These parts of CachyOS stay, on purpose, because the installer and the hardware
+tools are built on them:
+
+- The repositories (`[cachyos]`, the v3 and v4 builds), `cachyos-keyring` and
+  the mirror lists. Without them the installer can not fetch its base system.
+- `cachyos-settings` (kernel and I/O tuning, zram), `cachyos-hooks`,
+  `cachyos-rate-mirrors`, `cachyos-kde-settings`, `cachyos-fish-config` and
+  `chwd` (graphics driver detection).
+- The Calamares build (`cachyos-calamares-next`), with its modules and scripts.
+  Its look, package list, boot loader entry name and host name are replaced
+  (`python/ozipkg/installer.py`).
+- `ID=cachyos` in `os-release`, which those tools read to see that they are on
+  a supported system. `NAME`, `PRETTY_NAME`, the links and the logo are ours.
+
+Cutting these needs an installer and a package repository of our own; that is a
+project of its own.
 
 ## Known problems
 
-- CachyOS tools that look up packages by name (`chwd`, CachyOS Hello) may
-  still ask for `linux-cachyos-*` now that the kernel is renamed.
+- `chwd` may still look for `linux-cachyos-*` module packages for the graphics
+  drivers; the OziOS kernel brings its own NVIDIA modules.

@@ -16,6 +16,7 @@ ApplicationWindow {
     property string version: ""
     property bool showAtLogin: true
     property bool live: false
+    property bool edu: false
     property string message: ""
 
     Component.onCompleted: backend.call("info", "info", "[]")
@@ -28,6 +29,7 @@ ApplicationWindow {
                 window.version = result.version
                 window.showAtLogin = result.show
                 window.live = result.live
+                window.edu = result.edu
             }
         }
         function onFailed(task, text) {
@@ -165,14 +167,18 @@ ApplicationWindow {
             columnSpacing: 16
 
             Repeater {
-                model: [
+                model: (window.edu ? [
+                    { key: "pen", title: backend.tr("Screen pen"), text: backend.tr("Draw on top of anything on the screen with a pen or a finger.") },
+                    { key: "whiteboard", title: backend.tr("Whiteboard"), text: backend.tr("A blank page to write on, with pages, images and PDF markup.") },
+                    { key: "eba", title: backend.tr("EBA portal"), text: backend.tr("Open the Education Information Network in the browser.") }
+                ] : []).concat([
                     { key: "store", title: backend.tr("Get software"), text: backend.tr("Install programs, check a package before it goes on your system, and keep everything updated.") },
                     { key: "windows", title: backend.tr("Windows programs"), text: backend.tr("Set up the Windows layer so .exe files open from your file manager.") },
                     { key: "network", title: backend.tr("Network"), text: backend.tr("Connect to Wi-Fi or a wired network.") },
                     { key: "display", title: backend.tr("Display"), text: backend.tr("Resolution, scaling and refresh rate.") },
                     { key: "settings", title: backend.tr("All settings"), text: backend.tr("Everything else about how the system looks and works.") },
                     { key: "terminal", title: backend.tr("Terminal"), text: backend.tr("The OziOS terminal, with the turning tesseract.") }
-                ]
+                ])
                 delegate: Card {
                     id: tile
                     required property var modelData

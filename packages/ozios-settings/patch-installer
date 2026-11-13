@@ -1,85 +1,27 @@
-#!/usr/bin/env python3
-"""Add an OziOS step to the Calamares installer on the live system.
+#!/usr/bin/python3 -I
+"""Rewrite the Calamares installer on the live system for OziOS.
 
-Calamares installs packages from the network, so nothing from the live
-session reaches the installed system by itself. This adds one shell step,
-just before the target is unmounted, that installs the OziOS package there.
+Calamares installs software from lists that name CachyOS kernels and
+programs, and nothing from the live session reaches the installed system by
+itself. This changes the lists and adds two steps that put OziOS and its
+kernel into the new system. The rules live in ozipkg/installer.py.
 
 Does nothing where Calamares is not installed, and never fails the caller.
 """
-import glob
-import os
-import re
 import sys
 
-STEP = "shellprocess@ozios"
-MODULE_CONF = """\
-# Added by ozios-settings.
-dontChroot: true
-timeout: 600
-script:
-    - "/usr/lib/ozios/install-to-target"
-"""
-
-
-def patch_settings(path):
-    with open(path, encoding="utf-8") as fh:
-        text = fh.read()
-    if STEP in text:
-        return False
-    lines = text.split("\n")
-
-    # Run right before the final unmount.
-    for i, line in enumerate(lines):
-        m = re.match(r"^(\s*)-\s+umount\s*$", line)
-        if m:
-            lines.insert(i, "%s- %s" % (m.group(1), STEP))
-            break
-    else:
-        return False
-
-    entry = ["- id: ozios", "  module: shellprocess", "  config: shellprocess_ozios.conf"]
-    for i, line in enumerate(lines):
-        if re.match(r"^instances:\s*$", line):
-            # Reuse the indentation of the entries that are already there.
-            indent = ""
-            for following in lines[i + 1:]:
-                m = re.match(r"^(\s*)-\s", following)
-                if m:
-                    indent = m.group(1)
-                    break
-                if following.strip() and not following.lstrip().startswith("#"):
-                    break
-            lines[i + 1:i + 1] = [indent + part for part in entry]
-            break
-    else:
-        lines += ["", "instances:"] + entry
-
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write("\n".join(lines))
-    return True
+sys.path.insert(0, "/usr/lib/ozios/python")
 
 
 def main():
-    patched = False
-    for base in ("/etc/calamares", "/usr/share/calamares"):
-        for path in sorted(glob.glob(os.path.join(base, "settings*.conf"))):
-            try:
-                patched |= patch_settings(path)
-            except (OSError, UnicodeError) as err:
-                print("patch-installer: %s: %s" % (path, err), file=sys.stderr)
-    # Settings may live under /usr/share while module configs sit in /etc;
-    # Calamares looks in /etc first either way.
-    if patched:
-        os.makedirs("/etc/calamares/modules", exist_ok=True)
-        with open("/etc/calamares/modules/shellprocess_ozios.conf", "w", encoding="utf-8") as fh:
-            fh.write(MODULE_CONF)
+    try:
+        from ozipkg import installer
+        for path in installer.apply():
+            print("patch-installer: changed " + path)
+    except Exception as err:               # a package hook must never fail an update
+        print("patch-installer: %s" % err, file=sys.stderr)
     return 0
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as err:    # an installer tweak must never break a package transaction
-        print("patch-installer: %s" % err, file=sys.stderr)
-    sys.exit(0)
+    sys.exit(main())

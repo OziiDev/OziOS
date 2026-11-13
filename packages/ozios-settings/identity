@@ -15,8 +15,21 @@ for file in /etc/os-release /usr/lib/os-release; do
     -e 's/^PRETTY_NAME=.*/PRETTY_NAME="OziOS"/' \
     -e 's/^LOGO=.*/LOGO=ozios/' \
     -e 's/^ANSI_COLOR=.*/ANSI_COLOR="38;2;0;229;255"/' \
+    -e 's|^HOME_URL=.*|HOME_URL="https://github.com/OziiDev/OziOS"|' \
+    -e 's|^DOCUMENTATION_URL=.*|DOCUMENTATION_URL="https://github.com/OziiDev/OziOS/tree/main/docs"|' \
+    -e 's|^SUPPORT_URL=.*|SUPPORT_URL="https://github.com/OziiDev/OziOS/issues"|' \
+    -e 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/OziiDev/OziOS/issues"|' \
     "$file"
+  # An edition is named in os-release; the file is written by the edition's package.
+  sed -i --follow-symlinks '/^VARIANT=/d;/^VARIANT_ID=/d' "$file"
+  edition="$(tr -d '[:space:]' < /usr/share/ozios/edition 2>/dev/null)"
+  if [ "$edition" = edu ]; then
+    echo 'VARIANT="Education"' >> "$file"
+    echo 'VARIANT_ID=edu' >> "$file"
+  fi
 done
+[ ! -f /etc/lsb-release ] || sed -i --follow-symlinks \
+  -e 's/^DISTRIB_ID=.*/DISTRIB_ID=OziOS/' -e 's/^DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION="OziOS"/' /etc/lsb-release
 
 # OziOS has its own welcome app. The CachyOS one is started from the skeleton
 # for every new user (and from the live user's home), so hide it at the source.

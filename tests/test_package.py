@@ -35,6 +35,54 @@ class Pkgbuild(unittest.TestCase):
             self.assertRegex(text, r"depends=\([^)]*\b%s\b" % dep)
 
 
+class EducationPackage(unittest.TestCase):
+    def test_every_installed_source_exists(self):
+        text = read("packages", "ozios-edu", "PKGBUILD")
+        missing = []
+        for match in re.finditer(r'"\$src/([^"]+)"', text):
+            rel = match.group(1)
+            if not glob.glob(os.path.join(ROOT, rel)):
+                missing.append(rel)
+        self.assertEqual(missing, [])
+
+    def test_it_needs_the_base_package_and_the_school_programs(self):
+        text = read("packages", "ozios-edu", "PKGBUILD")
+        for dep in ("ozios-settings", "xournalpp", "maliit-keyboard", "libreoffice-still", "libreoffice-still-tr"):
+            self.assertRegex(text, r"depends=\([^)]*\b%s\b" % dep)
+
+    def test_it_marks_the_edition_the_rest_of_the_system_looks_for(self):
+        self.assertIn("echo edu >", read("packages", "ozios-edu", "PKGBUILD"))
+        self.assertIn("/usr/share/ozios/edition", read("packages", "ozios-settings", "identity"))
+        self.assertIn("ozios-edu", read("packages", "ozios-settings", "zz-ozios.hook"))
+
+    def test_the_school_links_are_plain_links(self):
+        for path in glob.glob(os.path.join(ROOT, "edu", "applications", "*.desktop")):
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertRegex(text, r"(?m)^Exec=xdg-open https://[a-z0-9.-]+\.gov\.tr", path)
+
+
+class InstallerPieces(unittest.TestCase):
+    def test_branding_and_boot_files_are_in_the_package_and_exist(self):
+        text = read("packages", "ozios-settings", "PKGBUILD")
+        for rel in ("branding/calamares/ozios/branding.desc", "branding/boot/theme.txt", "branding/boot/background.png",
+                    "branding/boot/limine-splash.png"):
+            self.assertIn(rel, text)
+            self.assertTrue(os.path.exists(os.path.join(ROOT, rel)), rel)
+
+    def test_branding_names_the_system_and_uses_our_palette(self):
+        desc = read("branding", "calamares", "ozios", "branding.desc")
+        self.assertIn("componentName: ozios", desc)
+        self.assertIn("@VERSION@", desc)
+        self.assertIn("#00E5FF", desc)
+        self.assertNotIn("cachyos", desc.lower())
+
+    def test_the_installer_steps_take_a_stage_argument(self):
+        text = read("packages", "ozios-settings", "install-to-target")
+        for stage in ("early", "late"):
+            self.assertIn("%s)" % stage, text)
+
+
 class Metadata(unittest.TestCase):
     def test_json_files_parse(self):
         for path in glob.glob(os.path.join(ROOT, "desktop", "**", "*.json"), recursive=True) + \
@@ -66,11 +114,18 @@ class Layouts(unittest.TestCase):
             code = [line for line in text.splitlines() if line.strip() and not line.startswith("//")]
             self.assertEqual(code[0], "panels().forEach(function (p) { p.remove() })", name)
 
-    def test_the_ozi_command_knows_exactly_these_layouts(self):
+    def test_the_ozi_command_finds_layouts_in_both_trees(self):
         text = read("packages", "ozi-cli", "ozi")
-        self.assertIn("default | deck | classic", text)
+        self.assertIn("layout_file", text)
+        self.assertIn("/usr/share/ozios/layouts", text)
         self.assertEqual(sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(ROOT, "desktop", "layouts", "*.js"))),
                          sorted(self.NAMES))
+
+    def test_the_education_board_layout_clears_the_old_panels_and_pins_the_pen(self):
+        text = read("edu", "layouts", "board.js")
+        code = [line for line in text.splitlines() if line.strip() and not line.startswith("//")]
+        self.assertEqual(code[0], "panels().forEach(function (p) { p.remove() })")
+        self.assertIn("applications:ozi-pen.desktop", text)
 
     def test_the_theme_layout_is_the_default_one(self):
         def body(text):

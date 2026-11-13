@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Screen pen
+Name[tr]=Ekran kalemi
+Comment=Draw on top of anything on the screen
+Comment[tr]=Ekrandaki her şeyin üzerine çiz
+Exec=ozi-pen
+Icon=draw-freehand
+Categories=Education;Graphics;Utility;
+Terminal=false
+StartupWMClass=ozi-pen

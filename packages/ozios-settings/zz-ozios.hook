@@ -12,6 +12,7 @@ Operation = Install
 Operation = Upgrade
 Type = Package
 Target = ozios-settings
+Target = ozios-edu
 
 [Action]
 Description = Applying OziOS identity...
