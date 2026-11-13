@@ -51,12 +51,10 @@ for profile in AC Battery LowBattery; do
 done
 
 # The on-screen keyboard that comes up when a text field is touched.
-for desktop in /usr/share/applications/com.github.maliit.keyboard.desktop /usr/share/applications/org.maliit.keyboard.desktop; do
-  if [ -f "$desktop" ]; then
-    kw kwinrc Wayland InputMethod "$desktop"
-    break
-  fi
-done
+desktop=/usr/share/applications/org.kde.plasma.keyboard.desktop
+if [ -f "$desktop" ]; then
+  kw kwinrc Wayland InputMethod "$desktop"
+fi
 
 # The board layout last: it replaces the panels.
 if command -v ozi >/dev/null; then

@@ -30,7 +30,7 @@ their own licences, and their sources are available from the places they come fr
 | Bubblewrap | LGPL-2.0-or-later | https://github.com/containers/bubblewrap |
 | Education edition: Xournal++, Okular, KCalc, KolourPaint | GPL-2.0 or later | https://github.com/xournalpp, https://invent.kde.org |
 | Education edition: LibreOffice | MPL-2.0 | https://www.libreoffice.org |
-| Education edition: Maliit keyboard | LGPL-2.1 / BSD-3-Clause | https://github.com/maliit |
+| Education edition: Plasma Keyboard | GPL-2.0 or later | https://invent.kde.org/plasma/plasma-keyboard |
 
 `pacman -Qi <package>` shows the licence of any installed package, and
 `pacman -Qo <file>` tells which package a file belongs to.

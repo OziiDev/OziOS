@@ -39,7 +39,7 @@ if [ "$edition" = edu ]; then
   check "os-release names the variant" 'grep -q "^VARIANT_ID=edu" /etc/os-release'
   check "the screen pen is installed" 'test -x /usr/bin/ozi-pen'
   check "the board layout is installed" 'test -f /usr/share/ozios/layouts/board.js'
-  check "school programs are installed" 'pacman -Qq xournalpp okular kcalc maliit-keyboard libreoffice-still libreoffice-still-tr'
+  check "school programs are installed" 'pacman -Qq xournalpp okular kcalc plasma-keyboard libreoffice-still libreoffice-still-tr'
   check "the live session is Turkish" 'grep -q "tr_TR" /etc/locale.conf'
   check "school links are in the menu" 'test -f /usr/share/applications/ozi-eba.desktop'
 else

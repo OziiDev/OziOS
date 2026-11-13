@@ -16,11 +16,11 @@ to be accepted as it; it gives the same kind of day-to-day experience on a board
   visible; *Draw* takes them back. The toolbar can be moved by dragging it.
 - **Whiteboard.** Xournal++ for a page to write on, with pages, images and PDF
   markup. Okular for reading PDFs.
-- **Office.** LibreOffice with the Turkish interface and spelling dictionary.
+- **Office.** LibreOffice with the Turkish interface.
 - **Turkish by default.** Turkish interface language, Turkish Q keyboard and the
   Istanbul time zone in the live session. The installer asks as usual; the
   choices made there win on an installed system.
-- **On-screen keyboard.** Maliit, which comes up when a text field is touched.
+- **On-screen keyboard.** Plasma Keyboard, which comes up when a text field is touched.
 - **No lock, no sleep.** The screen lock and automatic sleep are off, so a board
   does not go dark in the middle of a lesson.
 - **Larger pointer.** A 36 px cursor.

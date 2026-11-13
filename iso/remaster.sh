@@ -47,7 +47,7 @@ die() { echo "remaster: $*" >&2; exit 1; }
 case "$edition" in "" | edu) ;; *) die "unknown edition: $edition (only edu exists)" ;; esac
 # What the Education edition needs besides what ozios-edu itself ships.
 if [ "$edition" = edu ]; then
-  add="$add xournalpp okular kcalc kolourpaint maliit-keyboard libreoffice-still libreoffice-still-tr hunspell-tr"
+  add="$add xournalpp okular kcalc kolourpaint plasma-keyboard libreoffice-still libreoffice-still-tr"
 fi
 step() { printf '\n==> %s (%s)\n' "$*" "$(date +%H:%M:%S)"; }
 

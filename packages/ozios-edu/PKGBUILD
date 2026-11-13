@@ -4,8 +4,8 @@ pkgrel=1
 pkgdesc="OziOS Education: smart board desktop, screen pen and school defaults"
 arch=(any)
 license=(MIT)
-depends=(ozios-settings xournalpp okular kcalc kolourpaint maliit-keyboard
-         libreoffice-still libreoffice-still-tr hunspell-tr)
+depends=(ozios-settings xournalpp okular kcalc kolourpaint plasma-keyboard
+         libreoffice-still libreoffice-still-tr)
 install=ozios-edu.install
 options=(!strip !debug)
 

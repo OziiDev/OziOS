@@ -47,7 +47,7 @@ class EducationPackage(unittest.TestCase):
 
     def test_it_needs_the_base_package_and_the_school_programs(self):
         text = read("packages", "ozios-edu", "PKGBUILD")
-        for dep in ("ozios-settings", "xournalpp", "maliit-keyboard", "libreoffice-still", "libreoffice-still-tr"):
+        for dep in ("ozios-settings", "xournalpp", "plasma-keyboard", "libreoffice-still", "libreoffice-still-tr"):
             self.assertRegex(text, r"depends=\([^)]*\b%s\b" % dep)
 
     def test_it_marks_the_edition_the_rest_of_the_system_looks_for(self):
