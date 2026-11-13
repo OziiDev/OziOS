@@ -6,15 +6,16 @@ import OziUi
 ApplicationWindow {
     id: window
     width: 880
-    height: 600
+    height: 720
     minimumWidth: 640
-    minimumHeight: 480
+    minimumHeight: 600
     visible: true
     title: backend.tr("Welcome")
     color: Theme.ink
 
     property string version: ""
     property bool showAtLogin: true
+    property bool live: false
     property string message: ""
 
     Component.onCompleted: backend.call("info", "info", "[]")
@@ -26,6 +27,7 @@ ApplicationWindow {
             if (task === "info") {
                 window.version = result.version
                 window.showAtLogin = result.show
+                window.live = result.live
             }
         }
         function onFailed(task, text) {
@@ -119,6 +121,42 @@ ApplicationWindow {
             font.pixelSize: 15
         }
 
+        // Only in a live session: this is how the system gets onto a disk.
+        Card {
+            visible: window.live
+            Layout.fillWidth: true
+            Layout.preferredHeight: 84
+            emphasis: true
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 16
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Text {
+                        text: backend.tr("Install OziOS")
+                        color: Theme.cyan
+                        font.family: Theme.family
+                        font.pixelSize: 18
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: backend.tr("You are running from the install medium. Put OziOS on this computer when you are ready; nothing changes until you confirm.")
+                        color: Theme.muted
+                        font.family: Theme.family
+                        font.pixelSize: 13
+                    }
+                }
+                OButton {
+                    primary: true
+                    text: backend.tr("Install")
+                    onClicked: window.launch("install")
+                }
+            }
+        }
+
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -140,7 +178,7 @@ ApplicationWindow {
                     required property var modelData
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 120
+                    Layout.minimumHeight: 104
                     border.color: area.containsMouse ? Theme.cyan : Theme.far
                     Behavior on border.color { ColorAnimation { duration: 140 } }
 

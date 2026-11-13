@@ -7,6 +7,9 @@ import subprocess
 from . import paths
 from .i18n import tr
 
+# The live image's own launcher: it prepares the keyring and mirrors, then starts Calamares.
+INSTALLER = "/usr/local/bin/calamares-online.sh"
+
 # Button name -> command. A fixed table: the interface can only pick a name.
 ACTIONS = {
     "store": ["ozi-store"],
@@ -16,6 +19,7 @@ ACTIONS = {
     "terminal": ["konsole"],
     "network": ["systemsettings", "kcm_networkmanagement"],
     "display": ["systemsettings", "kcm_kscreen"],
+    "install": [INSTALLER],
 }
 MARKER = "ozi-welcome-hidden"
 
@@ -58,5 +62,10 @@ def set_show_at_login(value):
     return {"show": bool(value)}
 
 
+def is_live(root="/run/archiso", installer=INSTALLER):
+    """True in a live session that can install the system."""
+    return os.path.isdir(root) and os.access(installer, os.X_OK)
+
+
 def info(log=lambda line: None):
-    return {"version": version(), "show": show_at_login()}
+    return {"version": version(), "show": show_at_login(), "live": is_live()}

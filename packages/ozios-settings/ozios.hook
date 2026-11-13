@@ -5,6 +5,7 @@ Type = Path
 Target = usr/lib/os-release
 Target = etc/calamares/*
 Target = usr/share/calamares/*
+Target = etc/skel/.config/autostart/cachyos-hello.desktop
 
 [Trigger]
 Operation = Install

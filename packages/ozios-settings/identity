@@ -17,4 +17,13 @@ for file in /etc/os-release /usr/lib/os-release; do
     -e 's/^ANSI_COLOR=.*/ANSI_COLOR="38;2;0;229;255"/' \
     "$file"
 done
+
+# OziOS has its own welcome app. The CachyOS one is started from the skeleton
+# for every new user (and from the live user's home), so hide it at the source.
+for file in /etc/skel/.config/autostart/cachyos-hello.desktop /home/liveuser/.config/autostart/cachyos-hello.desktop; do
+  [ -f "$file" ] || continue
+  grep -q '^Hidden=true' "$file" && continue
+  sed -i '/^Hidden=/d' "$file"
+  sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nHidden=true/' "$file"
+done
 exit 0

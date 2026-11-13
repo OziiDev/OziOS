@@ -81,7 +81,24 @@ set_layout() {  # set_layout default|deck|classic
   esac
   dir="$(layout_dir)" || { echo "ozi: the layout scripts are not installed" >&2; exit 1; }
   [ -n "$qdbus" ] || { echo "ozi: no qdbus found; run this inside the desktop session" >&2; exit 1; }
-  "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$dir/$name.js")" >/dev/null ||
+  # Launchers for programs that are not installed would show as blank icons.
+  local script
+  script="$(python3 - "$dir/$name.js" <<'PY'
+import os, re, sys
+home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+dirs = [home] + (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":")
+def present(desktop_id):
+    return any(os.path.exists(os.path.join(d, "applications", desktop_id)) for d in dirs if d)
+lines = []
+for line in open(sys.argv[1], encoding="utf-8"):
+    match = re.search(r'"applications:([^"]+)"', line)
+    if match and not present(match.group(1)):
+        continue
+    lines.append(line)
+sys.stdout.write("".join(lines))
+PY
+)"
+  "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$script" >/dev/null ||
     { echo "ozi: the desktop shell did not accept the layout" >&2; exit 1; }
   mkdir -p "$state_dir"
   echo "$name" > "$state_dir/layout"
