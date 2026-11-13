@@ -38,28 +38,36 @@ It works as far as the package list but was not finished.
 - On a live ISO the root file system is an overlay, which rootless Podman
   cannot use; `ozipkg.box.storage_driver()` falls back to `vfs` there.
 
+## State of things
+
+Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
+
+- The live ISO boots on `linux-ozios` and shows the OziOS desktop; Software and
+  Welcome start without Qt warnings.
+- `.deb` packages install into rootless podman boxes and run with their saved
+  permissions; AppImages install and run in a bubblewrap sandbox. The helper
+  runs through `pkexec`.
+- The installer step (`install-to-target`) was run against a base system made
+  with `tools/test-install-target.sh`: it installs `ozios-settings` and the
+  `linux-ozios` packages, builds the initramfs, puts the OziOS kernel first in
+  the GRUB menu, and the result boots to a login prompt on `7.1.6-1-ozios`.
+
 ## Not done yet
 
-- Installing from the ISO is untested. The installer gets an extra step that
-  installs `ozios-settings` and, when present, the `linux-ozios` packages into
-  the new system, then rebuilds the GRUB menu; whether it runs is unknown.
-- The kernel build (`kernel/`) is being exercised on GitHub Actions; no ISO
-  has carried the kernel yet.
-- Package installer: `ozipkg` has the review rules, package inspection,
-  permissions model and container command builders with tests, and the
-  `ozi-pkg` command line tool installs .deb packages into boxes (tested with
-  a stand-in for podman, not yet on a real system). The privileged helper with
-  polkit, AUR support, and the graphical apps (Software, Welcome, the control
-  widget) are written and unit tested where they have no Qt in them, but the
-  Qt Quick files have only been checked for structure, not started.
+- A complete installation through the Calamares windows has not been run. The
+  CachyOS installer installs online (pacstrap and a net install list); only the
+  OziOS step at its end was exercised, on its own.
+- The live session has a polkit rule that allows everything without a password,
+  so the password prompt of the helper has not been seen. It is the stock
+  `auth_admin_keep` action.
+- AUR builds have not been run against real podman and the real AUR.
 - Windows guest: scripts exist (`winbridge/`, `winimage/`) but have never run
-  against a real guest. GPU passthrough is not automated.
+  against a real guest, because the development machine cannot run one. GPU
+  passthrough is not automated; `ozi hw` only reports what the machine can do.
 - Boot menu images, login screen and installer artwork are still CachyOS's.
+- Nothing has been run on real hardware.
 
 ## Known problems
 
-- The colour scheme was not applied to ordinary applications on the first
-  live boot; `tools/apply-branding.sh` now applies it explicitly, which has
-  not yet been checked on an ISO.
 - CachyOS tools that look up packages by name (`chwd`, CachyOS Hello) may
-  still ask for `linux-cachyos-*` once the kernel is renamed.
+  still ask for `linux-cachyos-*` now that the kernel is renamed.

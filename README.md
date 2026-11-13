@@ -6,9 +6,11 @@ for people who do not want to learn Arch first.
 
 ![OziOS](branding/logo.svg)
 
-**Status: early development.** A live ISO boots to the OziOS desktop in a
-virtual machine. Installing from that ISO, the Windows layer and the package
-installer are not finished. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+**Status: early development.** A live ISO boots to the OziOS desktop on the
+OziOS kernel in a virtual machine, and the package installer works for `.deb`,
+AppImage and Arch packages. The Windows layer has not run on a real guest yet
+and nothing has been tried on real hardware. See
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## What it is
 
@@ -16,15 +18,16 @@ installer are not finished. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   tesseract wallpaper that stops moving whenever a window covers it, matching
   terminal, boot menu and login splash. Cyan `#00E5FF` on ink `#080B10` with
   ice `#F4FCFF` for text.
-- **A package installer that explains itself** (in progress). It reviews a
-  package before installing it, runs Debian and Ubuntu `.deb` files in an
-  isolated rootless container, and gives every contained app one set of
-  permissions: internet, files, camera, sound, devices.
+- **A package installer that explains itself.** It reviews a package before
+  installing it, runs Debian and Ubuntu `.deb` files in an isolated rootless
+  container and AppImages in a sandbox, builds AUR packages in a throwaway
+  container, and gives every contained app one set of permissions: internet,
+  files, camera, sound, devices.
 - **Windows programs from the file manager** (in progress). `.exe` and `.msi`
   files open through a Windows guest that is installed from your own Windows
   ISO, with telemetry and bundled apps removed. OziOS does not ship Windows.
-- **Its own kernel name** (in progress). The CachyOS kernel recipe, built as
-  `linux-ozios`.
+- **Its own kernel name.** The CachyOS kernel recipe, built as `linux-ozios`
+  and released from this repository.
 
 ## Layout
 
@@ -37,6 +40,7 @@ installer are not finished. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 | `winbridge/`, `winimage/` | Windows guest setup and launcher |
 | `kernel/` | build the OziOS kernel |
 | `iso/` | turn a CachyOS ISO into an OziOS ISO |
+| `docs/` | design, development notes, releasing, licences |
 | `tools/` | build and test helpers |
 | `tests/` | unit tests: `python -m unittest discover -s tests` |
 

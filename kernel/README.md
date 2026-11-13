@@ -44,14 +44,11 @@ This replaces the `linux-cachyos*` packages inside the live image, rebuilds the
 live initramfs for the new kernel, swaps the boot files on the ISO and points
 the boot menus at them. The long-term-support kernel entry stays as it was.
 
-## Not done yet
+## Status
 
-- A system installed from the ISO still gets the CachyOS kernel from the
-  CachyOS repository. Installing `linux-ozios` into the target during setup,
-  including the boot loader entry, is the next step.
+- `kernel-7.1.6-1-ozios1` was built by the workflow and is published as a
+  release with checksums. The live ISO boots on it.
+- The installer step puts these packages into a freshly installed system and
+  makes the OziOS kernel the first GRUB entry (see `docs/DEVELOPMENT.md`).
 - CachyOS tools that look for packages by name (`chwd`, CachyOS Hello) may
   still ask for `linux-cachyos-*`.
-- Nothing here has been built end to end yet. What has been checked: the
-  rename produces the four expected package names against the real upstream
-  recipe, and pinning by date reproduces kernel 7.1.6 with NVIDIA 610.57.04,
-  the same versions as the ISO.
