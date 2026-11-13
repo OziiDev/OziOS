@@ -25,6 +25,12 @@ boots to the OziOS desktop in a virtual machine.
   throwaway container and installs the result through the helper.
 - Turkish translations for every message (`data/i18n/tr.json`), checked for
   completeness by a test.
+- AppImages: `ozi-pkg install` keeps the file under OziOS's own data folder
+  and starts it only inside a bubblewrap sandbox with the saved permissions;
+  it is never run during review.
+- Boxes get a sub-id range for the user from the helper the first time one is
+  needed, so rootless containers can unpack images on a fresh account.
+- Panel layouts: `ozi layout default|deck|classic`, also in the control widget.
 - Apps: Software (review and install packages, search, boxed apps and their
   permissions, system updates) and Welcome, both Qt Quick, sharing the
   OziUi components. CachyOS Hello is hidden for the user.
@@ -35,4 +41,6 @@ boots to the OziOS desktop in a virtual machine.
 - Windows guest scripts: unattended setup, launcher with fallbacks.
 - `linux-ozios` kernel build (CachyOS recipe under the OziOS name), GitHub
   workflow with release publishing.
-- ISO conversion script with optional kernel swap.
+- ISO conversion script with optional kernel swap and `--archive` for extra
+  packages from the Arch Archive snapshot the ISO was built from.
+- `docs/LICENSES.md`: what is MIT, what is not, and where the sources are.

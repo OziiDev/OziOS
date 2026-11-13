@@ -14,7 +14,19 @@ if [ -z "$root" ] || [ -z "$settings" ]; then
   exit 0
 fi
 
-pacman --root "$root" --noconfirm -U "$settings" || echo "ozios: could not install $settings into $root"
+# Inside the new system, so its own databases and mirrors can supply anything the
+# package depends on; from outside only what is already installed there counts.
+install_pkg() {
+  cp -f "$1" "$root/tmp/" || return 1
+  arch-chroot "$root" pacman --noconfirm --needed -U "/tmp/$(basename "$1")"
+  status=$?
+  rm -f "$root/tmp/$(basename "$1")"
+  return $status
+}
+
+install_pkg "$settings" ||
+  pacman --root "$root" --noconfirm --needed -U "$settings" ||
+  echo "ozios: could not install $settings into $root"
 
 # Keep a copy so the package can be reinstalled without the live medium.
 mkdir -p "$root/opt/ozios" && cp -f "$settings" "$root/opt/ozios/"
@@ -25,10 +37,7 @@ if [ -n "$kernel_pkgs" ]; then
   # may not match what the installer fetched; that must not block the kernel.
   for pkg in $(echo "$kernel_pkgs" | sort); do
     arch-chroot "$root" true 2>/dev/null || break
-    cp -f "$pkg" "$root/tmp/" &&
-      arch-chroot "$root" pacman --noconfirm --needed -U "/tmp/$(basename "$pkg")" ||
-      echo "ozios: could not install $(basename "$pkg")"
-    rm -f "$root/tmp/$(basename "$pkg")"
+    install_pkg "$pkg" || echo "ozios: could not install $(basename "$pkg")"
   done
   mkdir -p "$root/opt/ozios" && cp -f $kernel_pkgs "$root/opt/ozios/"
 
