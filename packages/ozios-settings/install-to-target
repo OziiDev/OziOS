@@ -16,12 +16,10 @@ fi
 
 # Inside the new system, so its own databases and mirrors can supply anything the
 # package depends on; from outside only what is already installed there counts.
+# arch-chroot mounts its own /tmp, so the file goes where the chroot can see it.
 install_pkg() {
-  cp -f "$1" "$root/tmp/" || return 1
-  arch-chroot "$root" pacman --noconfirm --needed -U "/tmp/$(basename "$1")"
-  status=$?
-  rm -f "$root/tmp/$(basename "$1")"
-  return $status
+  mkdir -p "$root/opt/ozios" && cp -f "$1" "$root/opt/ozios/" || return 1
+  arch-chroot "$root" pacman --noconfirm --needed -U "/opt/ozios/$(basename "$1")"
 }
 
 install_pkg "$settings" ||
@@ -41,8 +39,23 @@ if [ -n "$kernel_pkgs" ]; then
   done
   mkdir -p "$root/opt/ozios" && cp -f $kernel_pkgs "$root/opt/ozios/"
 
-  # Rebuild the boot menu so the new kernel is listed. Only what is present is touched.
+  # Rebuild the boot menu so the new kernel is listed, and first in the list
+  # when the installer had put the CachyOS kernel there. Only what is present is touched.
   if [ -f "$root/boot/grub/grub.cfg" ]; then
+    if [ -f "$root/etc/default/grub" ]; then
+      if grep -q '^GRUB_DISTRIBUTOR=' "$root/etc/default/grub"; then
+        sed -i 's|^GRUB_DISTRIBUTOR=.*|GRUB_DISTRIBUTOR="OziOS"|' "$root/etc/default/grub"
+      else
+        echo 'GRUB_DISTRIBUTOR="OziOS"' >> "$root/etc/default/grub"
+      fi
+    fi
+    if [ -f "$root/boot/vmlinuz-linux-ozios" ] && [ -f "$root/etc/default/grub" ]; then
+      if grep -q '^GRUB_TOP_LEVEL=' "$root/etc/default/grub"; then
+        sed -i 's|^GRUB_TOP_LEVEL=.*|GRUB_TOP_LEVEL="/boot/vmlinuz-linux-ozios"|' "$root/etc/default/grub"
+      else
+        echo 'GRUB_TOP_LEVEL="/boot/vmlinuz-linux-ozios"' >> "$root/etc/default/grub"
+      fi
+    fi
     arch-chroot "$root" grub-mkconfig -o /boot/grub/grub.cfg || echo "ozios: grub-mkconfig failed"
   elif [ -d "$root/boot/loader/entries" ] || [ -d "$root/efi/loader/entries" ]; then
     version="$(ls "$root/usr/lib/modules" | grep -- '-ozios$' | head -n1)"
