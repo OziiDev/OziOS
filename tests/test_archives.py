@@ -127,13 +127,34 @@ class Arch(unittest.TestCase):
 
 
 class AppImage(unittest.TestCase):
-    def test_not_executed(self):
+    def inspect(self, name, body=b"\x7fELF\x02\x01\x01\x00AI\x02"):
         with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "Tool-1.0.AppImage")
+            path = os.path.join(tmp, name)
             with open(path, "wb") as fh:
-                fh.write(b"\x7fELF")
-            facts = archives.inspect(path)
-        self.assertEqual((facts.kind, facts.name), ("appimage", "Tool-1.0"))
+                fh.write(body)
+            return archives.inspect(path)
+
+    def test_not_executed(self):
+        facts = self.inspect("Tool-1.0.AppImage")
+        self.assertEqual((facts.kind, facts.name, facts.version), ("appimage", "Tool", "1.0"))
+
+    def test_names_and_versions(self):
+        cases = {
+            "Tool-1.2.3-x86_64.AppImage": ("Tool", "1.2.3"),
+            "my_app_v2.0-linux-x86_64.AppImage": ("my_app", "2.0"),
+            "Plain.AppImage": ("Plain", ""),
+            "Foo-Bar-0.9~rc1.appimage": ("Foo-Bar", "0.9~rc1"),
+        }
+        for filename, expected in cases.items():
+            self.assertEqual(archives.split_appimage_name(filename), expected, filename)
+
+    def test_a_file_that_is_not_a_program_is_rejected(self):
+        with self.assertRaises(archives.ArchiveError):
+            self.inspect("Fake.AppImage", body=b"<html>")
+
+    def test_a_program_without_the_marker_gets_a_note(self):
+        facts = self.inspect("Odd.AppImage", body=b"\x7fELF" + b"\x00" * 12)
+        self.assertTrue(any("marker" in note for note in facts.notes))
 
 
 if __name__ == "__main__":

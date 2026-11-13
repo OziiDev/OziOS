@@ -206,5 +206,64 @@ class RunAndRemove(Fixtures):
         self.assertTrue(any("rmi" in c for c in runner.commands))
 
 
+class AppImages(Fixtures):
+    def make(self, name="Tool-1.2-x86_64.AppImage", body=b"\x7fELF\x02\x01\x01\x00AI\x02" + b"\x00" * 64):
+        path = os.path.join(self.tmp.name, name)
+        with open(path, "wb") as fh:
+            fh.write(body)
+        return path
+
+    def install(self, path, **kwargs):
+        return cli.install_appimage(path, perms.Permissions(), out=self.say, yes=True, **kwargs)
+
+    def test_install_keeps_a_copy_and_a_menu_entry_without_running_anything(self):
+        app_id = self.install(self.make())
+        self.assertEqual(app_id, "tool")
+        info = box.installed()["tool"]
+        self.assertEqual((info["kind"], info["version"]), ("appimage", "1.2"))
+        self.assertTrue(os.path.isfile(box.appimage_path("tool")))
+        with open(info["desktop"][0], encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn("Exec=ozi-box run tool", text)
+        self.assertIn("Name=Tool", text)
+
+    def test_a_second_install_of_the_same_app_is_refused(self):
+        path = self.make()
+        self.install(path)
+        with self.assertRaises(cli.CliError):
+            self.install(path)
+
+    def test_something_that_is_not_a_program_is_refused(self):
+        with self.assertRaises(cli.CliError):
+            self.install(self.make(body=b"just text"))
+
+    def test_running_goes_through_bubblewrap_with_the_saved_rights(self):
+        self.install(self.make())
+        perms.save("tool", perms.Permissions(network=True))
+        seen = []
+        code = cli.run_box("tool", ["--flag"], runner=lambda cmd: seen.append(cmd) or SimpleNamespace(returncode=3))
+        self.assertEqual(code, 3)
+        cmd = seen[0]
+        self.assertEqual(cmd[0], "bwrap")
+        self.assertIn("--share-net", cmd)
+        self.assertIn(box.APPIMAGE_INSIDE, cmd)
+        self.assertEqual(cmd[-4:], ["/usr/bin/env", "APPIMAGE_EXTRACT_AND_RUN=1", box.APPIMAGE_INSIDE, "--flag"])
+        index = cmd.index(box.APPIMAGE_INSIDE)
+        self.assertEqual(cmd[index - 2], "--ro-bind")          # the program is visible, read-only
+
+    def test_remove_deletes_the_copy_and_the_menu_entry(self):
+        self.install(self.make())
+        entry = box.installed()["tool"]["desktop"][0]
+        cli.remove_box("tool", runner=lambda cmd, **kw: self.fail("no container tool needed"), out=self.say)
+        self.assertEqual(box.installed(), {})
+        self.assertFalse(os.path.exists(box.appimage_path("tool")))
+        self.assertFalse(os.path.exists(entry))
+
+    def test_main_routes_appimages_to_the_sandbox_install(self):
+        path = self.make()
+        self.assertEqual(cli.main(["install", "-y", path], out=self.say), 0)
+        self.assertIn("tool", box.installed())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -39,6 +39,7 @@ package() {
   install -Dm644 -t "$share/branding"            "$src/branding/OziOS.colors" "$src/branding/logo.svg" "$src/branding/wallpaper.svg"
   install -Dm644 -t "$share/branding/konsole"    "$src"/branding/konsole/*
   install -Dm755 "$src/tools/apply-branding.sh"  "$share/tools/apply-branding.sh"
+  install -Dm644 -t "$share/layouts"             "$src"/desktop/layouts/*.js
   install -Dm755 "$src/vfio/detect-iommu.sh"     "$share/vfio/detect-iommu.sh"
   install -Dm644 -t "$share/winimage"            "$src/winimage/autounattend.xml" "$src/winimage/ozi-setup.ps1"
 

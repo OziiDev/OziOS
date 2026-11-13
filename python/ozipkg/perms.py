@@ -137,10 +137,12 @@ def private_home(app_id):
     return paths.share_dir() / "apps" / check_app_id(app_id) / "home"
 
 
-def bwrap_command(app_id, perms, argv, env=None, exists=os.path.exists):
+def bwrap_command(app_id, perms, argv, env=None, exists=os.path.exists, ro_binds=()):
     """A bubblewrap command line that runs `argv` with exactly these rights.
 
-    `exists` is injectable so tests can describe a machine without having one.
+    `ro_binds` are (host path, path inside) pairs made visible read-only, for
+    the program itself. `exists` is injectable so tests can describe a machine
+    without having one.
     """
     env = env if env is not None else os.environ
     home = os.path.expanduser("~")
@@ -158,6 +160,8 @@ def bwrap_command(app_id, perms, argv, env=None, exists=os.path.exists):
             cmd += ["--ro-bind", "/etc/" + item, "/etc/" + item]
     cmd += ["--bind", str(private_home(app_id)), home, "--setenv", "HOME", home,
             "--setenv", "XDG_RUNTIME_DIR", run, "--chdir", home]
+    for source, target in ro_binds:
+        cmd += ["--ro-bind", str(source), target]
     wayland = env.get("WAYLAND_DISPLAY")
     if wayland and exists(posixpath.join(run, wayland)):
         cmd += ["--ro-bind", posixpath.join(run, wayland), posixpath.join(run, wayland),

@@ -11,7 +11,7 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: root
 
-    property var status: ({ version: "", kernel: "", effects: "full", game_mode: false,
+    property var status: ({ version: "", kernel: "", effects: "full", game_mode: false, layout: "default",
                             power_profile: "unknown", windows_guest: "missing", updates: 0 })
 
     Plasmoid.icon: "ozios"
@@ -84,6 +84,22 @@ PlasmoidItem {
                     checkable: true
                     checked: root.status.effects === modelData[0]
                     onClicked: root.run("ozi effects " + modelData[0])
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            PlasmaComponents.Label { text: i18n("Layout"); Layout.fillWidth: true }
+            Repeater {
+                model: [["default", i18n("Default")], ["deck", i18n("Deck")], ["classic", i18n("Classic")]]
+                delegate: PlasmaComponents.ToolButton {
+                    required property var modelData
+                    text: modelData[1]
+                    checkable: true
+                    checked: root.status.layout === modelData[0]
+                    // The panel holding this popup is replaced, so the command must outlive it.
+                    onClicked: root.run("setsid -f ozi layout " + modelData[0])
                 }
             }
         }

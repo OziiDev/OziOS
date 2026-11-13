@@ -30,6 +30,7 @@ tasks.writeConfig("launchers", [
     "preferred://filemanager",
     "preferred://browser",
     "applications:org.kde.konsole.desktop",
+    "applications:ozi-store.desktop",
     "applications:systemsettings.desktop"
 ])
 

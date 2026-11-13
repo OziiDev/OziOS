@@ -26,7 +26,7 @@ def review_file(path):
     """Everything the review screen shows for a package file."""
     def work():
         facts = archives.inspect(path)
-        contained = facts.kind == "deb"
+        contained = facts.kind in ("deb", "appimage")
         findings = cli.review(facts, contained=contained)
         default = permissions.Permissions()
         return {
@@ -36,7 +36,7 @@ def review_file(path):
             "verdict": risk.verdict(findings),
             "findings": [f.as_dict() for f in findings],
             "boxed": contained,
-            "installable": facts.kind in ("deb", "arch"),
+            "installable": facts.kind in ("deb", "arch", "appimage"),
             "permissions": default.as_dict(),
             "permission_rows": permissions.describe(default),
         }
@@ -50,6 +50,9 @@ def install_file(path, permission_values=None, force=False, log=lambda line: Non
         if lower.endswith(".deb"):
             perms = permissions.from_dict(permission_values or {})
             return {"app": cli.install_deb(path, perms, runner=box.run, out=log, yes=True, force=force)}
+        if lower.endswith(".appimage"):
+            perms = permissions.from_dict(permission_values or {})
+            return {"app": cli.install_appimage(path, perms, out=log, yes=True, force=force)}
         if ".pkg.tar" in lower:
             return {"app": cli.install_arch(path, out=log, yes=True, force=force)}
         raise cli.CliError(tr("This kind of file cannot be installed yet."))
@@ -90,8 +93,7 @@ def run_app(app_id):
             raise cli.CliError(tr("{app} is not installed.", app=app_id))
         perms = permissions.load(app_id)
         os.makedirs(permissions.private_home(app_id), exist_ok=True)
-        argv = list(info.get("exec") or [info.get("name", app_id)])
-        return {"pid": subprocess.Popen(box.run_command(app_id, perms, argv)).pid}
+        return {"pid": subprocess.Popen(box.start_command(app_id, info, perms)).pid}
     return _guard(work)
 
 

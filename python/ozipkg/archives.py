@@ -9,6 +9,8 @@ import gzip
 import hashlib
 import io
 import lzma
+import os
+import re
 import tarfile
 from dataclasses import dataclass, field
 
@@ -213,12 +215,28 @@ def inspect_arch(path):
     return facts
 
 
+def split_appimage_name(filename):
+    """("Tool", "1.0") from "Tool-1.0-x86_64.AppImage"; the version may be empty."""
+    stem = filename[:-len(".appimage")] if filename.lower().endswith(".appimage") else filename
+    previous = None
+    while previous != stem:                # "-x86_64", "-linux" and the like, possibly stacked
+        previous = stem
+        stem = re.sub(r"[-_.](x86[-_]64|amd64|linux64|linux|x64)$", "", stem, flags=re.I)
+    match = re.match(r"^(.+?)[-_ ]v?(\d[\w.+~]*)$", stem)
+    return (match.group(1), match.group(2)) if match else (stem, "")
+
+
 def inspect_appimage(path):
     """AppImages are programs; they are never run to inspect them."""
+    with open(path, "rb") as fh:
+        head = fh.read(16)
+    if head[:4] != b"\x7fELF":
+        raise ArchiveError("this is not an AppImage (no program header)")
     facts = PackageFacts("appimage", path, sha256_file(path))
-    import os
-    facts.name = os.path.basename(path).rsplit(".", 1)[0]
-    facts.notes.append("AppImage contents are not inspected; run it only in a sandbox")
+    facts.name, facts.version = split_appimage_name(os.path.basename(path))
+    if head[8:10] != b"AI":
+        facts.notes.append("the file carries no AppImage marker; it may be an ordinary program")
+    facts.notes.append("AppImage contents are not inspected; it runs only inside a sandbox")
     return facts
 
 

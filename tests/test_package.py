@@ -57,6 +57,31 @@ class Metadata(unittest.TestCase):
                 self.assertIn("\n" + key, text, path)
 
 
+class Layouts(unittest.TestCase):
+    NAMES = ("default", "deck", "classic")
+
+    def test_every_layout_has_a_script_that_clears_the_old_panels_first(self):
+        for name in self.NAMES:
+            text = read("desktop", "layouts", name + ".js")
+            code = [line for line in text.splitlines() if line.strip() and not line.startswith("//")]
+            self.assertEqual(code[0], "panels().forEach(function (p) { p.remove() })", name)
+
+    def test_the_ozi_command_knows_exactly_these_layouts(self):
+        text = read("packages", "ozi-cli", "ozi")
+        self.assertIn("default | deck | classic", text)
+        self.assertEqual(sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(ROOT, "desktop", "layouts", "*.js"))),
+                         sorted(self.NAMES))
+
+    def test_the_theme_layout_is_the_default_one(self):
+        def body(text):
+            lines = [line for line in text.splitlines() if not line.startswith("//") and "panels()" not in line]
+            return "\n".join(lines).strip()
+
+        theme = read("desktop", "look-and-feel", "org.ozios.desktop", "contents", "layouts", "org.kde.plasma.desktop-layout.js")
+        theme = theme.split("var desktops")[0]          # the wallpaper lines are the theme's own
+        self.assertEqual(body(theme), body(read("desktop", "layouts", "default.js")))
+
+
 class Qml(unittest.TestCase):
     """No Qt here, so only the mistakes that can be seen in the text."""
 

@@ -2,6 +2,7 @@
 
     ozi-pkg review FILE            what is inside, and what deserves a look
     ozi-pkg install FILE.deb       install a Debian/Ubuntu package into its own box
+    ozi-pkg install FILE.AppImage  keep an AppImage and run it only in a sandbox
     ozi-pkg install FILE.pkg.tar.* install a reviewed Arch package on the system
     ozi-pkg get|uninstall NAME...  repository packages, through the privileged helper
     ozi-pkg aur NAME...            build AUR packages in a throwaway container, then install
@@ -13,7 +14,7 @@
     ozi-pkg remove APP             delete the box and its menu entries
 
 System changes go through the privileged helper (helper.py) with pkexec, after
-a snapshot. AppImages can be reviewed but not installed yet.
+a snapshot.
 """
 import argparse
 import json
@@ -302,12 +303,62 @@ def install_deb(path, perms, runner=box.run, ask=input, out=print, yes=False, fo
     return app_id
 
 
+def install_appimage(path, perms, out=print, ask=input, yes=False, force=False):
+    """Keep an AppImage under OziOS's own data folder and give it a menu entry.
+
+    It is never run here. Starting it goes through bubblewrap with `perms`.
+    """
+    path = os.path.abspath(path)
+    try:
+        facts = archives.inspect(path)
+    except (OSError, archives.ArchiveError) as err:
+        raise CliError(tr("Cannot read {path}: {err}", path=path, err=err)) from None
+    if facts.kind != "appimage":
+        raise CliError(tr("This is not an AppImage."))
+    findings = review(facts, contained=True)
+    out(format_review(facts, findings))
+    out("")
+    out(tr("The app would get these rights:"))
+    print_permissions(perms, out)
+    if risk.verdict(findings) == "danger" and not force:
+        raise CliError(tr("The review found something dangerous. Use --force to install anyway."))
+    app_id = box.app_id_for(facts.name)
+    if app_id in box.installed():
+        raise CliError(tr("{app} is already installed. Remove it first.", app=app_id))
+    if not yes and ask(tr("Install {app} in a sandbox? [y/N] ", app=app_id)).strip().lower() not in ("y", "yes", "e", "evet"):
+        raise CliError(tr("Cancelled."))
+
+    target = box.appimage_path(app_id)
+    os.makedirs(target.parent, exist_ok=True)
+    shutil.copyfile(path, target)
+    os.chmod(target, 0o755)
+    if archives.sha256_file(str(target)) != facts.sha256:
+        os.remove(target)
+        raise CliError(tr("The file changed while it was being copied."))
+    os.makedirs(applications_dir(), exist_ok=True)
+    entry = os.path.join(applications_dir(), "ozi-box-%s.desktop" % app_id)
+    base = "[Desktop Entry]\nType=Application\nName=%s\nIcon=application-x-executable\nCategories=Utility;\n" % facts.name
+    with open(entry, "w", encoding="utf-8") as fh:
+        fh.write(box.host_desktop_entry(app_id, base))
+    permissions.save(app_id, perms)
+    box.record(app_id, {"name": facts.name, "version": facts.version, "sha256": facts.sha256,
+                        "kind": "appimage", "desktop": [entry]})
+    out(tr("Installed {app}. Start it from the menu or with: ozi-pkg run {app}", app=app_id))
+    return app_id
+
+
 def remove_box(app_id, runner=box.run, out=print, driver=None):
     permissions.check_app_id(app_id)
     info = box.installed().get(app_id)
     if info is None:
         raise CliError(tr("{app} is not installed.", app=app_id))
-    runner(box.podman(driver or box.storage_driver()) + ["rmi", "-f", box.image_name(app_id)], capture_output=True)
+    if info.get("kind") == "appimage":
+        try:
+            os.remove(box.appimage_path(app_id))
+        except OSError:
+            pass
+    else:
+        runner(box.podman(driver or box.storage_driver()) + ["rmi", "-f", box.image_name(app_id)], capture_output=True)
     for entry in info.get("desktop", []):
         try:
             os.remove(entry)
@@ -328,8 +379,7 @@ def run_box(app_id, extra, runner=box.run, driver=None, uid=None, gid=None):
         raise CliError(tr("{app} is not installed.", app=app_id))
     perms = permissions.load(app_id)
     os.makedirs(permissions.private_home(app_id), exist_ok=True)
-    argv = list(info.get("exec") or [info.get("name", app_id)]) + list(extra)
-    return runner(box.run_command(app_id, perms, argv, driver=driver, uid=uid, gid=gid)).returncode
+    return runner(box.start_command(app_id, info, perms, extra, driver=driver, uid=uid, gid=gid)).returncode
 
 
 # --- command line ---------------------------------------------------------
@@ -390,7 +440,7 @@ def main(argv=None, out=print):
                 facts = archives.inspect(args.file)
             except (OSError, archives.ArchiveError) as err:
                 raise CliError(tr("Cannot read {path}: {err}", path=args.file, err=err)) from None
-            findings = review(facts, contained=facts.kind == "deb")
+            findings = review(facts, contained=facts.kind in ("deb", "appimage"))
             if args.json:
                 out(json.dumps({"name": facts.name, "version": facts.version, "kind": facts.kind, "sha256": facts.sha256,
                                 "verdict": risk.verdict(findings), "findings": [f.as_dict() for f in findings]}, indent=2))
@@ -400,6 +450,8 @@ def main(argv=None, out=print):
         if args.command == "install":
             if ".pkg.tar" in args.file.lower():
                 install_arch(args.file, out=out, yes=args.yes, force=args.force)
+            elif args.file.lower().endswith(".appimage"):
+                install_appimage(args.file, apply_flags(permissions.Permissions(), args), out=out, yes=args.yes, force=args.force)
             else:
                 install_deb(args.file, apply_flags(permissions.Permissions(), args), yes=args.yes, force=args.force, out=out)
         elif args.command == "aur":

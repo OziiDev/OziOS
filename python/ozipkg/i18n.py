@@ -33,7 +33,7 @@ def _load():
     return _table
 
 
-def tr(text, **values):
+def tr(text, /, **values):
     out = _load().get(text, text)
     return out.format(**values) if values else out
 

@@ -147,6 +147,33 @@ def run_command(app_id, perms, argv, env=None, driver=None, exists=os.path.exist
     return cmd + [image_name(app_id)] + list(argv)
 
 
+APPIMAGE_INSIDE = "/opt/app.AppImage"
+
+
+def appimage_path(app_id):
+    """Where the installed AppImage is kept: next to the app's private home."""
+    return paths.share_dir() / "apps" / permissions.check_app_id(app_id) / "app.AppImage"
+
+
+def appimage_command(app_id, perms, extra=(), env=None, exists=os.path.exists):
+    """The bubblewrap command that runs an installed AppImage with `perms`.
+
+    There is no FUSE inside the sandbox, so the image unpacks itself into the
+    sandbox's private /tmp and runs from there.
+    """
+    argv = ["/usr/bin/env", "APPIMAGE_EXTRACT_AND_RUN=1", APPIMAGE_INSIDE] + list(extra)
+    return permissions.bwrap_command(app_id, perms, argv, env=env, exists=exists,
+                                     ro_binds=[(appimage_path(app_id), APPIMAGE_INSIDE)])
+
+
+def start_command(app_id, info, perms, extra=(), driver=None, uid=None, gid=None):
+    """The command that starts an installed app, whatever kind of box it lives in."""
+    if info.get("kind") == "appimage":
+        return appimage_command(app_id, perms, extra)
+    argv = list(info.get("exec") or [info.get("name", app_id)]) + list(extra)
+    return run_command(app_id, perms, argv, driver=driver, uid=uid, gid=gid)
+
+
 def desktop_exec(desktop_text):
     """The command of a .desktop file's main entry, field codes removed."""
     exec_line = ""
@@ -187,6 +214,8 @@ def run(cmd, **kwargs):
     try:
         return subprocess.run(cmd, **kwargs)
     except FileNotFoundError:
+        if cmd and cmd[0] == "bwrap":
+            raise BoxError(tr("Sandboxed AppImages need bubblewrap, which is not installed yet.")) from None
         raise BoxError(tr("Boxes need podman, which is not installed yet.")) from None
 
 

@@ -29,6 +29,7 @@ usage: ozi <command>
   box <file.deb>       install a Debian/Ubuntu package into its own box
   apps                 list boxed apps
   rollback             list snapshots
+  layout <name>        panel layout: default, deck or classic
   effects <level>      window effects: full, light or off
   mode game on|off     game mode: performance profile, no compositing effects
   status [--json]      version, kernel, effects, game mode, Windows guest, updates
@@ -63,6 +64,30 @@ set_effects() {  # set_effects full|light|off
   echo "Effects: $1"
 }
 
+layout_dir() {
+  local here dir
+  here="$(dirname "$(readlink -f "$0")")"
+  for dir in /usr/share/ozios/layouts "$here/../../desktop/layouts"; do
+    [ -d "$dir" ] && { echo "$dir"; return 0; }
+  done
+  return 1
+}
+
+set_layout() {  # set_layout default|deck|classic
+  local name="${1:-}" dir
+  case "$name" in
+    default | deck | classic) ;;
+    *) echo "ozi: layout takes default, deck or classic" >&2; exit 2 ;;
+  esac
+  dir="$(layout_dir)" || { echo "ozi: the layout scripts are not installed" >&2; exit 1; }
+  [ -n "$qdbus" ] || { echo "ozi: no qdbus found; run this inside the desktop session" >&2; exit 1; }
+  "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$dir/$name.js")" >/dev/null ||
+    { echo "ozi: the desktop shell did not accept the layout" >&2; exit 1; }
+  mkdir -p "$state_dir"
+  echo "$name" > "$state_dir/layout"
+  echo "Layout: $name"
+}
+
 effects_level() {
   local factor blur
   factor="$(kreadconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor --default 1 2>/dev/null || echo 1)"
@@ -92,7 +117,8 @@ game_mode() {  # game_mode on|off
 }
 
 status() {
-  local version kernel effects game power guest updates
+  local version kernel effects game power guest updates layout
+  layout="$(cat "$state_dir/layout" 2>/dev/null || true)"; : "${layout:=default}"
   version=unknown
   [ -r /usr/share/ozios/VERSION ] && version="$(tr -d '[:space:]' < /usr/share/ozios/VERSION)"
   kernel="$(uname -r)"
@@ -104,17 +130,17 @@ status() {
   updates="$(checkupdates 2>/dev/null | wc -l || true)"
   updates="${updates//[^0-9]/}"; : "${updates:=0}"
   if [ "${1:-}" = "--json" ]; then
-    python3 - "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates" <<'PY'
+    python3 - "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates" "$layout" <<'PY'
 import json, sys
-keys = ("version", "kernel", "effects", "game_mode", "power_profile", "windows_guest", "updates")
+keys = ("version", "kernel", "effects", "game_mode", "power_profile", "windows_guest", "updates", "layout")
 values = list(sys.argv[1:])
 values[3] = values[3] == "true"
 values[6] = int(values[6].strip() or 0)
 print(json.dumps(dict(zip(keys, values))))
 PY
   else
-    printf 'OziOS %s, kernel %s\neffects: %s, game mode: %s, power: %s\nWindows guest: %s, updates waiting: %s\n' \
-      "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates"
+    printf 'OziOS %s, kernel %s\nlayout: %s, effects: %s, game mode: %s, power: %s\nWindows guest: %s, updates waiting: %s\n' \
+      "$version" "$kernel" "$layout" "$effects" "$game" "$power" "$guest" "$updates"
   fi
 }
 
@@ -149,6 +175,9 @@ case "$cmd" in
     ;;
   rollback)
     sudo snapper -c root list
+    ;;
+  layout)
+    set_layout "${1:-}"
     ;;
   effects)
     set_effects "${1:-}"
