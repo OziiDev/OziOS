@@ -4,14 +4,13 @@ pkgrel=1
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python polkit python-pyqt6 qt6-declarative)
+depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap)
 optdepends=(
   'freerdp: open Windows programs from the desktop'
   'libvirt: run the Windows guest'
   'virt-install: set up the Windows guest'
   'libisoburn: set up the Windows guest'
   'snapper: snapshots before package changes'
-  'podman: run Debian and Ubuntu packages in boxes'
 )
 install=ozios-settings.install
 options=(!strip !debug)

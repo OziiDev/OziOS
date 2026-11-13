@@ -31,7 +31,7 @@ class Pkgbuild(unittest.TestCase):
 
     def test_depends_on_what_the_apps_import(self):
         text = read("packages", "ozios-settings", "PKGBUILD")
-        for dep in ("python-pyqt6", "qt6-declarative", "polkit"):
+        for dep in ("python-pyqt6", "qt6-declarative", "polkit", "podman", "bubblewrap"):
             self.assertRegex(text, r"depends=\([^)]*\b%s\b" % dep)
 
 

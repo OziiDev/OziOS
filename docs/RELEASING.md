@@ -28,7 +28,15 @@ The ISO is made on a machine, not in CI (the conversion needs the live session
 of the source ISO).
 
 1. `tools/bump-version.sh <version>`, commit, tag `v<version>`.
-2. Convert: `sudo iso/remaster.sh --kernel <dir with the kernel packages>`.
+2. Convert, in the live session of the source ISO (the date is the day that ISO
+   was built; it must match the kernel's `recipe_date`):
+
+   ```
+   sudo iso/remaster.sh --kernel <dir with the kernel packages> \
+        --archive 2026/08/09 --add "python-pyqt6 podman bubblewrap"
+   ```
+
+   `--add` lists what `ozios-settings` depends on and the source ISO lacks.
 3. Test the result in a virtual machine and on real hardware.
 4. Publish `ozios-...iso` and its `.sha256` where people can download it.
    GitHub release files are limited to 2 GiB and the ISO is larger, so host
