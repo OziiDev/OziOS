@@ -23,11 +23,35 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
 - `os-release` and `lsb-release` name OziOS and point to this project; the hook
   runs after CachyOS's own so the last word is ours.
 - Education edition (`ozios-edu`): board layout for smart boards, a screen pen
-  (`ozi-pen`), Turkish defaults, an on-screen keyboard, no screen lock or sleep
-  during a lesson, links to EBA, e-Okul and MEB, Xournal++ as whiteboard and
-  LibreOffice. A separate ISO, built with `iso/remaster.sh --edition edu`.
+  (`ozi-pen`: pen, marker, line, arrow, box, circle, eraser, laser pointer,
+  spotlight, saving to a PNG), a classroom app (`ozi-classroom`: class lists,
+  picking a student without repeats, groups, a timer), Turkish defaults, an
+  on-screen keyboard, no screen lock or sleep during a lesson, links to EBA,
+  e-Okul and MEB, Xournal++ as whiteboard and LibreOffice. A separate ISO,
+  built with `iso/remaster.sh --edition edu`.
 - `ozi layout` takes any installed layout and waits for the desktop shell to
   start.
+- New commands. `ozi doctor` checks the installation and says how to fix each
+  finding. `ozi report` writes a text report for a bug report; nothing is sent
+  anywhere, and names, addresses and serial numbers are replaced before the
+  file is written. `ozi clean` shows what could be freed and, with `--yes`,
+  removes old package versions, journal entries older than two weeks, orphaned
+  packages and caches that rebuild themselves. `ozi play -- <game>` runs a game
+  with game mode on for as long as it runs, and can ask for the discrete GPU or
+  MangoHud. Manual pages for `ozi` and `ozi-pkg`; completions for bash, zsh
+  and fish.
+- The first-login setup now runs once: the autostart entry no longer relies on
+  `$HOME` (systemd's generator escapes it), so the marker is written.
+- Installer: steps that took longer than the default 30 seconds (pacman keyring,
+  mirror ranking) are given ten minutes, so a slow network no longer fails the
+  installation, and starting the installer a second time works. The desktop and
+  boot loader choosers are OziOS's own: the desktop page offers KDE only.
+- Tools for working on the image: `tools/qml-shot.py` takes pictures of an
+  app's window offscreen and can drive it with pointer events, `tools/sync-live.sh`
+  puts a checkout into a running live session, `tools/drive-calamares.sh`
+  clicks through the installer, `tools/check-image.sh` checks a booted image.
+- A workflow runs the unit tests and a syntax check of the shell scripts on
+  every push.
 
 ## 0.1.0 (2026-11-13)
 
