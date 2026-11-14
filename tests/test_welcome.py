@@ -5,6 +5,9 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
+sys.path.insert(0, os.path.dirname(__file__))
+import lang  # noqa: E402,F401  tests run in English
+
 from ozipkg import welcome  # noqa: E402
 
 
@@ -49,8 +52,8 @@ class Welcome(unittest.TestCase):
         for name, cmd in welcome.ACTIONS.items():
             self.assertIsInstance(cmd, list, name)
 
-    def test_the_install_button_runs_the_live_images_own_launcher(self):
-        self.assertEqual(welcome.ACTIONS["install"], ["/usr/local/bin/calamares-online.sh"])
+    def test_the_install_button_runs_our_wrapper_around_the_live_launcher(self):
+        self.assertEqual(welcome.ACTIONS["install"], ["/usr/lib/ozios/start-installer"])
 
     def test_live_means_a_live_medium_with_an_installer(self):
         with tempfile.TemporaryDirectory() as tmp:

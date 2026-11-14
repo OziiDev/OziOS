@@ -6,6 +6,9 @@ import unittest
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.join(ROOT, "python"))
 
+sys.path.insert(0, os.path.dirname(__file__))
+import lang  # noqa: E402,F401  tests run in English
+
 from ozipkg import cli, tools  # noqa: E402
 
 

@@ -7,8 +7,8 @@ import subprocess
 from . import paths
 from .i18n import tr
 
-# The live image's own launcher: it prepares the keyring and mirrors, then starts Calamares.
-INSTALLER = "/usr/local/bin/calamares-online.sh"
+# Our wrapper around the live image's own launcher (which prepares the keyring and mirrors, then starts Calamares).
+INSTALLER = "/usr/lib/ozios/start-installer"
 
 # Button name -> command. A fixed table: the interface can only pick a name.
 ACTIONS = {

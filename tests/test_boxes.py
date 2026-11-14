@@ -5,6 +5,9 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
+sys.path.insert(0, os.path.dirname(__file__))
+import lang  # noqa: E402,F401  tests run in English
+
 from ozipkg import box, perms  # noqa: E402
 
 ENV = {"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0", "LANG": "tr_TR.UTF-8"}

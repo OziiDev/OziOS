@@ -1,0 +1,19 @@
+#!/bin/sh
+# Start the installer from the live session. It runs the live image's own
+# launcher, which prepares the package keyring and mirrors and then opens
+# Calamares.
+#
+# The launcher can run more than once in a session, for example when the
+# installer is cancelled and opened again. The key agent the first run left
+# behind has lost its socket by then, and creating the keyring fails ("agent_genkey
+# failed"). Stopping that agent first makes a second start work like the first.
+if [ -d /etc/pacman.d/gnupg ]; then
+  sudo gpgconf --homedir /etc/pacman.d/gnupg --kill all >/dev/null 2>&1
+  sudo pkill -f 'gpg-agent --homedir /etc/pacman.d/gnupg' >/dev/null 2>&1
+fi
+
+if [ -x /usr/local/bin/calamares-online.sh ]; then
+  exec /usr/local/bin/calamares-online.sh "$@"
+fi
+echo "ozios: this live image has no installer launcher" >&2
+exit 1

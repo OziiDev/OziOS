@@ -8,6 +8,9 @@ from types import SimpleNamespace
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 sys.path.insert(0, os.path.dirname(__file__))
 
+sys.path.insert(0, os.path.dirname(__file__))
+import lang  # noqa: E402,F401  tests run in English
+
 from ozipkg import box, cli, perms  # noqa: E402
 from test_archives import build_deb  # noqa: E402
 

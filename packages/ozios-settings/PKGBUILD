@@ -88,7 +88,7 @@ package() {
   install -Dm644 "$comp/_ozi"         "$pkgdir/usr/share/zsh/site-functions/_ozi"
   install -Dm644 "$comp/_ozi-pkg"     "$pkgdir/usr/share/zsh/site-functions/_ozi-pkg"
 
-  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper" "$here/first-login"
+  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper" "$here/first-login" "$here/start-installer"
   install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
   # Graphical apps: Software and Welcome, sharing the OziUi components.
   local apps="$pkgdir/usr/lib/ozios/apps"
