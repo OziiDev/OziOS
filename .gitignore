@@ -7,4 +7,3 @@ out/
 __pycache__/
 *.pyc
 .kernel-pkgs/
-.claude/

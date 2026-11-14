@@ -159,63 +159,77 @@ ApplicationWindow {
             }
         }
 
-        GridLayout {
+        // Things to do, as plain rows: a name, what it does, a line under each.
+        Flickable {
+            id: listing
             Layout.fillWidth: true
             Layout.fillHeight: true
-            columns: window.width > 760 ? 3 : 2
-            rowSpacing: 16
-            columnSpacing: 16
+            clip: true
+            contentWidth: width
+            contentHeight: rows.implicitHeight
+            ScrollBar.vertical: ScrollBar {}
 
-            Repeater {
-                model: (window.edu ? [
-                    { key: "pen", title: backend.tr("Screen pen"), text: backend.tr("Draw on top of anything on the screen with a pen or a finger.") },
-                    { key: "whiteboard", title: backend.tr("Whiteboard"), text: backend.tr("A blank page to write on, with pages, images and PDF markup.") },
-                    { key: "classroom", title: backend.tr("Classroom"), text: backend.tr("Pick a student, make groups and time an activity.") },
-                    { key: "eba", title: backend.tr("EBA portal"), text: backend.tr("Open the Education Information Network in the browser.") }
-                ] : []).concat([
-                    { key: "store", title: backend.tr("Get software"), text: backend.tr("Install programs, check a package before it goes on your system, and keep everything updated.") },
-                    { key: "windows", title: backend.tr("Windows programs"), text: backend.tr("Set up the Windows layer so .exe files open from your file manager.") },
-                    { key: "network", title: backend.tr("Network"), text: backend.tr("Connect to Wi-Fi or a wired network.") },
-                    { key: "display", title: backend.tr("Display"), text: backend.tr("Resolution, scaling and refresh rate.") },
-                    { key: "settings", title: backend.tr("All settings"), text: backend.tr("Everything else about how the system looks and works.") }
-                ]).concat(window.edu ? [] : [
-                    { key: "terminal", title: backend.tr("Terminal"), text: backend.tr("The OziOS terminal, with the turning tesseract.") }
-                ])
-                delegate: Card {
-                    id: tile
-                    required property var modelData
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.minimumHeight: 104
-                    border.color: area.containsMouse ? Theme.cyan : Theme.far
-                    Behavior on border.color { ColorAnimation { duration: 140 } }
+            Column {
+                id: rows
+                width: listing.width
+                Repeater {
+                    model: (window.edu ? [
+                        { key: "pen", title: backend.tr("Screen pen"), text: backend.tr("Draw on top of anything on the screen with a pen or a finger.") },
+                        { key: "whiteboard", title: backend.tr("Whiteboard"), text: backend.tr("A blank page to write on, with pages, images and PDF markup.") },
+                        { key: "classroom", title: backend.tr("Classroom"), text: backend.tr("Pick a student, make groups and time an activity.") },
+                        { key: "eba", title: backend.tr("EBA portal"), text: backend.tr("Open the Education Information Network in the browser.") }
+                    ] : [
+                        { key: "gaming", title: backend.tr("Games"), text: backend.tr("Install Steam, game mode and the graphics libraries that fit this computer.") }
+                    ]).concat([
+                        { key: "store", title: backend.tr("Get software"), text: backend.tr("Install programs, check a package before it goes on your system, and keep everything updated.") },
+                        { key: "windows", title: backend.tr("Windows programs"), text: backend.tr("Set up the Windows layer so .exe files open from your file manager.") },
+                        { key: "network", title: backend.tr("Network"), text: backend.tr("Connect to Wi-Fi or a wired network.") },
+                        { key: "display", title: backend.tr("Display"), text: backend.tr("Resolution, scaling and refresh rate.") },
+                        { key: "settings", title: backend.tr("All settings"), text: backend.tr("Everything else about how the system looks and works.") }
+                    ]).concat(window.edu ? [] : [
+                        { key: "terminal", title: backend.tr("Terminal"), text: backend.tr("The OziOS terminal, with the turning tesseract.") }
+                    ])
+                    delegate: Rectangle {
+                        id: row
+                        required property var modelData
+                        width: rows.width
+                        height: Math.max(58, rowText.implicitHeight + 24)
+                        color: area.containsMouse ? Theme.raised : "transparent"
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        spacing: 6
-                        Text {
-                            text: tile.modelData.title
-                            color: Theme.cyan
-                            font.family: Theme.family
-                            font.pixelSize: 18
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            height: 1
+                            color: Theme.control
                         }
                         Text {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
+                            id: rowTitle
+                            x: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 190
+                            text: row.modelData.title
+                            color: area.containsMouse ? Theme.ice : Theme.cyan
+                            font.family: Theme.family
+                            font.pixelSize: 17
+                        }
+                        Text {
+                            id: rowText
+                            x: 212
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 232
                             wrapMode: Text.WordWrap
-                            text: tile.modelData.text
+                            text: row.modelData.text
                             color: Theme.muted
                             font.family: Theme.family
-                            font.pixelSize: 13
+                            font.pixelSize: 14
                         }
-                    }
-
-                    MouseArea {
-                        id: area
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: window.launch(tile.modelData.key)
+                        MouseArea {
+                            id: area
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: window.launch(row.modelData.key)
+                        }
                     }
                 }
             }

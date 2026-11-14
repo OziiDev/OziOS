@@ -12,6 +12,7 @@ INSTALLER = "/usr/lib/ozios/start-installer"
 
 # Button name -> command. A fixed table: the interface can only pick a name.
 ACTIONS = {
+    "gaming": ["konsole", "--hold", "-e", "ozi", "gaming", "--yes"],
     "store": ["ozi-store"],
     "windows": ["ozi-winsetup", "--gui"],
     "theme": ["bash", "/usr/share/ozios/tools/apply-branding.sh"],
