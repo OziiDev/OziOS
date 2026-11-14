@@ -314,6 +314,49 @@ class BaseSystem(unittest.TestCase):
                 self.assertNotIn("linux-cachyos", fh.read())
 
 
+LIMINE_MODULE = '''\
+def update_limine_config(path, machine_id):
+    with open(path, 'w') as config_file:
+        config_file.write("timeout: 5\\n")
+        config_file.write("default_entry: 2\\n")
+        config_file.write("\\n")
+        config_file.write(f"comment: machine-id={machine_id}\\n")
+        config_file.write(f"/+CachyOS\\n")
+'''
+
+
+class LimineGroup(unittest.TestCase):
+    def written(self, code):
+        namespace = {}
+        exec(compile(code, "main.py", "exec"), namespace)
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "limine.conf")
+            namespace["update_limine_config"](path, "abc")
+            with open(path, encoding="utf-8") as fh:
+                return fh.read()
+
+    def test_the_stock_module_writes_an_empty_cachyos_group(self):
+        self.assertIn("/+CachyOS", self.written(LIMINE_MODULE))
+
+    def test_the_rewritten_module_does_not(self):
+        out = self.written(installer.patch_bootloader_module(LIMINE_MODULE))
+        self.assertNotIn("CachyOS", out)
+        self.assertIn("default_entry: 2", out)
+        self.assertIn("machine-id=abc", out)
+
+    def test_idempotent(self):
+        once = installer.patch_bootloader_module(LIMINE_MODULE)
+        self.assertEqual(installer.patch_bootloader_module(once), once)
+
+    def test_apply_reaches_the_module(self):
+        with tempfile.TemporaryDirectory() as base:
+            os.makedirs(os.path.join(base, "modules", "bootloader"))
+            path = os.path.join(base, "modules", "bootloader", "main.py")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(LIMINE_MODULE)
+            self.assertIn(path, installer.apply(bases=(base,), etc=base))
+
+
 class Labels(unittest.TestCase):
     CONF = ('label:\n sidebar: "Packages"\n sidebar[de]: "Pakete"\n title: "Additional packages"\n'
             ' title[ru]: "x"\nrequired: true\n')

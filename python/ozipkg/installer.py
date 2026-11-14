@@ -53,6 +53,8 @@ UNWANTED = re.compile(
 
 # Packages the installer's own pacstrap module adds in code, whatever the package list says.
 PACSTRAP_ADDS = re.compile(r'"(?:linux-cachyos[\w.+-]*|cachyos-grub-theme)"\s*,?\s*')
+# The empty group the boot loader module writes first into limine.conf.
+LIMINE_STUB = re.compile(r'config_file\.write\(f?"/\+CachyOS\\n"\)')
 
 
 def _instance(lines, name, module, config):
@@ -196,6 +198,14 @@ def patch_pacstrap_module(text):
     return PACSTRAP_ADDS.sub("", text)
 
 
+def patch_bootloader_module(text):
+    """The module starts limine.conf with an empty group named CachyOS and counts on the tool that
+    lists the kernels to fill it. That tool names its group after the system, so with a system called
+    OziOS the stub stayed empty: it came first in the boot menu, showed the old name, and the default
+    entry (the second line) was a group, which does not boot."""
+    return LIMINE_STUB.sub("pass", text)
+
+
 def patch_partition(text):
     """ZFS as the root needs a module package built for the kernel, and OziOS's kernel has none."""
     lines = text.split("\n")
@@ -265,6 +275,7 @@ MODULES = {
     "netinstall.yaml": patch_netinstall_yaml,
     "pacstrap.conf": patch_pacstrap,
     "pacstrap/main.py": patch_pacstrap_module,
+    "bootloader/main.py": patch_bootloader_module,
     "partition.conf": patch_partition,
     "grubcfg.conf": patch_grubcfg,
     "bootloader.conf": patch_bootloader,

@@ -149,6 +149,29 @@ class Stages(unittest.TestCase):
         self.assertNotIn("CachyOS", text)
         self.assertTrue([line for line in self.calls() if "grub-mkconfig -o /boot/grub/grub.cfg" in line])
 
+    def test_limine_loses_the_empty_group_the_installer_wrote_first(self):
+        os.makedirs(os.path.join(self.target, "boot"))
+        conf = os.path.join(self.target, "boot", "limine.conf")
+        with open(conf, "w") as fh:
+            fh.write("timeout: 5\ndefault_entry: 2\n\n/+CachyOS\n/+OziOS\ncomment: OziOS\n  //linux-ozios\n  protocol: linux\n")
+        self.run_stage("late")
+        with open(conf) as fh:
+            text = fh.read()
+        self.assertNotIn("CachyOS", text)
+        self.assertIn("/+OziOS", text)
+        self.assertIn("//linux-ozios", text)
+        self.assertEqual(self.calls(), [])               # nothing was run for it
+
+    def test_a_limine_config_without_the_group_is_left_alone(self):
+        os.makedirs(os.path.join(self.target, "boot"))
+        conf = os.path.join(self.target, "boot", "limine.conf")
+        original = "timeout: 5\ndefault_entry: 2\n/+OziOS\n  //linux-ozios\n"
+        with open(conf, "w") as fh:
+            fh.write(original)
+        self.run_stage("late")
+        with open(conf) as fh:
+            self.assertEqual(fh.read(), original)
+
     def test_a_boot_menu_that_is_not_grub_is_left_as_it_was(self):
         out = self.run_stage("late")
         self.assertEqual(self.calls(), [])

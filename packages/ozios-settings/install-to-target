@@ -60,6 +60,13 @@ early() {
 }
 
 late() {
+  # Limine: an empty group named after CachyOS, written first by the installer, would show
+  # in the menu and make the default entry a group, which does not boot. The installer's
+  # rewrite stops it being written; this takes it out of a configuration that has it anyway.
+  for conf in "$root/boot/limine.conf" "$root/efi/limine.conf" "$root/boot/efi/limine.conf"; do
+    [ -f "$conf" ] && sed -i '/^\/+CachyOS[[:space:]]*$/d' "$conf"
+  done
+
   # The boot menu names the system and lists the OziOS kernel first.
   if [ -f "$root/boot/grub/grub.cfg" ]; then
     if [ -f "$root/etc/default/grub" ]; then
