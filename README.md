@@ -4,7 +4,12 @@ An Arch-based desktop system for gaming and everyday use, built on CachyOS
 packages and KDE Plasma 6. It aims to be quick on ordinary hardware and easy
 for people who do not want to learn Arch first.
 
-![OziOS](branding/logo.svg)
+![The OziOS desktop](docs/img/desktop.png)
+
+The desktop after a fresh install, the login screen and the Welcome window:
+
+![Login screen](docs/img/login.png)
+![Welcome](docs/img/welcome.png)
 
 **Status: early development.** A live ISO boots to the OziOS desktop on the
 OziOS kernel in a virtual machine, and the package installer works for `.deb`,
