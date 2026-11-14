@@ -357,6 +357,56 @@ class LimineGroup(unittest.TestCase):
             self.assertIn(path, installer.apply(bases=(base,), etc=base))
 
 
+REAL_SEQUENCE = (SETTINGS.split("sequence:")[0] + "sequence:\n- show:\n  - welcome@online\n  - keyboard\n  - packagechooser@bootloader\n"
+                 "  - partition\n  - users\n- exec:\n  - partition\n  - mount\n  - pacstrap\n  - packages@online\n  - umount\n"
+                 "- show:\n  - finished\nbranding: cachyos\n")
+
+
+class BootloaderQuestion(unittest.TestCase):
+    def test_the_page_is_gone_and_a_job_answers_it_before_anything_is_installed(self):
+        out = installer.patch_settings(REAL_SEQUENCE)
+        show, execution = out.split("- exec:", 1)
+        self.assertNotIn("packagechooser@bootloader", out)
+        self.assertNotIn("ozios_defaults", show)                 # not in the list of pages
+        self.assertLess(execution.index("ozios_defaults"), execution.index("partition"))
+        self.assertIn("  - partition\n  - users", show)          # the partition page stays
+
+    def test_idempotent(self):
+        once = installer.patch_settings(REAL_SEQUENCE)
+        self.assertEqual(installer.patch_settings(once), once)
+
+    def test_the_job_sets_the_value_the_installer_reads_and_never_overrides_a_choice(self):
+        from types import SimpleNamespace
+        store = {}
+        storage = SimpleNamespace(value=lambda k: store.get(k), insert=lambda k, v: store.__setitem__(k, v))
+        code = compile(installer.DEFAULTS_PY, "main.py", "exec")
+        saved = sys.modules.get("libcalamares")
+        sys.modules["libcalamares"] = SimpleNamespace(globalstorage=storage)
+        try:
+            for before, expected in (({}, "limine"), ({"packagechooser_bootloader": "grub"}, "grub")):
+                store.clear()
+                store.update(before)
+                names = {}
+                exec(code, names)
+                self.assertIsNone(names["run"]())
+                self.assertEqual(store["packagechooser_bootloader"], expected)
+        finally:
+            if saved is None:
+                del sys.modules["libcalamares"]
+            else:
+                sys.modules["libcalamares"] = saved
+
+    def test_apply_writes_the_module(self):
+        with tempfile.TemporaryDirectory() as base:
+            with open(os.path.join(base, "settings.conf"), "w", encoding="utf-8") as fh:
+                fh.write(REAL_SEQUENCE)
+            lib = os.path.join(base, "lib")
+            installer.apply(bases=(base,), etc=base, libdir=lib)
+            folder = os.path.join(lib, "modules", "ozios_defaults")
+            self.assertTrue(os.path.isfile(os.path.join(folder, "module.desc")))
+            self.assertTrue(os.path.isfile(os.path.join(folder, "main.py")))
+
+
 class Labels(unittest.TestCase):
     CONF = ('label:\n sidebar: "Packages"\n sidebar[de]: "Pakete"\n title: "Additional packages"\n'
             ' title[ru]: "x"\nrequired: true\n')

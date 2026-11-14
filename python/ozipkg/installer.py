@@ -35,6 +35,30 @@ script:
     - "/usr/lib/ozios/install-to-target early"
 """
 
+# A job that answers the questions the installer would otherwise ask a beginner: which boot loader.
+DEFAULTS_STEP = "ozios_defaults"
+DEFAULT_BOOTLOADER = "limine"
+DEFAULTS_DESC = """---
+type: "job"
+name: "ozios_defaults"
+interface: "python"
+script: "main.py"
+"""
+DEFAULTS_PY = """import libcalamares
+
+
+def pretty_name():
+    return "Choosing the boot loader"
+
+
+def run():
+    # The installer's own page for this is left out; everything after it reads the same value.
+    storage = libcalamares.globalstorage
+    if not storage.value("packagechooser_bootloader"):
+        storage.insert("packagechooser_bootloader", "%s")
+    return None
+""" % DEFAULT_BOOTLOADER
+
 DESKTOP_KEEP = ("", "KDE-Desktop")                       # "" is "no desktop"
 DESKTOP_PREVIEW = "/usr/share/ozios/branding/desktop.png"
 # Groups of the package list that belong to other desktops, or to CachyOS handhelds whose kernels are gone.
@@ -98,6 +122,22 @@ def patch_settings(text):
                 _instance(lines, "ozios_early", "shellprocess", "shellprocess_ozios_early.conf")
                 changed = True
                 break
+
+    # The boot loader page asks a beginner to choose between four programs; a job answers it.
+    if DEFAULTS_STEP not in text:
+        section = ""
+        for i, line in enumerate(lines):
+            part = re.match(r"^\s*-\s+(show|exec):\s*$", line)
+            if part:
+                section = part.group(1)
+            m = re.match(r"^(\s*)-\s+partition\s*$", line)
+            if m and section == "exec":          # `partition` is also a page in the show list
+                lines.insert(i, "%s- %s" % (m.group(1), DEFAULTS_STEP))
+                changed = True
+                break
+    before = len(lines)
+    lines = [line for line in lines if not re.match(r"^\s*-\s+packagechooser@bootloader\s*$", line)]
+    changed = changed or len(lines) != before
 
     out = []
     for line in lines:
@@ -303,7 +343,7 @@ def _rewrite(path, func):
     return True
 
 
-def apply(bases=("/etc/calamares", "/usr/share/calamares", "/usr/lib/calamares"), etc="/etc/calamares"):
+def apply(bases=("/etc/calamares", "/usr/share/calamares", "/usr/lib/calamares"), etc="/etc/calamares", libdir="/usr/lib/calamares"):
     """Rewrite the installer configuration found under `bases`. Returns the changed paths."""
     changed = []
     for base in bases:
@@ -325,5 +365,10 @@ def apply(bases=("/etc/calamares", "/usr/share/calamares", "/usr/lib/calamares")
         os.makedirs(modules, exist_ok=True)
         for name, text in (("shellprocess_ozios.conf", LATE_CONF), ("shellprocess_ozios_early.conf", EARLY_CONF)):
             with open(os.path.join(modules, name), "w", encoding="utf-8") as fh:
+                fh.write(text)
+        folder = os.path.join(libdir, "modules", DEFAULTS_STEP)
+        os.makedirs(folder, exist_ok=True)
+        for name, text in (("module.desc", DEFAULTS_DESC), ("main.py", DEFAULTS_PY)):
+            with open(os.path.join(folder, name), "w", encoding="utf-8") as fh:
                 fh.write(text)
     return changed
