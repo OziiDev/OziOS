@@ -32,11 +32,14 @@ if [ "${1:-}" = "--undo" ]; then
   exit 0
 fi
 
-# Turkish keyboard and language, the way the schools use them.
-kw kxkbrc Layout Use true
-kw kxkbrc Layout LayoutList tr
-kw plasma-localerc Formats LANG tr_TR.UTF-8
-kw plasma-localerc Translations LANGUAGE tr
+# Turkish keyboard and language, the way the schools use them, for the live
+# session. An installed system keeps what was chosen in the installer.
+if [ -d "${OZIOS_LIVE_DIR:-/run/archiso}" ]; then
+  kw kxkbrc Layout Use true
+  kw kxkbrc Layout LayoutList tr
+  kw plasma-localerc Formats LANG tr_TR.UTF-8
+  kw plasma-localerc Translations LANGUAGE tr
+fi
 
 # Big targets for fingers and a pen.
 kw kcminputrc Mouse cursorSize 36
