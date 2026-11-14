@@ -40,6 +40,15 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
   with game mode on for as long as it runs, and can ask for the discrete GPU or
   MangoHud. Manual pages for `ozi` and `ozi-pkg`; completions for bash, zsh
   and fish.
+- `ozi gaming` installs Steam, game mode, MangoHud, Gamescope and the 32-bit
+  graphics drivers that match the graphics card in the machine (`--yes` to do it;
+  without it, only the list). Installing Steam by hand lets pacman pick the driver
+  set, which may be for the wrong card.
+- The login screen shows the OziOS wallpaper instead of the stock Plasma one.
+- The boot menu of an installed system no longer lists CachyOS, and its default entry boots.
+- The installer no longer downloads the CachyOS kernels it used to put on the
+  new system and remove again, and does not offer ZFS as a root file system.
+- The language and keyboard picked in the installer are kept on an installed Education system.
 - The first-login setup now runs once: the autostart entry no longer relies on
   `$HOME` (systemd's generator escapes it), so the marker is written.
 - Installer: steps that took longer than the default 30 seconds (pacman keyring,

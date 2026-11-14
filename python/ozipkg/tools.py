@@ -1,13 +1,14 @@
-"""The commands `ozi` hands to Python: doctor, report, clean and play."""
+"""The commands `ozi` hands to Python: doctor, report, clean, play and gaming."""
 import sys
 
-from . import clean, doctor, play, report
+from . import clean, doctor, gaming, play, report
 
 COMMANDS = {
     "doctor": doctor.main,
     "report": report.main,
     "clean": clean.main,
     "play": play.main,
+    "gaming": gaming.main,
 }
 
 USAGE = """usage: ozi-tools <command> [options]
@@ -16,6 +17,7 @@ USAGE = """usage: ozi-tools <command> [options]
   report    write a bug report with names and addresses removed
   clean     free disk space
   play      run a game with game mode on
+  gaming    install what games need for this graphics card
 """
 
 

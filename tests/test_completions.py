@@ -58,9 +58,9 @@ class Ozi(unittest.TestCase):
     def test_the_python_commands_are_all_handled_by_the_script(self):
         script = read("packages", "ozi-cli", "ozi")
         for name in tools.COMMANDS:
-            self.assertIn(name, script.split("doctor | report | clean | play)")[0] + "doctor | report | clean | play)")
-        self.assertIn("doctor | report | clean | play)", script)
-        self.assertEqual(set(tools.COMMANDS), {"doctor", "report", "clean", "play"})
+            self.assertIn(name, script.split("doctor | report | clean | play | gaming)")[0] + "doctor | report | clean | play | gaming)")
+        self.assertIn("doctor | report | clean | play | gaming)", script)
+        self.assertEqual(set(tools.COMMANDS), {"doctor", "report", "clean", "play", "gaming"})
 
 
 class OziPkg(unittest.TestCase):

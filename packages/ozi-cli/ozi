@@ -37,6 +37,7 @@ usage: ozi <command>
   report               write a bug report, names and addresses removed
   clean [--yes]        free disk space (shows what first)
   play -- <game>       run a game with game mode on (Steam: ozi play -- %command%)
+  gaming [--yes]       install Steam and what games need for this graphics card
   winsetup             set up the Windows guest
   reboot-windows       reboot into real Windows (dual boot only)
   hw                   show what this machine supports
@@ -214,7 +215,7 @@ case "$cmd" in
   status)
     status "${1:-}"
     ;;
-  doctor | report | clean | play)
+  doctor | report | clean | play | gaming)
     exec ozi-tools "$cmd" "$@"
     ;;
   winsetup)
