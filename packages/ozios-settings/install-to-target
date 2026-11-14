@@ -10,7 +10,9 @@
 # comes from the medium; if it can not be installed the Arch kernel is, so the
 # new system always has something to boot.
 stage="${1:-late}"
-root="$(findmnt -rno TARGET | grep -m1 '^/tmp/calamares-root-')"
+# Where the packages are on the medium, and the new system; both can be named for a test.
+src="${OZIOS_PACKAGES:-/opt/ozios}"
+root="${OZIOS_TARGET:-$(findmnt -rno TARGET | grep -m1 '^/tmp/calamares-root-')}"
 
 if [ -z "$root" ]; then
   echo "ozios: nothing to do, no installation target is mounted"
@@ -24,24 +26,24 @@ install_pkg() {
 }
 
 early() {
-  settings="$(ls /opt/ozios/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
+  settings="$(ls "$src"/ozios-settings-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
   if [ -n "$settings" ]; then
     # Inside the new system, so its own databases and mirrors can supply what the package depends on.
     install_pkg "$settings" ||
       pacman --root "$root" --noconfirm --needed -U "$settings" ||
       echo "ozios: could not install $settings into $root"
   fi
-  for edu in $(ls /opt/ozios/ozios-edu-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$'); do
+  for edu in $(ls "$src"/ozios-edu-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$'); do
     install_pkg "$edu" || echo "ozios: could not install $(basename "$edu")"
   done
 
   # One by one: the NVIDIA modules need the exact driver version and may not
   # match what the installer fetched; that must not block the kernel.
   # (Not the ZFS modules: the installer does not offer ZFS as a root file system.)
-  for pkg in $(ls /opt/ozios/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | grep -v -- '-zfs-' | sort); do
+  for pkg in $(ls "$src"/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | grep -v -- '-zfs-' | sort); do
     install_pkg "$pkg" || echo "ozios: could not install $(basename "$pkg")"
   done
-  mkdir -p "$root/opt/ozios" && cp -f /opt/ozios/*.pkg.tar.* "$root/opt/ozios/" 2>/dev/null
+  mkdir -p "$root/opt/ozios" && cp -f "$src"/*.pkg.tar.* "$root/opt/ozios/" 2>/dev/null
 
   # A system without a kernel does not boot.
   if ! ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
