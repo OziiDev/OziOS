@@ -81,6 +81,31 @@ class OziPkg(unittest.TestCase):
             self.assertIn("--no-" + name.replace("_", "-"), flags)
 
 
+class ManPages(unittest.TestCase):
+    def test_ozi_documents_every_command(self):
+        text = read("docs", "man", "ozi.1").replace("\\-", "-")
+        for name in ozi_commands():
+            self.assertRegex(text, r"(?m)^\.B(?:I)? \\?%s\b" % re.escape(name), name)
+
+    def test_ozi_pkg_documents_every_command(self):
+        text = read("docs", "man", "ozi-pkg.1").replace("\\-", "-")
+        for name in pkg_commands():
+            self.assertRegex(text, r"(?m)^\.B(?:I)? %s\b" % re.escape(name), name)
+
+    def test_the_pages_have_the_standard_sections(self):
+        for page in ("ozi.1", "ozi-pkg.1"):
+            text = read("docs", "man", page)
+            self.assertTrue(text.startswith(".TH "), page)
+            for section in ("NAME", "SYNOPSIS", "DESCRIPTION", "COMMANDS", "SEE ALSO"):
+                self.assertIn(".SH " + section, text, page)
+
+    def test_they_are_installed(self):
+        pkgbuild = read("packages", "ozios-settings", "PKGBUILD")
+        self.assertIn("usr/share/man/man1", pkgbuild)
+        for page in ("ozi.1", "ozi-pkg.1"):
+            self.assertIn(page, pkgbuild)
+
+
 class Packaging(unittest.TestCase):
     def test_every_completion_is_installed(self):
         pkgbuild = read("packages", "ozios-settings", "PKGBUILD")

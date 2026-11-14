@@ -79,6 +79,9 @@ package() {
   install -Dm644 "$src/branding/boot/limine-splash.png" "$share/branding/limine-splash.png"
   install -Dm644 "$src/branding/boot/desktop.png" "$share/branding/desktop.png"
 
+  install -Dm644 "$src/docs/man/ozi.1"     "$pkgdir/usr/share/man/man1/ozi.1"
+  install -Dm644 "$src/docs/man/ozi-pkg.1" "$pkgdir/usr/share/man/man1/ozi-pkg.1"
+
   # Completions for the shells people use.
   local comp="$src/data/completions"
   install -Dm644 "$comp/ozi.bash"     "$pkgdir/usr/share/bash-completion/completions/ozi"

@@ -1,0 +1,65 @@
+.TH OZI-PKG 1 "2026" "OziOS" "OziOS commands"
+.SH NAME
+ozi\-pkg \- review software and install it the careful way
+.SH SYNOPSIS
+.B ozi\-pkg
+.I command
+[\fIoptions\fR]
+.SH DESCRIPTION
+.B ozi\-pkg
+looks inside a package before it goes on the system, runs Debian and Ubuntu
+packages and AppImages with only the permissions they are given, and builds
+AUR packages in a throwaway container. A package that passes the review can
+still be harmful; the review checks for known bad patterns only.
+.SH COMMANDS
+.TP
+.BI review " file" " \fR[\fB\-\-json\fR]"
+Show what is inside a .deb, Arch package or AppImage and what deserves a look. Exit status 1 when something dangerous was found.
+.TP
+.BI install " file" " \fR[\fB\-\-yes\fR] [\fB\-\-force\fR] [rights]"
+Install a .deb into its own rootless box, an AppImage in a sandbox, or an Arch package on the system.
+.TP
+.BI get " name..."
+Install packages from the Arch repositories through the privileged helper.
+.TP
+.BI uninstall " name..."
+Remove packages.
+.TP
+.BI aur " name..."
+Resolve dependencies, review each recipe, build in a container and install the result.
+.TP
+.BI search " term"
+Search the AUR.
+.TP
+.B upgrade
+Update the whole system.
+.TP
+.BI undo " number"
+Roll the system back to a snapshot.
+.TP
+.B list
+List the boxed apps and sandboxed AppImages.
+.TP
+.BI perms " app" " \fR[rights]"
+Show or change what an app may reach.
+.TP
+.BI run " app " "\fR[\fIarguments\fR]"
+Start a boxed app.
+.TP
+.BI remove " app"
+Delete the box of an app and its menu entries.
+.SH RIGHTS
+.TP
+.B \-\-network\fR, \fB\-\-no\-network
+Internet access.
+.TP
+.B \-\-files \fR\fInone\fR|\fIchosen\fR|\fIhome\fR
+How much of the home folder is visible. \fB\-\-folder\fR \fIdir\fR adds a folder and implies \fBchosen\fR.
+.TP
+.B \-\-gpu\fR, \fB\-\-sound\fR, \fB\-\-camera\fR, \fB\-\-devices\fR, \fB\-\-x11\fR, \fB\-\-nested\-sandbox
+Graphics acceleration, sound, camera, USB and other devices, old-style display access, and apps that
+bring a sandbox of their own. Each has a \fB\-\-no\-\fR form.
+.SH EXIT STATUS
+0 on success, 1 on failure or when the review found something dangerous.
+.SH SEE ALSO
+.BR ozi (1)

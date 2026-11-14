@@ -1,0 +1,83 @@
+.TH OZI 1 "2026" "OziOS" "OziOS commands"
+.SH NAME
+ozi \- everyday system commands for OziOS
+.SH SYNOPSIS
+.B ozi
+.I command
+[\fIoptions\fR]
+.SH DESCRIPTION
+.B ozi
+is the one command for the things done most often on an OziOS system:
+updating, installing, checking and tuning.
+Software is reviewed before it is installed; see
+.BR ozi\-pkg (1).
+.SH COMMANDS
+.TP
+.B update
+Update the system. A snapshot is taken first when snapper is set up.
+.TP
+.BI install " package..."
+Install packages from the repositories or the AUR.
+.TP
+.BI remove " package..."
+Remove packages and the dependencies nothing else needs.
+.TP
+.BI search " term"
+Search for packages.
+.TP
+.BI review " file"
+Check a .deb, an Arch package or an AppImage for known bad patterns before installing it.
+.TP
+.BI box " file.deb"
+Install a Debian or Ubuntu package into its own container.
+.TP
+.B apps
+List the apps installed in boxes.
+.TP
+.B rollback
+List the snapshots the system can be rolled back to.
+.TP
+.BI layout " name"
+Set the panel layout: \fBdefault\fR, \fBdeck\fR, \fBclassic\fR, and \fBboard\fR in the Education edition.
+.TP
+.BI effects " level"
+Window effects: \fBfull\fR, \fBlight\fR or \fBoff\fR.
+.TP
+.B mode game on|off
+Game mode: performance power profile and no compositing effects while it is on.
+.TP
+.B status \fR[\fB\-\-json\fR]
+Version, kernel, layout, effects, game mode, Windows guest and waiting updates.
+.TP
+.B doctor \fR[\fB\-\-json\fR] [\fB\-\-quiet\fR]
+Check that the system is in good shape. Exits with status 1 when something needs attention.
+.TP
+.B report \fR[\fB\-\-output\fR \fIfile\fR] [\fB\-\-stdout\fR]
+Write a report for a bug report. Names, addresses and serial numbers are removed first.
+Nothing is sent anywhere.
+.TP
+.B clean \fR[\fB\-\-yes\fR] [\fB\-\-only\fR \fIitems\fR]
+Free disk space. Without \fB\-\-yes\fR it only shows what could be freed.
+Items: \fBcache\fR, \fBjournal\fR, \fBorphans\fR, \fBuser\fR.
+.TP
+.B play \fR[\fB\-\-gpu\fR \fIchoice\fR] [\fB\-\-mangohud\fR] \fB\-\-\fR \fIcommand\fR
+Run a game with game mode on and put things back afterwards.
+In Steam, set the launch options to \fBozi play \-\- %command%\fR.
+.TP
+.B winsetup
+Set up the Windows guest from a Windows ISO.
+.TP
+.B reboot\-windows
+Reboot into a real Windows installed next to OziOS.
+.TP
+.B hw
+Show what this machine supports for the Windows guest.
+.TP
+.B help
+Show a short help text.
+.SH FILES
+.TP
+.I ~/.local/state/ozios/
+The current layout and the game mode flag.
+.SH SEE ALSO
+.BR ozi\-pkg (1)

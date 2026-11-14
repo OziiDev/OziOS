@@ -1,0 +1,35 @@
+name: Tests
+
+# The unit tests and a syntax check of every shell script, on each push and pull request.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Unit tests
+        run: python -W error -B -I -m unittest discover -s tests
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax of the shell scripts
+        run: |
+          status=0
+          for file in $(git ls-files); do
+            case "$(head -c 40 "$file" 2>/dev/null | head -n 1)" in
+              "#!/usr/bin/env bash"* | "#!/bin/bash"* | "#!/bin/sh"*)
+                bash -n "$file" || { echo "syntax error in $file"; status=1; }
+                ;;
+            esac
+          done
+          exit $status
