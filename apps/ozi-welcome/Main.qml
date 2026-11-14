@@ -45,7 +45,7 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 32
-        spacing: 24
+        spacing: 16
 
         // Header: the mark, drawn as a tesseract, and the name.
         RowLayout {
@@ -54,8 +54,8 @@ ApplicationWindow {
 
             Item {
                 id: mark
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: 72
+                Layout.preferredHeight: 72
 
                 property real angle: 0
                 NumberAnimation on angle { from: 0; to: Math.PI * 2; duration: 24000; loops: Animation.Infinite; running: window.visible && window.active }
@@ -103,7 +103,7 @@ ApplicationWindow {
                     text: backend.tr("Welcome to OziOS")
                     color: Theme.ice
                     font.family: Theme.family
-                    font.pixelSize: 32
+                    font.pixelSize: 28
                 }
                 Text {
                     text: window.version === "" ? "" : backend.tr("Version") + " " + window.version
@@ -193,7 +193,7 @@ ApplicationWindow {
                         id: row
                         required property var modelData
                         width: rows.width
-                        height: Math.max(58, rowText.implicitHeight + 24)
+                        height: Math.max(48, rowText.implicitHeight + 20)
                         color: area.containsMouse ? Theme.raised : "transparent"
 
                         Rectangle {

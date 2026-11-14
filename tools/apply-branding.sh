@@ -83,7 +83,8 @@ echo ok
 lite=false
 if [ -n "$qdbus" ]; then
   renderer="$("$qdbus" org.kde.KWin /KWin org.kde.KWin.supportInformation 2>/dev/null | grep -i 'OpenGL renderer' || true)"
-  case "$renderer" in *llvmpipe* | *softpipe* | *"Software Rasterizer"*) lite=true ;; esac
+  # SVGA3D is the graphics card of a VirtualBox or VMware guest: it draws, but slowly.
+  case "$renderer" in *llvmpipe* | *softpipe* | *"Software Rasterizer"* | *SVGA3D*) lite=true ;; esac
 fi
 case "${OZI_EFFECTS:-}" in lite) lite=true ;; full) lite=false ;; esac
 

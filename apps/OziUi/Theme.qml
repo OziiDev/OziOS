@@ -17,7 +17,7 @@ QtObject {
     readonly property color danger: "#FF556E"
 
     readonly property string family: "Overpass"
-    readonly property string mono: "JetBrains Mono"
+    readonly property string mono: "Overpass Mono"
 
     function severityColor(severity) {
         if (severity === "danger") return danger

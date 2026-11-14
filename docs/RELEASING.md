@@ -33,7 +33,7 @@ of the source ISO).
 
    ```
    sudo iso/remaster.sh --kernel <dir with the kernel packages> \
-        --archive 2026/08/09 --add "python-pyqt6 podman bubblewrap pacman-contrib"
+        --archive 2026/08/09 --add "python-pyqt6 podman bubblewrap pacman-contrib ttf-overpass"
    ```
 
    `--add` lists what `ozios-settings` depends on and the source ISO lacks.
