@@ -1,9 +1,21 @@
 import QtQuick 2.0
 import calamares.slideshow 1.0
 
-// Shown while the system is being installed.
+// Shown while the system is being installed. The words follow the language of
+// the session; Turkish and English are written out here because the installer
+// has no translation catalogue for them.
 Presentation {
     id: presentation
+
+    readonly property bool turkish: Qt.locale().name.indexOf("tr") === 0
+    function say(english, turkishText) { return turkish ? turkishText : english }
+
+    // The slides are smaller than the area they are shown in; paint all of it.
+    Rectangle {
+        anchors.fill: parent
+        color: "#080B10"
+        z: -1
+    }
 
     Timer {
         interval: 9000
@@ -13,74 +25,34 @@ Presentation {
     }
 
     Slide {
-        Rectangle {
-            anchors.fill: parent
-            color: "#080B10"
-            Column {
-                anchors.centerIn: parent
-                width: parent.width * 0.7
-                spacing: 18
-                Text { text: "OziOS"; color: "#00E5FF"; font.pixelSize: 34; anchors.horizontalCenter: parent.horizontalCenter }
-                Text {
-                    width: parent.width
-                    text: "A desktop for games and everyday work, built on Arch packages and KDE Plasma 6."
-                    color: "#F4FCFF"; font.pixelSize: 18; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-                }
-            }
+        OziSlide {
+            heading: "OziOS"
+            words: presentation.say("A desktop for games and everyday work, built on Arch packages and KDE Plasma 6.",
+                                    "Oyun ve günlük işler için, Arch paketleri ve KDE Plasma 6 üzerine kurulu bir masaüstü.")
         }
     }
 
     Slide {
-        Rectangle {
-            anchors.fill: parent
-            color: "#080B10"
-            Column {
-                anchors.centerIn: parent
-                width: parent.width * 0.7
-                spacing: 18
-                Text { text: "Software, checked first"; color: "#00E5FF"; font.pixelSize: 34; anchors.horizontalCenter: parent.horizontalCenter }
-                Text {
-                    width: parent.width
-                    text: "Packages are reviewed before they go on your system. Debian and Ubuntu packages run in their own boxes, with only the permissions you give them."
-                    color: "#F4FCFF"; font.pixelSize: 18; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-                }
-            }
+        OziSlide {
+            heading: presentation.say("Software, checked first", "Yazılım, önce denetlenir")
+            words: presentation.say("Packages are reviewed before they go on your system. Debian and Ubuntu packages run in their own boxes, with only the permissions you give them.",
+                                    "Paketler sisteminize girmeden önce incelenir. Debian ve Ubuntu paketleri kendi kutularında, yalnızca verdiğiniz izinlerle çalışır.")
         }
     }
 
     Slide {
-        Rectangle {
-            anchors.fill: parent
-            color: "#080B10"
-            Column {
-                anchors.centerIn: parent
-                width: parent.width * 0.7
-                spacing: 18
-                Text { text: "Its own kernel"; color: "#00E5FF"; font.pixelSize: 34; anchors.horizontalCenter: parent.horizontalCenter }
-                Text {
-                    width: parent.width
-                    text: "OziOS ships its own build of the Linux kernel, tuned for desktop and gaming use."
-                    color: "#F4FCFF"; font.pixelSize: 18; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-                }
-            }
+        OziSlide {
+            heading: presentation.say("Its own kernel", "Kendi çekirdeği")
+            words: presentation.say("OziOS ships its own build of the Linux kernel, tuned for desktop and gaming use.",
+                                    "OziOS, masaüstü ve oyun kullanımı için ayarlanmış kendi Linux çekirdeğiyle gelir.")
         }
     }
 
     Slide {
-        Rectangle {
-            anchors.fill: parent
-            color: "#080B10"
-            Column {
-                anchors.centerIn: parent
-                width: parent.width * 0.7
-                spacing: 18
-                Text { text: "Windows programs"; color: "#00E5FF"; font.pixelSize: 34; anchors.horizontalCenter: parent.horizontalCenter }
-                Text {
-                    width: parent.width
-                    text: "With a Windows ISO of your own, OziOS can open .exe files in a window next to your other programs. It is set up separately, after the install."
-                    color: "#F4FCFF"; font.pixelSize: 18; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-                }
-            }
+        OziSlide {
+            heading: presentation.say("Windows programs", "Windows programları")
+            words: presentation.say("With a Windows ISO of your own, OziOS can open .exe files in a window next to your other programs. It is set up separately, after the install.",
+                                    "Kendi Windows ISO'nuz varsa OziOS, .exe dosyalarını diğer programlarınızın yanında bir pencerede açabilir. Kurulumdan sonra ayrıca ayarlanır.")
         }
     }
 }

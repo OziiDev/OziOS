@@ -71,7 +71,7 @@ package() {
 
   # The installer's look, and the boot menu and boot loader splash.
   local branding="$pkgdir/usr/share/calamares/branding/ozios"
-  install -Dm644 -t "$branding" "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml}
+  install -Dm644 -t "$branding" "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml,OziSlide.qml}
   sed "s/@VERSION@/$pkgver/g" "$src/branding/calamares/ozios/branding.desc" > "$srcdir/branding.desc"
   install -Dm644 "$srcdir/branding.desc" "$branding/branding.desc"
   install -Dm644 "$src/branding/boot/theme.txt" "$pkgdir/usr/share/grub/themes/ozios/theme.txt"

@@ -26,7 +26,7 @@ install -m644 "$src"/branding/boot/limine-splash.png "$src"/branding/boot/deskto
 install -m644 "$src"/desktop/layouts/*.js /usr/share/ozios/layouts/
 [ ! -d "$src/edu/layouts" ] || install -m644 "$src"/edu/layouts/*.js /usr/share/ozios/layouts/
 mkdir -p /usr/share/calamares/branding/ozios /usr/share/grub/themes/ozios
-install -m644 "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml} /usr/share/calamares/branding/ozios/
+install -m644 "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml,OziSlide.qml} /usr/share/calamares/branding/ozios/
 install -m644 "$src"/branding/boot/theme.txt "$src"/branding/boot/background.png /usr/share/grub/themes/ozios/
 install -m644 "$src/data/i18n/tr.json" /usr/share/ozios/data/i18n/tr.json
 version="$(tr -d '[:space:]' < "$src/VERSION")"
