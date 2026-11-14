@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Click through the Calamares installer in a VirtualBox guest with the keyboard,
-# with the answers a test needs: erase the whole disk, default bootloader and
-# desktop, user "tester". Start the installer in the guest first
-# (/usr/local/bin/calamares-online.sh) and wait for its window.
+# with the answers a test needs: erase the whole disk, default desktop, user
+# "tester". Start the installer in the guest first (tools/launch-installer.sh
+# does, and waits for its window).
 #
 #   tools/drive-calamares.sh <vm> [password]
 #
-# The guest keyboard is Turkish Q in the Education edition, where an "i" typed
-# from here becomes a dotless one, so the name, host name and password avoid it.
-# The window is Turkish when the live session is: Alt+S is "Sonraki" (Next),
-# Alt+K is "Kur" (Install). In English they are Alt+N and Alt+I.
+# With a Turkish Q keyboard in the guest an "i" typed from here becomes a
+# dotless one, so the name, host name and password avoid it. The installer
+# picks its language from where the computer is: in Turkish, Alt+S is "Sonraki"
+# (Next) and Alt+K is "Kur" (Install); with CALAMARES_LANG=en they are Alt+N
+# and Alt+I. Look at the screenshots it leaves before trusting a run.
 set -u
 vm="${1:?usage: drive-calamares.sh <vm> [password]}"
 password="${2:-Test1234!}"

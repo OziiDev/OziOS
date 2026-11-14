@@ -45,6 +45,12 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
   without it, only the list). Installing Steam by hand lets pacman pick the driver
   set, which may be for the wrong card.
 - The login screen shows the OziOS wallpaper instead of the stock Plasma one.
+- The apps are set in Overpass, which the package now brings (`ttf-overpass`); before,
+  the font they asked for was not in the image and a fallback was used. The
+  Welcome window lists its entries as plain rows and has a Games entry.
+- `ozi doctor` checks what games need: the memory map limit, Steam and the 32-bit
+  Vulkan loader.
+- Install guides: `docs/INSTALL.md` and `docs/KURULUM.md`.
 - The boot menu of an installed system no longer lists CachyOS, and its default entry boots.
 - The installer no longer downloads the CachyOS kernels it used to put on the
   new system and remove again, and does not offer ZFS as a root file system.
@@ -53,8 +59,9 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
   `$HOME` (systemd's generator escapes it), so the marker is written.
 - Installer: steps that took longer than the default 30 seconds (pacman keyring,
   mirror ranking) are given ten minutes, so a slow network no longer fails the
-  installation, and starting the installer a second time works. The desktop and
-  boot loader choosers are OziOS's own: the desktop page offers KDE only.
+  installation, and starting the installer a second time works. The desktop
+  page offers Plasma only, and the page that asked which boot loader to use is
+  gone: the installer takes its default.
 - Tools for working on the image: `tools/qml-shot.py` takes pictures of an
   app's window offscreen and can drive it with pointer events, `tools/sync-live.sh`
   puts a checkout into a running live session, `tools/drive-calamares.sh`
