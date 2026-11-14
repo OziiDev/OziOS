@@ -105,9 +105,28 @@ def patch_settings(text):
     return "\n".join(out) if changed else text
 
 
+def add_label_translation(text, key, translation, language="tr"):
+    """Add a translated line after a label's English one, in the same indentation.
+
+    The installer's own labels come with a handful of languages and Turkish is not
+    one of them, so its sidebar would stay English in a Turkish session.
+    """
+    lines = text.split("\n")
+    if any(re.match(r"^\s+%s\[%s\]:" % (re.escape(key), re.escape(language)), line) for line in lines):
+        return text
+    for i, line in enumerate(lines):
+        match = re.match(r"^(\s+)%s:\s" % re.escape(key), line)
+        if match:
+            lines.insert(i + 1, '%s%s[%s]: "%s"' % (match.group(1), key, language, translation))
+            break
+    return "\n".join(lines)
+
+
 def patch_netinstall_conf(text):
     """Use only the local package list, not the one the CachyOS project publishes."""
-    return "\n".join(line for line in text.split("\n") if not re.match(r"^\s*-\s+https?://", line))
+    text = "\n".join(line for line in text.split("\n") if not re.match(r"^\s*-\s+https?://", line))
+    text = add_label_translation(text, "sidebar", "Paketler")
+    return add_label_translation(text, "title", "Ek paketler")
 
 
 def patch_netinstall_yaml(text):
@@ -142,6 +161,7 @@ def patch_netinstall_yaml(text):
 
 def patch_packagechooser_desktop(text):
     """Only Plasma (and no desktop at all) is offered, with a picture of OziOS."""
+    text = add_label_translation(text, "step", "Masaüstü")
     lines = text.split("\n")
     starts = [i for i, line in enumerate(lines) if re.match(r"^    - id:", line)]
     if not starts:
@@ -161,8 +181,9 @@ def patch_packagechooser_desktop(text):
 
 def patch_packagechooser_bootloader(text):
     """The preview pictures of the boot loaders show CachyOS menus; the descriptions say enough."""
-    return "\n".join(line for line in text.split("\n")
+    text = "\n".join(line for line in text.split("\n")
                      if not re.match(r'^\s+screenshot:\s*"/etc/calamares/images/bootloaders/', line))
+    return add_label_translation(text, "step", "Önyükleyici")
 
 
 def patch_shellprocess_timeout(text, floor=TIMEOUT_FLOOR):

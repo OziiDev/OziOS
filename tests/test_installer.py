@@ -138,6 +138,11 @@ class PackageLists(unittest.TestCase):
 DESKTOPS = """\
 mode: required
 method: netinstall-select
+
+labels:
+    step: "Desktop"
+    step[fi]: "Työpöytä"
+
 default: KDE-Desktop
 
 items:
@@ -161,6 +166,10 @@ items:
 """
 
 BOOTLOADERS = """\
+labels:
+    step: "Bootloader"
+    step[ru]: "Загрузчик"
+
 items:
     - id: grub
       name: "GRUB"
@@ -227,6 +236,34 @@ class Choosers(unittest.TestCase):
     def test_descriptions_that_are_shown_name_oziOS(self):
         text = installer.patch_netinstall_yaml(MORE_GROUPS)
         self.assertIn('description: "Printers, as OziOS configures them"', text)
+
+
+class Labels(unittest.TestCase):
+    CONF = ('label:\n sidebar: "Packages"\n sidebar[de]: "Pakete"\n title: "Additional packages"\n'
+            ' title[ru]: "x"\nrequired: true\n')
+
+    def test_the_sidebar_is_turkish_in_a_turkish_session(self):
+        out = installer.patch_netinstall_conf(self.CONF)
+        self.assertIn(' sidebar[tr]: "Paketler"', out)
+        self.assertIn(' title[tr]: "Ek paketler"', out)
+        self.assertLess(out.index('sidebar: "Packages"'), out.index("sidebar[tr]"))     # after the English line
+        self.assertIn('sidebar[de]: "Pakete"', out)                                     # the others stay
+
+    def test_the_choosers_get_turkish_names(self):
+        self.assertIn('    step[tr]: "Masaüstü"', installer.patch_packagechooser_desktop(DESKTOPS))
+        self.assertIn('    step[tr]: "Önyükleyici"', installer.patch_packagechooser_bootloader(BOOTLOADERS))
+
+    def test_a_label_is_translated_once(self):
+        once = installer.patch_netinstall_conf(self.CONF)
+        self.assertEqual(installer.patch_netinstall_conf(once), once)
+        self.assertEqual(once.count("sidebar[tr]"), 1)
+
+    def test_a_translation_that_is_already_there_wins(self):
+        conf = 'label:\n sidebar: "Packages"\n sidebar[tr]: "Yazılımlar"\n'
+        self.assertEqual(installer.add_label_translation(conf, "sidebar", "Paketler"), conf)
+
+    def test_a_file_without_the_label_is_left_alone(self):
+        self.assertEqual(installer.add_label_translation("mode: required\n", "step", "x"), "mode: required\n")
 
 
 class Timeouts(unittest.TestCase):
