@@ -1,0 +1,40 @@
+#compdef ozi
+# zsh completion for ozi
+local -a commands
+commands=(
+  'update:update the system'
+  'install:install packages from the repos or the AUR'
+  'remove:remove packages'
+  'search:search for packages'
+  'review:check a package before installing it'
+  'box:install a Debian or Ubuntu package into its own box'
+  'apps:list boxed apps'
+  'rollback:list snapshots'
+  'layout:panel layout'
+  'effects:window effects'
+  'mode:game mode'
+  'status:version, kernel, effects and updates'
+  'doctor:check that the system is in good shape'
+  'report:write a bug report without names and addresses'
+  'clean:free disk space'
+  'play:run a game with game mode on'
+  'winsetup:set up the Windows guest'
+  'reboot-windows:reboot into Windows'
+  'hw:show what this machine supports'
+  'help:show help'
+)
+if (( CURRENT == 2 )); then
+  _describe 'command' commands
+  return
+fi
+case $words[2] in
+  layout)  _values 'layout' default deck classic board ;;
+  effects) _values 'level' full light off ;;
+  mode)    (( CURRENT == 3 )) && _values 'mode' game || _values 'state' on off ;;
+  status)  _arguments '--json[machine-readable output]' ;;
+  doctor)  _arguments '--json[machine-readable output]' '--quiet[only warnings and problems]' ;;
+  report)  _arguments '--output[where to write the report]:file:_files' '--stdout[print instead of writing a file]' ;;
+  clean)   _arguments '--yes[do it]' '--only[only these]:items:(cache journal orphans user)' ;;
+  play)    _arguments '--gpu[graphics card]:gpu:(auto integrated discrete)' '--mangohud[performance overlay]' '--no-gamemode' '--no-mode' ;;
+  review|box) _files ;;
+esac

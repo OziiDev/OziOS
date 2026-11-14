@@ -33,6 +33,10 @@ usage: ozi <command>
   effects <level>      window effects: full, light or off
   mode game on|off     game mode: performance profile, no compositing effects
   status [--json]      version, kernel, effects, game mode, Windows guest, updates
+  doctor [--json]      check that the system is in good shape
+  report               write a bug report, names and addresses removed
+  clean [--yes]        free disk space (shows what first)
+  play -- <game>       run a game with game mode on (Steam: ozi play -- %command%)
   winsetup             set up the Windows guest
   reboot-windows       reboot into real Windows (dual boot only)
   hw                   show what this machine supports
@@ -209,6 +213,9 @@ case "$cmd" in
     ;;
   status)
     status "${1:-}"
+    ;;
+  doctor | report | clean | play)
+    exec ozi-tools "$cmd" "$@"
     ;;
   winsetup)
     exec ozi-winsetup "$@"

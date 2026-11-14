@@ -111,6 +111,44 @@ class Main(unittest.TestCase):
         self.assertEqual(events[-1]["event"], "error")
 
 
+class Cleaning(unittest.TestCase):
+    def test_the_fixed_commands(self):
+        self.assertEqual(helper.plan(["clean-cache"])[0], [["paccache", "-rk2"], ["paccache", "-ruk0"]])
+        self.assertEqual(helper.plan(["clean-journal"])[0], [["journalctl", "--vacuum-time=14d"]])
+        self.assertEqual(helper.plan(["clean-orphans"])[0], [])
+
+    def test_no_arguments_are_accepted(self):
+        for verb in ("clean-cache", "clean-journal", "clean-orphans"):
+            with self.assertRaises(helper.HelperError, msg=verb):
+                helper.plan([verb, "--all"])
+
+    def test_orphans_skip_the_protected_and_the_odd(self):
+        names = helper.orphan_names(lambda cmd: (0, "libfoo\nlinux-headers\nlinux-ozios-zfs\nozios-edu\nbase-devel\n-Rdd\nbar+baz\n"))
+        self.assertEqual(names, ["libfoo", "bar+baz"])
+
+    def test_no_orphans_is_not_an_error(self):
+        self.assertEqual(helper.orphan_names(lambda cmd: (1, "")), [])
+
+    def run_main(self, orphans, runner):
+        out = io.StringIO()
+        code = helper.main(["clean-orphans"], out=out, runner=runner, geteuid=lambda: 0,
+                           capture_output=lambda cmd: orphans)
+        return code, [json.loads(line) for line in out.getvalue().splitlines()]
+
+    def test_orphans_are_removed_by_name_in_one_command(self):
+        commands = []
+        code, events = self.run_main((0, "libfoo\nlibbar\n"), lambda cmd, o: commands.append(cmd) or 0)
+        self.assertEqual(code, 0)
+        self.assertEqual(commands, [["pacman", "-Rns", "--noconfirm", "--", "libfoo", "libbar"]])
+        self.assertIn("removing: libfoo libbar", [e.get("line") for e in events])
+
+    def test_nothing_to_remove_runs_nothing(self):
+        commands = []
+        code, events = self.run_main((1, ""), lambda cmd, o: commands.append(cmd) or 0)
+        self.assertEqual((code, commands), (0, []))
+        self.assertIn("no unneeded packages", [e.get("line") for e in events])
+
+
 class FakeProc:
     def __init__(self, lines):
         self.stdout = iter(lines)

@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=OziOS first login
-Exec=sh -c 'test -e "$HOME/.config/ozios-applied" || { touch "$HOME/.config/ozios-applied"; sleep 4; bash /usr/share/ozios/tools/apply-branding.sh; }'
+Exec=/usr/lib/ozios/first-login
 OnlyShowIn=KDE;
 NoDisplay=true

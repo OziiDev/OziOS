@@ -1,0 +1,13 @@
+#!/bin/sh
+# Started once per login by /etc/xdg/autostart/ozios-first-login.desktop; does its
+# work only the first time. The marker keeps later logins from putting the
+# desktop back to its defaults after the user has changed it.
+#
+# This is a script and not an Exec line in the .desktop file because systemd's
+# autostart generator escapes a dollar sign, so "$HOME" reaches the shell as a
+# literal and the marker was never found.
+marker="${XDG_CONFIG_HOME:-$HOME/.config}/ozios-applied"
+[ -e "$marker" ] && exit 0
+mkdir -p "$(dirname "$marker")" && touch "$marker"
+sleep 4
+exec bash /usr/share/ozios/tools/apply-branding.sh

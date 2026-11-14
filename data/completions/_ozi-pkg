@@ -1,0 +1,24 @@
+#compdef ozi-pkg
+# zsh completion for ozi-pkg
+local -a commands
+commands=(
+  'review:show what is inside a package and what deserves a look'
+  'install:install a package into a box or on the system'
+  'get:install packages from the Arch repositories'
+  'uninstall:remove packages from the system'
+  'aur:build packages from the AUR in a box and install them'
+  'search:search the AUR'
+  'upgrade:update the whole system'
+  'undo:roll the system back to a snapshot'
+  'list:installed boxes'
+  'perms:show or change what an app may reach'
+  'run:start a boxed app'
+  'remove:delete a box'
+)
+if (( CURRENT == 2 )); then
+  _describe 'command' commands
+  return
+fi
+case $words[2] in
+  review|install) _files ;;
+esac

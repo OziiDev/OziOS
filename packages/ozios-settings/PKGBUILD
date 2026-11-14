@@ -4,13 +4,15 @@ pkgrel=1
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap)
+depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib)
 optdepends=(
   'freerdp: open Windows programs from the desktop'
   'libvirt: run the Windows guest'
   'virt-install: set up the Windows guest'
   'libisoburn: set up the Windows guest'
   'snapper: snapshots before package changes'
+  'gamemode: ozi play uses it when it is installed'
+  'mangohud: performance overlay for ozi play --mangohud'
 )
 install=ozios-settings.install
 options=(!strip !debug)
@@ -25,6 +27,7 @@ package() {
   install -Dm755 "$src/packages/ozi-cli/ozi"   "$pkgdir/usr/bin/ozi"
   install -Dm755 "$src/packages/ozi-cli/ozi-pkg" "$pkgdir/usr/bin/ozi-pkg"
   install -Dm755 "$src/packages/ozi-cli/ozi-box" "$pkgdir/usr/bin/ozi-box"
+  install -Dm755 "$src/packages/ozi-cli/ozi-tools" "$pkgdir/usr/bin/ozi-tools"
   install -d "$pkgdir/usr/lib/ozios/python"
   cp -r "$src/python/ozipkg" "$pkgdir/usr/lib/ozios/python/"
   find "$pkgdir/usr/lib/ozios/python" -name __pycache__ -prune -exec rm -rf {} +
@@ -74,8 +77,18 @@ package() {
   install -Dm644 "$src/branding/boot/theme.txt" "$pkgdir/usr/share/grub/themes/ozios/theme.txt"
   install -Dm644 "$src/branding/boot/background.png" "$pkgdir/usr/share/grub/themes/ozios/background.png"
   install -Dm644 "$src/branding/boot/limine-splash.png" "$share/branding/limine-splash.png"
+  install -Dm644 "$src/branding/boot/desktop.png" "$share/branding/desktop.png"
 
-  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper"
+  # Completions for the shells people use.
+  local comp="$src/data/completions"
+  install -Dm644 "$comp/ozi.bash"     "$pkgdir/usr/share/bash-completion/completions/ozi"
+  install -Dm644 "$comp/ozi-pkg.bash" "$pkgdir/usr/share/bash-completion/completions/ozi-pkg"
+  install -Dm644 "$comp/ozi.fish"     "$pkgdir/usr/share/fish/vendor_completions.d/ozi.fish"
+  install -Dm644 "$comp/ozi-pkg.fish" "$pkgdir/usr/share/fish/vendor_completions.d/ozi-pkg.fish"
+  install -Dm644 "$comp/_ozi"         "$pkgdir/usr/share/zsh/site-functions/_ozi"
+  install -Dm644 "$comp/_ozi-pkg"     "$pkgdir/usr/share/zsh/site-functions/_ozi-pkg"
+
+  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper" "$here/first-login"
   install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
   # Graphical apps: Software and Welcome, sharing the OziUi components.
   local apps="$pkgdir/usr/lib/ozios/apps"

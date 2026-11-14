@@ -132,6 +132,124 @@ class PackageLists(unittest.TestCase):
         self.assertIn("cachyos-settings", out)
 
 
+DESKTOPS = """\
+mode: required
+method: netinstall-select
+default: KDE-Desktop
+
+items:
+    - id: ""
+      # packages: [] # This item installs no packages
+      name: "No Desktop"
+      screenshot: ":/images/no-selection.png"
+
+    - id: KDE-Desktop
+      name: "Plasma Desktop"
+      description: "Use Plasma to surf the web."
+      screenshot: "/etc/calamares/images/kde.webp"
+
+    - id: GNOME-Desktop
+      name: "GNOME"
+      screenshot: "/etc/calamares/images/gnome.webp"
+
+    - id: Openbox
+      name: "Openbox"
+      screenshot: "/etc/calamares/images/openbox.jxl"
+"""
+
+BOOTLOADERS = """\
+items:
+    - id: grub
+      name: "GRUB"
+      description: "GRUB is the oldest."
+      screenshot: "/etc/calamares/images/bootloaders/grub.jxl"
+    - id: limine
+      name: "Limine"
+      screenshot: "/etc/calamares/images/bootloaders/limine.jxl"
+"""
+
+MORE_GROUPS = NETINSTALL + """\
+- name: "GNOME-Desktop"
+  description: "GNOME desktop environment"
+  packages:
+    - gnome-shell
+    - cachyos-gnome-settings
+- name: "CachyOS Handhelds"
+  packages:
+    - cachyos-handheld
+- name: "Openbox"
+  packages:
+    - openbox
+- name: "Printing-Support"
+  description: "Printers, as CachyOS configures them"
+  packages:
+    - cups
+"""
+
+
+class Choosers(unittest.TestCase):
+    def test_only_plasma_and_no_desktop_are_offered(self):
+        text = installer.patch_packagechooser_desktop(DESKTOPS)
+        ids = [line.strip() for line in text.split("\n") if line.startswith("    - id:")]
+        self.assertEqual(ids, ['- id: ""', "- id: KDE-Desktop"])
+        self.assertNotIn("GNOME", text)
+        self.assertIn("default: KDE-Desktop", text)
+
+    def test_plasma_gets_our_picture_and_no_desktop_keeps_its_own(self):
+        text = installer.patch_packagechooser_desktop(DESKTOPS)
+        self.assertIn('screenshot: "%s"' % installer.DESKTOP_PREVIEW, text)
+        self.assertIn('screenshot: ":/images/no-selection.png"', text)
+        self.assertNotIn("kde.webp", text)
+
+    def test_the_desktop_chooser_is_idempotent(self):
+        once = installer.patch_packagechooser_desktop(DESKTOPS)
+        self.assertEqual(installer.patch_packagechooser_desktop(once), once)
+
+    def test_a_file_without_items_is_left_alone(self):
+        self.assertEqual(installer.patch_packagechooser_desktop("mode: required\n"), "mode: required\n")
+
+    def test_the_boot_loader_chooser_loses_the_cachyos_pictures(self):
+        text = installer.patch_packagechooser_bootloader(BOOTLOADERS)
+        self.assertNotIn("screenshot", text)
+        self.assertIn('name: "Limine"', text)
+        self.assertIn("GRUB is the oldest.", text)
+
+    def test_other_desktops_and_handhelds_leave_the_package_list(self):
+        text = installer.patch_netinstall_yaml(MORE_GROUPS)
+        for name in ("GNOME-Desktop", "CachyOS Handhelds", "Openbox", "gnome-shell", "cachyos-handheld"):
+            self.assertNotIn(name, text)
+        for name in ("KDE-Desktop", "Printing-Support", "plasma-meta", "cups"):
+            self.assertIn(name, text)
+
+    def test_descriptions_that_are_shown_name_oziOS(self):
+        text = installer.patch_netinstall_yaml(MORE_GROUPS)
+        self.assertIn('description: "Printers, as OziOS configures them"', text)
+
+
+class Timeouts(unittest.TestCase):
+    def test_a_step_without_a_timeout_gets_room(self):
+        out = installer.patch_shellprocess_timeout("---\ndontChroot: true\nscript:\n - a\n")
+        self.assertEqual(out.split("\n")[:3], ["---", "timeout: 600", "dontChroot: true"])
+
+    def test_a_short_timeout_is_raised_and_a_long_one_kept(self):
+        self.assertIn("timeout: 600", installer.patch_shellprocess_timeout("timeout: 10\nscript:\n"))
+        self.assertEqual(installer.patch_shellprocess_timeout("timeout: 3600\nscript:\n"), "timeout: 3600\nscript:\n")
+
+    def test_a_file_without_a_document_marker_gets_the_key_first(self):
+        self.assertTrue(installer.patch_shellprocess_timeout("script:\n - a\n").startswith("timeout: 600\n"))
+
+    def test_idempotent(self):
+        once = installer.patch_shellprocess_timeout("---\nscript:\n")
+        self.assertEqual(installer.patch_shellprocess_timeout(once), once)
+
+
+class Welcome(unittest.TestCase):
+    def test_the_internet_check_does_not_ask_cachyos(self):
+        out = installer.patch_welcome("    internetCheckUrl:   https://wiki.cachyos.org\n    #internetCheckUrl: x\n")
+        self.assertIn("https://archlinux.org", out)
+        self.assertNotIn("cachyos", out)
+
+
 class Boot(unittest.TestCase):
     def test_grub_uses_our_theme_and_kernel(self):
         text = 'defaults:\n    GRUB_TOP_LEVEL: "/boot/vmlinuz-linux-cachyos"\n    GRUB_THEME: "/usr/share/grub/themes/cachyos/theme.txt"\n'

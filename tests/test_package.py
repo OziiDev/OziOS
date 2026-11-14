@@ -66,7 +66,7 @@ class InstallerPieces(unittest.TestCase):
     def test_branding_and_boot_files_are_in_the_package_and_exist(self):
         text = read("packages", "ozios-settings", "PKGBUILD")
         for rel in ("branding/calamares/ozios/branding.desc", "branding/boot/theme.txt", "branding/boot/background.png",
-                    "branding/boot/limine-splash.png"):
+                    "branding/boot/limine-splash.png", "branding/boot/desktop.png"):
             self.assertIn(rel, text)
             self.assertTrue(os.path.exists(os.path.join(ROOT, rel)), rel)
 
@@ -135,6 +135,32 @@ class Layouts(unittest.TestCase):
         theme = read("desktop", "look-and-feel", "org.ozios.desktop", "contents", "layouts", "org.kde.plasma.desktop-layout.js")
         theme = theme.split("var desktops")[0]          # the wallpaper lines are the theme's own
         self.assertEqual(body(theme), body(read("desktop", "layouts", "default.js")))
+
+
+class DesktopEntries(unittest.TestCase):
+    def entries(self):
+        patterns = ("apps/*.desktop", "winbridge/*.desktop", "edu/applications/*.desktop", "packages/*/*.desktop")
+        return [p for pattern in patterns for p in glob.glob(os.path.join(ROOT, pattern))]
+
+    def test_there_are_entries_to_check(self):
+        self.assertGreater(len(self.entries()), 8)
+
+    def test_exec_lines_have_no_dollar_signs(self):
+        """systemd's autostart generator escapes `$`, so "$HOME" in an Exec line
+        reaches the shell as a literal. The first-login marker was never found
+        because of it. Anything that needs a variable belongs in a script."""
+        for path in self.entries():
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    if line.startswith("Exec=") or line.startswith("TryExec="):
+                        self.assertNotIn("$", line, "%s: %s" % (path, line.strip()))
+
+    def test_first_login_is_a_script_that_creates_its_marker(self):
+        script = read("packages", "ozios-settings", "first-login")
+        self.assertIn("ozios-applied", script)
+        self.assertIn("touch", script)
+        self.assertIn("/usr/lib/ozios/first-login", read("packages", "ozios-settings", "first-login.desktop"))
+        self.assertIn("first-login", read("packages", "ozios-settings", "PKGBUILD"))
 
 
 class Qml(unittest.TestCase):

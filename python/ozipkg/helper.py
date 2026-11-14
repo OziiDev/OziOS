@@ -24,7 +24,12 @@ NAME = re.compile(r"^[a-z0-9@._+][a-z0-9@._+-]{0,99}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PKGFILE = re.compile(r"^[^\0]+\.pkg\.tar\.(zst|xz|gz|bz2|lz4)$")
 NUMBER = re.compile(r"^[0-9]{1,9}$")
-VERBS = ("install-repo", "install-file", "remove", "upgrade", "snapshot", "undo", "subids")
+VERBS = ("install-repo", "install-file", "remove", "upgrade", "snapshot", "undo", "subids",
+         "clean-cache", "clean-journal", "clean-orphans")
+# Never removed as an "orphan", whatever pacman says: the parts a system needs to start.
+PROTECTED = re.compile(r"^(linux|base|filesystem|pacman|glibc|systemd|bash|coreutils|grub|limine|refind|mkinitcpio|"
+                       r"ozios|polkit|podman|networkmanager|plasma-login|sddm|greetd|plasma-desktop|plasma-workspace|"
+                       r"kwin|btrfs-progs|e2fsprogs|dosfstools|efibootmgr|sudo|snapper)(-|$)")
 USERNAME = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 SUBID_FILES = ("/etc/subuid", "/etc/subgid")
 SUBID_FIRST, SUBID_COUNT = 100000, 65536
@@ -151,6 +156,14 @@ def plan(argv, staging=STAGING, stage=stage_file):
         if args:
             raise HelperError("subids takes no arguments")
         return [], []                      # done by main(), which knows who called
+    if verb in ("clean-cache", "clean-journal", "clean-orphans"):
+        if args:
+            raise HelperError("%s takes no arguments" % verb)
+        if verb == "clean-cache":                  # keep the two newest versions, drop packages that are gone
+            return [["paccache", "-rk2"], ["paccache", "-ruk0"]], []
+        if verb == "clean-journal":
+            return [["journalctl", "--vacuum-time=14d"]], []
+        return [], []                              # orphans are listed by main() when it runs
     if verb == "install-repo":
         return [["pacman", "-S", "--needed", "--noconfirm", "--"] + check_names(args)], []
     if verb == "remove":
@@ -191,7 +204,26 @@ def run_streaming(cmd, out):
     return proc.wait()
 
 
-def main(argv=None, out=None, runner=run_streaming, geteuid=None):
+def capture(cmd):
+    """(exit status, standard output) of a command run with the fixed environment."""
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True, env=SAFE_ENV, stdin=subprocess.DEVNULL,
+                              errors="replace", timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return 127, ""
+    return done.returncode, done.stdout
+
+
+def orphan_names(capture_output=capture):
+    """Packages installed as dependencies that nothing needs any more, minus the protected ones."""
+    code, text = capture_output(["pacman", "-Qdtq"])
+    if code != 0:
+        return []
+    names = [line.strip() for line in text.splitlines() if line.strip()]
+    return [name for name in names if NAME.match(name) and not PROTECTED.match(name)]
+
+
+def main(argv=None, out=None, runner=run_streaming, geteuid=None, capture_output=capture):
     argv = list(sys.argv[1:] if argv is None else argv)
     out = out or sys.stdout
     geteuid = geteuid or getattr(os, "geteuid", lambda: 0)
@@ -205,6 +237,13 @@ def main(argv=None, out=None, runner=run_streaming, geteuid=None):
         if argv[0] == "subids":
             added = grant_subids(os.environ.get("PKEXEC_UID"))
             emit({"event": "output", "line": "sub-id range added" if added else "sub-id range already there"}, out)
+        if argv[0] == "clean-orphans":
+            names = orphan_names(capture_output)
+            if not names:
+                emit({"event": "output", "line": "no unneeded packages"}, out)
+            else:
+                emit({"event": "output", "line": "removing: " + " ".join(names)}, out)
+                commands = [["pacman", "-Rns", "--noconfirm", "--"] + names]
         code = 0
         for cmd in commands:
             code = runner(cmd, out)
