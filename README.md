@@ -12,8 +12,9 @@ The desktop after a fresh install, the login screen and the Welcome window:
 ![Welcome](docs/img/welcome.png)
 
 **Status: early development.** A live ISO boots to the OziOS desktop on the
-OziOS kernel in a virtual machine, and the package installer works for `.deb`,
-AppImage and Arch packages. The Windows layer has not run on a real guest yet
+OziOS kernel in a virtual machine, the installer puts it on a disk and the
+result starts, and the package installer works for `.deb`, AppImage and Arch
+packages. The Windows layer has not run on a real guest yet
 and nothing has been tried on real hardware. See
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 

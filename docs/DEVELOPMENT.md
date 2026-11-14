@@ -57,16 +57,15 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
 - `.deb` packages install into rootless podman boxes and run with their saved
   permissions; AppImages install and run in a bubblewrap sandbox. The helper
   runs through `pkexec`.
-- The installer step (`install-to-target`) was run against a base system made
-  with `tools/test-install-target.sh`: it installs `ozios-settings` and the
-  `linux-ozios` packages, builds the initramfs, puts the OziOS kernel first in
-  the GRUB menu, and the result boots to a login prompt on `7.1.6-1-ozios`.
+- A full installation through the Calamares windows, on an empty disk: the
+  installer rewrite, the OziOS step (`install-to-target`), the OziOS kernel,
+  Limine as boot loader and the first login all work. The installed system
+  starts on `7.1.6-1-ozios` with no CachyOS kernel, shows the OziOS login
+  screen and desktop, and the boot menu starts it by itself. `tools/launch-installer.sh`,
+  `tools/drive-calamares.sh` and `tools/inspect-target.sh` repeat that test.
 
 ## Not done yet
 
-- A complete installation through the Calamares windows has not been run. The
-  CachyOS installer installs online (pacstrap and a net install list); only the
-  OziOS step at its end was exercised, on its own.
 - The live session has a polkit rule that allows everything without a password,
   so the password prompt of the helper has not been seen. It is the stock
   `auth_admin_keep` action.
@@ -74,8 +73,10 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
 - Windows guest: scripts exist (`winbridge/`, `winimage/`) but have never run
   against a real guest, because the development machine cannot run one. GPU
   passthrough is not automated; `ozi hw` only reports what the machine can do.
-- The login screen is still the one the installer sets up.
-- Nothing has been run on real hardware.
+- Installing next to another system (dual boot), BIOS mode, encrypted disks
+  and ZFS (not offered) have not been tried.
+- Nothing has been run on real hardware. A virtual machine does not show how
+  a real graphics card, Wi-Fi chip or touch screen behaves.
 
 ## What is still CachyOS
 
