@@ -23,7 +23,9 @@ donanımda hiçbir şey denenmedi. Ayrıntılar: [docs/DEVELOPMENT.md](docs/DEVE
   ve bu depodan yayımlanır. İmajda ve kurulan sistemde CachyOS çekirdeği,
   programı ya da görseli yok.
 - **Akıllı tahtalar için Eğitim sürümü:** tahta düzeni, ekran kalemi, beyaz
-  tahta, Türkçe varsayılanlar. Ayrıntılar: [docs/EDUCATION.md](docs/EDUCATION.md).
+  tahta, sınıf uygulaması (öğrenci seçici, gruplar, zamanlayıcı), Türkçe
+  varsayılanlar. Öğretmen kılavuzu: [docs/EGITIM.md](docs/EGITIM.md); teknik
+  ayrıntılar: [docs/EDUCATION.md](docs/EDUCATION.md).
 
 Lisans: bu depodaki kod MIT. KDE, CachyOS ve diğer projelerden türeyen
 dosyalar kendi lisanslarını korur.

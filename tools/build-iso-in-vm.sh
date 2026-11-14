@@ -24,4 +24,4 @@ command -v xorriso >/dev/null || { echo "build: no xorriso"; exit 1; }
 rm -rf /mnt/build/remaster
 rm -f "$log"
 systemd-run --unit "ozi-remaster-$$" --working-directory="$repo" bash -c \
-  "bash $repo/iso/remaster.sh --kernel $repo/.kernel-pkgs --archive 2026/08/09 --add 'python-pyqt6 podman bubblewrap' $edition > $log 2>&1; echo \"exit \$?\" >> $log"
+  "bash $repo/iso/remaster.sh --kernel $repo/.kernel-pkgs --archive 2026/08/09 --add 'python-pyqt6 podman bubblewrap pacman-contrib' $edition > $log 2>&1; echo \"exit \$?\" >> $log"

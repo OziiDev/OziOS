@@ -43,7 +43,7 @@ Same as the ordinary image, with `--edition edu`:
 
 ```
 sudo iso/remaster.sh --edition edu --kernel <kernel packages> \
-     --archive 2026/08/09 --add "python-pyqt6 podman bubblewrap"
+     --archive 2026/08/09 --add "python-pyqt6 podman bubblewrap pacman-contrib"
 ```
 
 The result is `ozios-edu-<version>-<date>-x86_64.iso`. LibreOffice makes the image

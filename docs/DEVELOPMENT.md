@@ -90,7 +90,9 @@ tools are built on them:
   `chwd` (graphics driver detection).
 - The Calamares build (`cachyos-calamares-next`), with its modules and scripts.
   Its look, package list, boot loader entry name and host name are replaced
-  (`python/ozipkg/installer.py`).
+  (`python/ozipkg/installer.py`). That includes code: the module that installs
+  the base system adds the CachyOS kernels and, for GRUB, a CachyOS theme on its
+  own, so the rewrite edits those lines out of the module.
 - `ID=cachyos` in `os-release`, which those tools read to see that they are on
   a supported system. `NAME`, `PRETTY_NAME`, the links and the logo are ours.
 

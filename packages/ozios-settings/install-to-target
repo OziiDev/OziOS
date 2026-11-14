@@ -37,7 +37,8 @@ early() {
 
   # One by one: the NVIDIA modules need the exact driver version and may not
   # match what the installer fetched; that must not block the kernel.
-  for pkg in $(ls /opt/ozios/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | sort); do
+  # (Not the ZFS modules: the installer does not offer ZFS as a root file system.)
+  for pkg in $(ls /opt/ozios/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | grep -v -- '-zfs-' | sort); do
     install_pkg "$pkg" || echo "ozios: could not install $(basename "$pkg")"
   done
   mkdir -p "$root/opt/ozios" && cp -f /opt/ozios/*.pkg.tar.* "$root/opt/ozios/" 2>/dev/null

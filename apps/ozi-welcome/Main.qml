@@ -58,7 +58,7 @@ ApplicationWindow {
                 Layout.preferredHeight: 96
 
                 property real angle: 0
-                NumberAnimation on angle { from: 0; to: Math.PI * 2; duration: 24000; loops: Animation.Infinite; running: window.visible }
+                NumberAnimation on angle { from: 0; to: Math.PI * 2; duration: 24000; loops: Animation.Infinite; running: window.visible && window.active }
                 onAngleChanged: canvas.requestPaint()
 
                 Canvas {
