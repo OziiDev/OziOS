@@ -23,6 +23,7 @@ ACTIONS = {
     # Education edition
     "pen": ["ozi-pen"],
     "whiteboard": ["xournalpp"],
+    "classroom": ["ozi-classroom"],
     "eba": ["xdg-open", "https://eba.gov.tr"],
 }
 MARKER = "ozi-welcome-hidden"

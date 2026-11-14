@@ -30,7 +30,8 @@ and nothing has been tried on real hardware. See
   released from this repository. The image and the installed system carry no
   CachyOS kernel, program or artwork.
 - **An Education edition** for smart boards: board layout, a screen pen,
-  whiteboard, Turkish defaults. See [docs/EDUCATION.md](docs/EDUCATION.md).
+  whiteboard, a classroom app (student picker, groups, timer), Turkish
+  defaults. See [docs/EDUCATION.md](docs/EDUCATION.md).
 
 ## Layout
 

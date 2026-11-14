@@ -18,6 +18,7 @@ tasks.writeConfig("launchers", [
     "applications:com.github.xournalpp.xournalpp.desktop",
     "applications:libreoffice-impress.desktop",
     "applications:org.kde.okular.desktop",
+    "applications:ozi-classroom.desktop",
     "applications:firefox.desktop",
     "applications:ozi-eba.desktop",
     "preferred://filemanager",

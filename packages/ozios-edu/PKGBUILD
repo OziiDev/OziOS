@@ -27,4 +27,10 @@ package() {
   install -d "$pkgdir/usr/bin"
   ln -s /usr/lib/ozios/apps/ozi-pen/ozi-pen "$pkgdir/usr/bin/ozi-pen"
   install -Dm644 "$src/apps/ozi-pen.desktop" "$pkgdir/usr/share/applications/ozi-pen.desktop"
+
+  # Classroom: picking a student, groups, a timer.
+  install -Dm755 "$src/apps/ozi-classroom/ozi-classroom" "$apps/ozi-classroom/ozi-classroom"
+  install -Dm644 "$src/apps/ozi-classroom/Main.qml" "$apps/ozi-classroom/Main.qml"
+  ln -s /usr/lib/ozios/apps/ozi-classroom/ozi-classroom "$pkgdir/usr/bin/ozi-classroom"
+  install -Dm644 "$src/apps/ozi-classroom.desktop" "$pkgdir/usr/share/applications/ozi-classroom.desktop"
 }

@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..
 sys.path.insert(0, "/usr/lib/ozios/apps")
 
 import ozi_qt  # noqa: E402
-from PyQt6.QtCore import pyqtSlot  # noqa: E402
+from PyQt6.QtCore import QStandardPaths, pyqtSlot  # noqa: E402
 
 
 class PenBackend(ozi_qt.Backend):
@@ -17,6 +17,17 @@ class PenBackend(ozi_qt.Backend):
     def demo(self):
         """--demo draws a few strokes, to check the drawing without a pointer."""
         return "--demo" in sys.argv
+
+    @pyqtSlot(result=str)
+    def picturesDir(self):
+        """The folder saved drawings go to, made if it does not exist; empty if that fails."""
+        base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.PicturesLocation) or os.path.expanduser("~")
+        path = os.path.join(base, "ozi-pen")
+        try:
+            os.makedirs(path, exist_ok=True)
+        except OSError:
+            return ""
+        return path
 
 
 if __name__ == "__main__":

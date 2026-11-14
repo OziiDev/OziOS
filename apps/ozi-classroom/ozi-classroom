@@ -1,0 +1,28 @@
+#!/usr/bin/python3
+"""Classroom: pick a student, make groups, time an activity."""
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+sys.path.insert(0, "/usr/lib/ozios/apps")
+
+import ozi_qt  # noqa: E402
+from ozipkg import classroom  # noqa: E402
+
+
+class ClassroomBackend(ozi_qt.Backend):
+    allowed = {
+        "classes": (lambda: {"classes": classroom.list_classes()}, False),
+        "load": (classroom.load, False),
+        "save": (classroom.save, False),
+        "delete": (classroom.delete, False),
+        "pick": (classroom.pick, False),
+        "reset": (classroom.reset_picks, False),
+        "groups": (classroom.groups_for, False),
+        "ding": (lambda: {"played": classroom.ding()}, False),
+    }
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), ClassroomBackend(), "Classroom", "ozi-classroom"))

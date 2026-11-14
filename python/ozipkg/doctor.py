@@ -341,7 +341,7 @@ def check_firmware(p):
 def check_edition(p):
     if (p.read("/usr/share/ozios/edition") or "").strip() != "edu":
         return []
-    missing = [name for name in ("ozi-pen", "xournalpp", "okular") if not p.which(name)]
+    missing = [name for name in ("ozi-pen", "ozi-classroom", "xournalpp", "okular") if not p.which(name)]
     if missing:
         return [Check("edu", "warn", tr("The Education edition is missing programs: {names}", names=", ".join(missing)),
                       "", "sudo pacman -S ozios-edu")]

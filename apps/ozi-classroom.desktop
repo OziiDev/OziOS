@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Classroom
+Name[tr]=Sınıf
+Comment=Pick a student, make groups and time an activity
+Comment[tr]=Öğrenci seç, grup kur ve etkinlik için süre tut
+Exec=ozi-classroom
+Icon=view-calendar-tasks
+Categories=Education;Utility;
+Terminal=false
+StartupWMClass=ozi-classroom
