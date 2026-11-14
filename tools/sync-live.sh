@@ -29,6 +29,7 @@ mkdir -p /usr/share/calamares/branding/ozios /usr/share/grub/themes/ozios
 install -m644 "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml,OziSlide.qml} /usr/share/calamares/branding/ozios/
 install -m644 "$src"/branding/boot/theme.txt "$src"/branding/boot/background.png /usr/share/grub/themes/ozios/
 install -m644 "$src/data/i18n/tr.json" /usr/share/ozios/data/i18n/tr.json
+mkdir -p /etc/plasmalogin.conf.d && install -m644 "$src/branding/login/10-ozios.conf" /etc/plasmalogin.conf.d/10-ozios.conf
 version="$(tr -d '[:space:]' < "$src/VERSION")"
 sed "s/@VERSION@/$version/g" "$src/branding/calamares/ozios/branding.desc" > /usr/share/calamares/branding/ozios/branding.desc
 /usr/lib/ozios/patch-installer
