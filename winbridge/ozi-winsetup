@@ -28,6 +28,13 @@ gui() {
     exit 1
   fi
 
+  local free
+  free="$(df --output=avail -BG /var/lib 2>/dev/null | tail -n 1 | tr -dc '0-9')"
+  if [ "${free:-999}" -lt 70 ]; then
+    kdialog --title "$title" --error "Windows needs about 64 GB of free disk space and the system disk has ${free} GB free.\n\nFree some room (run ozi clean in a terminal) and try again."
+    exit 1
+  fi
+
   kdialog --title "$title" --yes-label "Accept and continue" --no-label "Cancel" --warningyesno \
 "<html><p><b>Windows programs need a copy of Windows.</b></p>
 <p>OziOS does not ship Windows. It installs your own copy inside this system and opens Windows programs as normal windows.</p>

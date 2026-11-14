@@ -38,8 +38,39 @@ class Welcome(unittest.TestCase):
             raise FileNotFoundError
 
         with self.assertRaises(ValueError) as caught:
-            welcome.launch("windows", popen=popen)
-        self.assertIn("ozi-winsetup", str(caught.exception))
+            welcome.launch("store", popen=popen)
+        self.assertIn("ozi-store", str(caught.exception))
+
+    def test_a_program_that_stops_at_once_says_why(self):
+        class Quick:
+            def __init__(self, code):
+                self.code = code
+
+            def poll(self):
+                return self.code
+
+        def popen(cmd, stderr=None, **kwargs):
+            stderr.write(b"first line\nozi-store: no display\n")
+            return Quick(1)
+
+        with self.assertRaises(ValueError) as caught:
+            welcome.launch("store", popen=popen, wait=0)
+        self.assertIn("no display", str(caught.exception))
+        self.assertEqual(welcome.launch("store", popen=lambda cmd, **k: Quick(0), wait=0), {"started": "store"})
+        self.assertEqual(welcome.launch("store", popen=lambda cmd, **k: Quick(None), wait=0), {"started": "store"})
+
+    def test_the_windows_button_explains_a_live_session_and_missing_virtualization(self):
+        started = []
+        popen = lambda cmd, **k: started.append(cmd)
+        with self.assertRaises(ValueError) as caught:
+            welcome.launch("windows", popen=popen, live=True, kvm_path=__file__)
+        self.assertIn("live session", str(caught.exception))
+        with self.assertRaises(ValueError) as caught:
+            welcome.launch("windows", popen=popen, live=False, kvm_path=__file__ + ".missing")
+        self.assertIn("virtualization", str(caught.exception))
+        self.assertEqual(started, [])
+        welcome.launch("windows", popen=popen, live=False, kvm_path=__file__)
+        self.assertEqual(started, [["ozi-winsetup", "--gui"]])
 
     def test_show_at_login_round_trip(self):
         self.assertTrue(welcome.show_at_login())

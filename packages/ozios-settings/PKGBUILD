@@ -4,7 +4,7 @@ pkgrel=1
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib ttf-overpass)
+depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib ttf-overpass kdialog)
 optdepends=(
   'freerdp: open Windows programs from the desktop'
   'libvirt: run the Windows guest'

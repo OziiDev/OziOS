@@ -48,6 +48,11 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
 - The apps are set in Overpass, which the package now brings (`ttf-overpass`); before,
   the font they asked for was not in the image and a fallback was used. The
   Welcome window lists its entries as plain rows and has a Games entry.
+- A button in Welcome that fails now says why instead of doing nothing: in a live
+  session the Windows layer explains that it needs an installed system, a computer
+  without hardware virtualization is told to turn it on, and a program that stops
+  at once shows its last error line. The Windows setup also checks for 70 GB of
+  free disk and `kdialog` is a dependency.
 - `ozi doctor` checks what games need: the memory map limit, Steam and the 32-bit
   Vulkan loader.
 - Install guides: `docs/INSTALL.md` and `docs/KURULUM.md`.

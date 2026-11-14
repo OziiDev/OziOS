@@ -3,6 +3,8 @@ installed version, and whether it opens at login. No Qt.
 """
 import os
 import subprocess
+import tempfile
+import time
 
 from . import paths
 from .i18n import tr
@@ -40,14 +42,39 @@ def version():
     return ""
 
 
-def launch(name, log=lambda line: None, popen=subprocess.Popen):
+def blocker(name, live=None, kvm_path="/dev/kvm"):
+    """A reason a button can not work on this machine right now, or an empty string."""
+    if name == "windows":
+        if (is_live() if live is None else live):
+            return tr("The Windows layer needs a disk to live on, and this is a live session. Install OziOS first, then set it up from here.")
+        if not os.path.exists(kvm_path):
+            return tr("Hardware virtualization is not available. Turn on VT-x or SVM in the firmware setup.")
+    return ""
+
+
+def launch(name, log=lambda line: None, popen=subprocess.Popen, live=None, kvm_path="/dev/kvm", wait=1.0):
     if name not in ACTIONS:
         raise ValueError("unknown action: %r" % (name,))
-    try:
-        popen(ACTIONS[name], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-              start_new_session=True)
-    except OSError:
-        raise ValueError(tr("{program} is not installed.", program=ACTIONS[name][0])) from None
+    reason = blocker(name, live, kvm_path)
+    if reason:
+        raise ValueError(reason)
+    with tempfile.TemporaryFile() as errors:           # the program keeps its own copy of the handle
+        try:
+            proc = popen(ACTIONS[name], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors,
+                         start_new_session=True)
+        except OSError:
+            raise ValueError(tr("{program} is not installed.", program=ACTIONS[name][0])) from None
+        # A program that stops at once has something to say; without this the button just does nothing.
+        poll = getattr(proc, "poll", None)
+        if poll:
+            time.sleep(wait)
+            code = poll()
+            if code not in (None, 0):
+                errors.seek(0)
+                lines = errors.read().decode("utf-8", "replace").strip().splitlines()
+                why = lines[-1][:200] if lines else ""
+                raise ValueError(tr("{program} stopped right away: {why}", program=ACTIONS[name][0], why=why) if why
+                                 else tr("{program} stopped right away.", program=ACTIONS[name][0]))
     return {"started": name}
 
 
