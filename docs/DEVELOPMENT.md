@@ -37,6 +37,16 @@ It works as far as the package list but was not finished.
   the Arch Linux Archive snapshot the ISO was built from.
 - On a live ISO the root file system is an overlay, which rootless Podman
   cannot use; `ozipkg.box.storage_driver()` falls back to `vfs` there.
+- In a live session of the test VM (as root, with the checkout at `/mnt/ozios`):
+  `tools/sync-live.sh` puts the checkout on top of the running image, so a change
+  can be tried without building an ISO; `tools/check-image.sh [edu]` checks the
+  booted image against what `iso/remaster.sh` promises; `tools/launch-installer.sh`
+  starts the installer on an empty disk and `tools/drive-calamares.sh` (on the
+  host) clicks through its pages.
+- `tools/qml-shot.py <app> ...` runs an app's window offscreen, drives it with
+  script steps and pointer events and saves pictures, so an interface can be looked
+  at and exercised without a desktop. `tools/qml-check.py` only loads the window
+  and reports every warning Qt printed.
 
 ## State of things
 

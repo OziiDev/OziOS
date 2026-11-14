@@ -31,7 +31,8 @@ and nothing has been tried on real hardware. See
   CachyOS kernel, program or artwork.
 - **An Education edition** for smart boards: board layout, a screen pen,
   whiteboard, a classroom app (student picker, groups, timer), Turkish
-  defaults. See [docs/EDUCATION.md](docs/EDUCATION.md).
+  defaults. See [docs/EDUCATION.md](docs/EDUCATION.md); a Turkish guide for
+  teachers is in [docs/EGITIM.md](docs/EGITIM.md).
 
 ## Layout
 
