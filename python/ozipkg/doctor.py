@@ -348,8 +348,28 @@ def check_edition(p):
     return [Check("edu", "ok", tr("The Education edition is complete"))]
 
 
+def check_gaming(p):
+    out = []
+    count = (p.read("/proc/sys/vm/max_map_count") or "").strip()
+    if count.isdigit():
+        if int(count) < 1048576:
+            out.append(Check("map-count", "warn", tr("Some games will crash: the memory map limit is {n}", n=count),
+                             tr("Games run through Proton need at least 1048576."),
+                             "sudo sysctl -w vm.max_map_count=2147483642"))
+        else:
+            out.append(Check("map-count", "ok", tr("The memory map limit is high enough for games")))
+    missing = [name for name in ("steam", "gamemoderun", "mangohud") if not p.which(name)]
+    if missing:
+        out.append(Check("game-programs", "info", tr("Not installed yet: {names}", names=", ".join(missing)),
+                         tr("Steam and the libraries it needs for this graphics card."), "ozi gaming"))
+    elif not p.exists("/usr/lib32/libvulkan.so.1"):
+        out.append(Check("game-vulkan", "warn", tr("The 32-bit Vulkan loader is missing"),
+                         tr("Many games are 32-bit programs and will not start without it."), "ozi gaming --yes"))
+    return out
+
+
 CHECKS = (check_identity, check_kernel, check_firmware, check_memory, check_disk, check_gpu, check_virtualization,
-          check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_edition)
+          check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_gaming, check_edition)
 
 
 def run_checks(probe=None):

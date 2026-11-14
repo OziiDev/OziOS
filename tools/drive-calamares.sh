@@ -23,8 +23,7 @@ next="alt+s"; install="alt+k"
 
 keys "$next"; sleep 6            # welcome -> location
 keys "$next"; sleep 6            # location -> keyboard
-keys "$next"; sleep 6            # keyboard -> bootloader
-keys "$next"; sleep 10           # bootloader -> partitioning (scans the disks)
+keys "$next"; sleep 10           # keyboard -> partitioning (scans the disks)
 keys tab tab tab space; sleep 4  # "erase disk"
 keys "$next"; sleep 6            # -> desktop
 keys "$next"; sleep 6            # -> packages

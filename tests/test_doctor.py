@@ -251,6 +251,21 @@ class Rest(unittest.TestCase):
         big = Fake(files={"/proc/meminfo": "MemTotal: 8000000 kB\n"})
         self.assertEqual(levels(doctor.check_memory(big)), {"memory": "ok"})
 
+    def test_gaming_limits_and_programs(self):
+        low = Fake(files={"/proc/sys/vm/max_map_count": "65530\n"})
+        got = {c.id: c for c in doctor.check_gaming(low)}
+        self.assertEqual(got["map-count"].level, "warn")
+        self.assertIn("sysctl", got["map-count"].hint)
+        self.assertEqual(got["game-programs"].level, "info")
+        self.assertEqual(got["game-programs"].hint, "ozi gaming")
+        high = Fake(files={"/proc/sys/vm/max_map_count": "2147483642\n", "/usr/lib32/libvulkan.so.1": ""},
+                    programs=["steam", "gamemoderun", "mangohud"])
+        self.assertEqual(levels(doctor.check_gaming(high)), {"map-count": "ok"})
+
+    def test_a_game_machine_without_the_32_bit_vulkan_loader_is_told_so(self):
+        probe = Fake(programs=["steam", "gamemoderun", "mangohud"])
+        self.assertEqual(levels(doctor.check_gaming(probe)), {"game-vulkan": "warn"})
+
     def test_firmware(self):
         self.assertEqual(doctor.check_firmware(Fake(files={"/sys/firmware/efi": ""}))[0].title, "Started in UEFI mode")
         self.assertEqual(doctor.check_firmware(Fake())[0].title, "Started in BIOS mode")
