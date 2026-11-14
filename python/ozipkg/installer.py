@@ -51,6 +51,10 @@ UNWANTED = re.compile(
     r"cachyos-nord-kde-theme-git|cachyos-cli-installer[\w.+-]*)\s*$")
 
 
+# Packages the installer's own pacstrap module adds in code, whatever the package list says.
+PACSTRAP_ADDS = re.compile(r'"(?:linux-cachyos[\w.+-]*|cachyos-grub-theme)"\s*,?\s*')
+
+
 def _instance(lines, name, module, config):
     """Add an instance of a module to the `instances:` list."""
     entry = ["- id: " + name, "  module: " + module, "  config: " + config]
@@ -186,6 +190,21 @@ def patch_packagechooser_bootloader(text):
     return add_label_translation(text, "step", "Önyükleyici")
 
 
+def patch_pacstrap_module(text):
+    """The module that installs the base system names the CachyOS kernels, their headers and, for GRUB,
+    a CachyOS theme in its code. Take them out: the OziOS kernel is put in by our own early step."""
+    return PACSTRAP_ADDS.sub("", text)
+
+
+def patch_partition(text):
+    """ZFS as the root needs a module package built for the kernel, and OziOS's kernel has none."""
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if re.match(r"^\s*availableFileSystemTypes:", line):
+            lines[i] = re.sub(r',\s*"zfs"|"zfs"\s*,\s*', "", line)
+    return "\n".join(lines)
+
+
 def patch_shellprocess_timeout(text, floor=TIMEOUT_FLOOR):
     """Steps that download or generate keys time out after 30 seconds by default, which a slow machine misses."""
     lines = text.split("\n")
@@ -245,6 +264,8 @@ MODULES = {
     "netinstall.conf": patch_netinstall_conf,
     "netinstall.yaml": patch_netinstall_yaml,
     "pacstrap.conf": patch_pacstrap,
+    "pacstrap/main.py": patch_pacstrap_module,
+    "partition.conf": patch_partition,
     "grubcfg.conf": patch_grubcfg,
     "bootloader.conf": patch_bootloader,
     "users.conf": patch_users,
@@ -271,7 +292,7 @@ def _rewrite(path, func):
     return True
 
 
-def apply(bases=("/etc/calamares", "/usr/share/calamares"), etc="/etc/calamares"):
+def apply(bases=("/etc/calamares", "/usr/share/calamares", "/usr/lib/calamares"), etc="/etc/calamares"):
     """Rewrite the installer configuration found under `bases`. Returns the changed paths."""
     changed = []
     for base in bases:
@@ -279,7 +300,7 @@ def apply(bases=("/etc/calamares", "/usr/share/calamares"), etc="/etc/calamares"
             if _rewrite(path, patch_settings):
                 changed.append(path)
         for name, func in MODULES.items():
-            path = os.path.join(base, "modules", name)
+            path = os.path.join(base, "modules", *name.split("/"))
             if os.path.isfile(path) and _rewrite(path, func):
                 changed.append(path)
         for path in sorted(glob.glob(os.path.join(base, "modules", "shellprocess*.conf"))):

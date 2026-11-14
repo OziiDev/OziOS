@@ -238,6 +238,82 @@ class Choosers(unittest.TestCase):
         self.assertIn('description: "Printers, as OziOS configures them"', text)
 
 
+PACSTRAP_MODULE = '''\
+def run():
+    base_packages = ["base", "linux-firmware"]
+    if libcalamares.utils.get_target_platform() == "handheld":
+        base_packages += ["linux-cachyos-deckify", "linux-cachyos-deckify-headers"]
+    else:
+        base_packages += ["linux-cachyos", "linux-cachyos-headers",
+                         "linux-cachyos-lts", "linux-cachyos-lts-headers"]
+
+    if bootloader == "grub":
+        base_packages += ["grub", "grub-hook", "cachyos-grub-theme", "os-prober"]
+    elif bootloader == "limine":
+        base_packages += ["limine", "limine-entry-tool"]
+
+    if is_root_on_zfs:
+        base_packages += ["zfs-utils"]
+        if libcalamares.utils.get_target_platform() == "handheld":
+            base_packages += ["linux-cachyos-deckify-zfs"]
+        else:
+            base_packages += ["linux-cachyos-zfs", "linux-cachyos-lts-zfs"]
+    return base_packages
+'''
+
+PARTITION = ('# zfs needs more care\ndefaultFileSystemType:  "btrfs"\n'
+             'availableFileSystemTypes:  ["btrfs","xfs","ext4","f2fs","zfs"]\n')
+
+
+class BaseSystem(unittest.TestCase):
+    def packages(self, text, bootloader="grub", zfs=False, platform="desktop"):
+        """What the patched module would hand to pacstrap, with the installer's own objects stubbed."""
+        from types import SimpleNamespace
+        names = {"libcalamares": SimpleNamespace(utils=SimpleNamespace(get_target_platform=lambda: platform)),
+                 "bootloader": bootloader, "is_root_on_zfs": zfs}
+        exec(compile(text, "main.py", "exec"), names)
+        return names["run"]()
+
+    def test_the_cachyos_kernels_are_no_longer_installed(self):
+        out = installer.patch_pacstrap_module(PACSTRAP_MODULE)
+        self.assertNotIn("linux-cachyos", out)
+        for platform in ("desktop", "handheld"):
+            for zfs in (False, True):
+                names = self.packages(out, platform=platform, zfs=zfs)
+                self.assertFalse([n for n in names if "cachyos" in n], (platform, zfs))
+
+    def test_the_rest_of_the_base_system_stays(self):
+        out = installer.patch_pacstrap_module(PACSTRAP_MODULE)
+        self.assertEqual(self.packages(out), ["base", "linux-firmware", "grub", "grub-hook", "os-prober"])
+        self.assertEqual(self.packages(out, bootloader="limine"), ["base", "linux-firmware", "limine", "limine-entry-tool"])
+        self.assertIn("zfs-utils", self.packages(out, zfs=True))
+
+    def test_the_grub_theme_is_ours_not_cachyos(self):
+        self.assertNotIn("cachyos-grub-theme", installer.patch_pacstrap_module(PACSTRAP_MODULE))
+
+    def test_the_module_still_compiles_and_a_second_run_changes_nothing(self):
+        once = installer.patch_pacstrap_module(PACSTRAP_MODULE)
+        compile(once, "main.py", "exec")
+        self.assertEqual(installer.patch_pacstrap_module(once), once)
+
+    def test_zfs_is_not_offered(self):
+        out = installer.patch_partition(PARTITION)
+        self.assertIn('availableFileSystemTypes:  ["btrfs","xfs","ext4","f2fs"]', out)
+        self.assertIn("# zfs needs more care", out)
+        self.assertEqual(installer.patch_partition(out), out)
+        self.assertIn('["btrfs","ext4"]', installer.patch_partition('availableFileSystemTypes: ["btrfs","zfs","ext4"]'))
+
+    def test_apply_reaches_the_module_code(self):
+        with tempfile.TemporaryDirectory() as base:
+            os.makedirs(os.path.join(base, "modules", "pacstrap"))
+            path = os.path.join(base, "modules", "pacstrap", "main.py")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(PACSTRAP_MODULE)
+            self.assertIn(path, installer.apply(bases=(base,), etc=base))
+            with open(path, encoding="utf-8") as fh:
+                self.assertNotIn("linux-cachyos", fh.read())
+
+
 class Labels(unittest.TestCase):
     CONF = ('label:\n sidebar: "Packages"\n sidebar[de]: "Pakete"\n title: "Additional packages"\n'
             ' title[ru]: "x"\nrequired: true\n')

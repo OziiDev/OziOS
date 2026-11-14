@@ -26,6 +26,8 @@ check "installer branding is OziOS" 'grep -q "^branding: ozios" /usr/share/calam
 check "installer has the early and late OziOS steps" 'grep -q "shellprocess@ozios_early" /usr/share/calamares/settings_online.conf && grep -q "shellprocess@ozios$" /usr/share/calamares/settings_online.conf'
 check "installer package list has no CachyOS kernels" '! grep -q "linux-cachyos" /etc/calamares/modules/netinstall.yaml'
 check "installer uses only the local package list" '! grep -q "https://" /etc/calamares/modules/netinstall.conf'
+check "installer's base system adds no CachyOS kernel or theme" '! grep -qE "\"(linux-cachyos|cachyos-grub-theme)" /usr/lib/calamares/modules/pacstrap/main.py'
+check "installer does not offer ZFS as a root file system" '! grep -q "^ *availableFileSystemTypes:.*zfs" /etc/calamares/modules/partition.conf'
 check "installer branding files are installed" 'test -f /usr/share/calamares/branding/ozios/branding.desc && test -f /usr/share/calamares/branding/ozios/logo.png'
 check "GRUB theme and boot splash are installed" 'test -f /usr/share/grub/themes/ozios/theme.txt && test -f /usr/share/ozios/branding/limine-splash.png'
 check "boot loader entry is named ozios" 'grep -q "efiBootloaderId: \"ozios\"" /etc/calamares/modules/bootloader.conf'
