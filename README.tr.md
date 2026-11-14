@@ -9,6 +9,9 @@ masaüstüyle açılıyor; paket kurucu `.deb`, AppImage ve Arch paketleri için
 çalışıyor. Windows katmanı gerçek bir konukta henüz çalıştırılmadı ve gerçek
 donanımda hiçbir şey denenmedi. Ayrıntılar: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+Denemek için: [docs/KURULUM.md](docs/KURULUM.md). ISO'yu USB belleğe koy, bellekten
+başlat, Kur'a bas.
+
 - **Plasma üstünde kendi masaüstü:** üst çubuk, yüzen dock, pencere kapatınca
   duran dönen tesseract duvar kâğıdı; terminal, açılış menüsü ve giriş
   ekranında aynı görünüm.

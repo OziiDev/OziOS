@@ -12,6 +12,9 @@ AppImage and Arch packages. The Windows layer has not run on a real guest yet
 and nothing has been tried on real hardware. See
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+To try it, follow [docs/INSTALL.md](docs/INSTALL.md): put the ISO on a USB stick,
+start from it, press Install.
+
 ## What it is
 
 - **A desktop of its own on top of Plasma.** Top bar, floating dock, a
