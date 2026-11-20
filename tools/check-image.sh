@@ -24,6 +24,8 @@ check "the boot menus have no LTS entry" '! grep -rIq "LTS Kernel" /run/archiso/
 # The live launcher copies settings_online.conf over the installer's settings.
 check "installer branding is OziOS" 'grep -q "^branding: ozios" /usr/share/calamares/settings_online.conf'
 check "installer has the early and late OziOS steps" 'grep -q "shellprocess@ozios_early" /usr/share/calamares/settings_online.conf && grep -q "shellprocess@ozios$" /usr/share/calamares/settings_online.conf'
+check "installer puts the kernel in before the driver step" 'awk "/- pacstrap\$/{p=NR} /shellprocess@ozios_kernel\$/{k=NR} /- chwd\$/{c=NR} END{exit !(p && k==p+1 && c>k)}" /usr/share/calamares/settings_online.conf'
+check "installer's driver step does not stop the installation" 'grep -q "ozios_chwd_failed" /usr/lib/calamares/modules/chwd/main.py'
 check "installer package list has no CachyOS kernels" '! grep -q "linux-cachyos" /etc/calamares/modules/netinstall.yaml'
 check "installer uses only the local package list" '! grep -q "https://" /etc/calamares/modules/netinstall.conf'
 check "installer's base system adds no CachyOS kernel or theme" '! grep -qE "\"(linux-cachyos|cachyos-grub-theme)" /usr/lib/calamares/modules/pacstrap/main.py'
@@ -35,6 +37,21 @@ check "host name template is ozios" 'grep -q "ozios-" /etc/calamares/modules/use
 check "the alpm hook sorts after CachyOS's" 'test -f /usr/share/libalpm/hooks/zz-ozios.hook'
 check "OziOS Welcome offers the installer" 'python3 -c "import sys; sys.path.insert(0,\"/usr/lib/ozios/python\"); from ozipkg import welcome; sys.exit(0 if welcome.info()[\"live\"] else 1)"'
 check "CachyOS Hello is not running" '! pgrep -f cachyos-hello'
+
+# The OziOS shell.
+check "the dock and the launcher are installed" 'test -f /usr/share/plasma/plasmoids/org.ozios.dock/contents/ui/DockItem.qml && test -f /usr/share/plasma/plasmoids/org.ozios.launcher/contents/ui/AppTile.qml'
+check "the OziOS Plasma style is installed" 'test -f /usr/share/plasma/desktoptheme/ozios/widgets/panel-background.svg && test -f /usr/share/plasma/desktoptheme/ozios/translucent/dialogs/background.svg'
+check "the window motion is installed" 'test -f /usr/share/kwin/effects/ozios_motion/contents/code/main.js'
+check "every colour theme is installed" 'for s in OziOS OziOSAurora OziOSEmber OziOSMint OziOSRose OziOSFrost; do test -f /usr/share/color-schemes/$s.colors && test -f /usr/share/konsole/$s.colorscheme || exit 1; done'
+check "the boot splash and the day and night timer are installed" 'test -f /usr/share/plymouth/themes/ozios/ozios.plymouth && test -f /usr/lib/systemd/user/ozios-theme-auto.timer'
+check "file search does not read every document" 'grep -q "only basic indexing=true" /etc/xdg/baloofilerc'
+# In the live session itself, once the first login has applied the desktop:
+if [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]; then
+  check "this session uses the OziOS Plasma style" 'test "$(kreadconfig6 --file plasmarc --group Theme --key name)" = ozios'
+  check "this session uses the OziOS window motion" 'test "$(kreadconfig6 --file kwinrc --group Plugins --key ozios_motionEnabled)" = true'
+  check "the panels hold the OziOS dock and launcher" 'grep -q "plugin=org.ozios.dock" ~/.config/plasma-org.kde.plasma.desktop-appletsrc && grep -q "plugin=org.ozios.launcher" ~/.config/plasma-org.kde.plasma.desktop-appletsrc'
+  check "plasmashell reported no QML errors for OziOS" '! journalctl --user -b --no-pager 2>/dev/null | grep -i "org.ozios" | grep -qiE "error|unavailable|is not a type|cannot assign"'
+fi
 
 if [ "$edition" = edu ]; then
   check "edition marker says edu" 'test "$(cat /usr/share/ozios/edition)" = edu'

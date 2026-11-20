@@ -139,6 +139,14 @@ class Gpu(unittest.TestCase):
         self.assertIn("error: target not found: -headers", warn[0].detail)
         self.assertIn("chwd", warn[0].hint)
 
+    def test_pacmans_error_is_shown_rather_than_chwds_last_words(self):
+        note = ("Failed to run chwd\n> Using profile 'nvidia-dkms-580xx' for device: 0000:01:00.0\n"
+                "error: invalid option '-e'\nERROR: Pacman command was failed! Exit code: 1\nscript failed!\n")
+        fake = Fake(files={"/proc/modules": "i915 1 0\n", doctor.CHWD_MARKER: note}, commands=self.commands)
+        warn = [c for c in doctor.check_gpu(fake) if c.level == "warn"]
+        self.assertIn("error: invalid option '-e'", warn[0].detail)
+        self.assertNotIn("script failed", warn[0].detail)
+
     def test_a_failed_driver_step_is_forgotten_once_the_driver_loads(self):
         fake = Fake(files={"/proc/modules": "i915 1 0\nnvidia 1 0\n", doctor.CHWD_MARKER: "Failed to run chwd\n"},
                     commands=self.commands)
