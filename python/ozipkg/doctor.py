@@ -16,6 +16,8 @@ from .i18n import tr
 LEVELS = ("ok", "info", "warn", "fail")
 GIB = 1024 ** 3
 MIB = 1024 ** 2
+# Written by the installer's driver step when chwd failed (see installer.py).
+CHWD_MARKER = "/var/lib/ozios/chwd-failed"
 
 
 @dataclass
@@ -163,14 +165,17 @@ def check_gpu(p):
         return [Check("gpu", "info", tr("No graphics card was found"))]
     modules = {line.split()[0] for line in (p.read("/proc/modules") or "").splitlines() if line.strip()}
     wanted = {"nvidia": {"nvidia"}, "amd": {"amdgpu", "radeon"}, "intel": {"i915", "xe"}}
+    # What the installer's driver step said last, when it failed.
+    said = [line.strip() for line in (p.read(CHWD_MARKER) or "").splitlines() if line.strip()]
     out = []
     for vendor, description in gpus:
         if vendor in wanted and not (wanted[vendor] & modules):
             hint = {"nvidia": "sudo chwd -a", "amd": "sudo pacman -S mesa vulkan-radeon",
                     "intel": "sudo pacman -S mesa vulkan-intel"}[vendor]
-            level = "warn"
-            out.append(Check("gpu", level, tr("The driver for {gpu} is not loaded", gpu=description),
-                             tr("The screen works, but without acceleration or with a generic driver."), hint))
+            detail = tr("The screen works, but without acceleration or with a generic driver.")
+            if said:
+                detail += " " + tr("Setting up the driver failed during the installation: {reason}", reason=said[-1])
+            out.append(Check("gpu", "warn", tr("The driver for {gpu} is not loaded", gpu=description), detail, hint))
         else:
             out.append(Check("gpu", "ok", description))
     if len(gpus) > 1:

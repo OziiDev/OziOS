@@ -78,10 +78,25 @@ class Settings(unittest.TestCase):
         self.assertLess(steps.index(installer.EARLY), steps.index("initcpio"))
         self.assertLess(steps.index(installer.EARLY), steps.index("bootloader"))
 
+    def test_the_kernel_comes_with_the_base_system_before_the_driver_step(self):
+        text = installer.patch_settings(SETTINGS)
+        steps = [line.strip("- ").strip() for line in text.split("\n") if line.startswith("  - ")]
+        self.assertEqual(steps[steps.index("pacstrap") + 1], installer.KERNEL)
+        self.assertLess(steps.index(installer.KERNEL), steps.index("chwd"))
+
     def test_instances_are_declared(self):
         text = installer.patch_settings(SETTINGS)
         self.assertIn("- id: ozios\n  module: shellprocess\n  config: shellprocess_ozios.conf", text)
         self.assertIn("- id: ozios_early\n  module: shellprocess\n  config: shellprocess_ozios_early.conf", text)
+        self.assertIn("- id: ozios_kernel\n  module: shellprocess\n  config: shellprocess_ozios_kernel.conf", text)
+
+    def test_a_file_patched_before_the_kernel_step_existed_gets_it_once(self):
+        old = SETTINGS.replace("  - umount", "  - shellprocess@ozios\n  - umount").replace(
+            "  - packages@online", "  - packages@online\n  - shellprocess@ozios_early")
+        new = installer.patch_settings(old)
+        self.assertEqual(new.count("- %s\n" % installer.KERNEL), 1)
+        self.assertEqual(new.count("- shellprocess@ozios_early\n"), 1)
+        self.assertEqual(installer.patch_settings(new), new)
 
     def test_branding_and_no_cachyos_boot_animation(self):
         text = installer.patch_settings(SETTINGS)
@@ -357,6 +372,98 @@ class LimineGroup(unittest.TestCase):
             self.assertIn(path, installer.apply(bases=(base,), etc=base))
 
 
+# The shape of the installer's driver step: chwd in the new system, and a failure stops the installation.
+CHWD_MODULE = '''\
+import os
+import subprocess
+
+import libcalamares
+
+
+class HostError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
+def line_cb(line):
+    libcalamares.utils.debug("chwd: " + line.strip())
+
+
+def run_in_host(command, line_func):
+    raise HostError("Failed to run chwd")
+
+
+def run():
+    root_mount_point = libcalamares.globalstorage.value("rootMountPoint")
+    chwd_command = ["arch-chroot", root_mount_point, "chwd", "--autoconfigure"]
+    try:
+        run_in_host(chwd_command, line_cb)
+    except subprocess.CalledProcessError as cpe:
+        return "Failed to run chwd", "chwd failed with error {!s}".format(cpe.stderr)
+    except HostError as host_err:
+        return "Failed to run chwd", format(host_err)
+    return None
+'''
+
+
+class DriverStep(unittest.TestCase):
+    def run_module(self, code, root, output=()):
+        from types import SimpleNamespace
+        warnings = []
+        fake = SimpleNamespace(globalstorage=SimpleNamespace(value=lambda key: root),
+                               utils=SimpleNamespace(debug=lambda text: None, warning=warnings.append))
+        saved = sys.modules.get("libcalamares")
+        sys.modules["libcalamares"] = fake
+        try:
+            names = {}
+            exec(compile(code, "main.py", "exec"), names)
+
+            def failing(command, line_func):
+                for line in output:
+                    line_func(line)
+                raise names["HostError"]("Failed to run chwd")
+            names["run_in_host"] = failing
+            return names["run"](), warnings
+        finally:
+            if saved is None:
+                del sys.modules["libcalamares"]
+            else:
+                sys.modules["libcalamares"] = saved
+
+    def test_the_stock_step_stops_the_installation(self):
+        with tempfile.TemporaryDirectory() as root:
+            result, _ = self.run_module(CHWD_MODULE, root)
+        self.assertEqual(result[0], "Failed to run chwd")
+
+    def test_the_rewritten_step_notes_the_failure_and_goes_on(self):
+        code = installer.patch_chwd_module(CHWD_MODULE)
+        with tempfile.TemporaryDirectory() as root:
+            result, warnings = self.run_module(code, root, ["checking devices", "error: target not found: -headers"])
+            with open(os.path.join(root, *installer.CHWD_MARKER.strip("/").split("/")), encoding="utf-8") as fh:
+                marker = fh.read()
+        self.assertIsNone(result)
+        self.assertTrue(warnings)
+        self.assertIn("Failed to run chwd", marker)
+        self.assertIn("error: target not found: -headers", marker)       # what chwd said last
+
+    def test_the_rewrite_compiles_and_is_idempotent(self):
+        once = installer.patch_chwd_module(CHWD_MODULE)
+        compile(once, "main.py", "exec")
+        self.assertEqual(installer.patch_chwd_module(once), once)
+        self.assertNotIn('return "Failed to run chwd"', once)
+
+    def test_a_module_of_another_shape_is_left_alone(self):
+        self.assertEqual(installer.patch_chwd_module("def run():\n    return None\n"), "def run():\n    return None\n")
+
+    def test_apply_reaches_the_module(self):
+        with tempfile.TemporaryDirectory() as base:
+            os.makedirs(os.path.join(base, "modules", "chwd"))
+            path = os.path.join(base, "modules", "chwd", "main.py")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(CHWD_MODULE)
+            self.assertIn(path, installer.apply(bases=(base,), etc=base, libdir=os.path.join(base, "lib")))
+
+
 REAL_SEQUENCE = (SETTINGS.split("sequence:")[0] + "sequence:\n- show:\n  - welcome@online\n  - keyboard\n  - packagechooser@bootloader\n"
                  "  - partition\n  - users\n- exec:\n  - partition\n  - mount\n  - pacstrap\n  - packages@online\n  - umount\n"
                  "- show:\n  - finished\nbranding: cachyos\n")
@@ -503,6 +610,8 @@ class Apply(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(base, "modules", "shellprocess_ozios_early.conf")))
             with open(os.path.join(base, "modules", "shellprocess_ozios.conf"), encoding="utf-8") as fh:
                 self.assertIn("install-to-target late", fh.read())
+            with open(os.path.join(base, "modules", "shellprocess_ozios_kernel.conf"), encoding="utf-8") as fh:
+                self.assertIn("install-to-target kernel", fh.read())
             self.assertEqual(installer.apply(bases=(base,), etc=base), [])
 
 

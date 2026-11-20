@@ -6,9 +6,9 @@ more than once. `apply` walks the files of a live system and rewrites them.
 
 The installer installs software over the network from lists that name CachyOS
 kernels, CachyOS programs and CachyOS artwork. Here those are replaced: the
-target system gets the OziOS kernel (put in early, so the initramfs and boot
-loader steps see it like any other kernel), the OziOS look, and none of the
-CachyOS kernels or programs. The CachyOS repositories, keyring and mirror lists
+target system gets the OziOS kernel (put in right after the base system, so the
+driver step, the initramfs and the boot loader see it like any other kernel),
+the OziOS look, and none of the CachyOS kernels or programs. The CachyOS repositories, keyring and mirror lists
 stay, because the rest of the installer is built on them.
 """
 import glob
@@ -17,6 +17,7 @@ import re
 
 STEP = "shellprocess@ozios"
 EARLY = "shellprocess@ozios_early"
+KERNEL = "shellprocess@ozios_kernel"
 THEME = "/usr/share/grub/themes/ozios/theme.txt"
 SPLASH = "/usr/share/ozios/branding/limine-splash.png"
 
@@ -34,6 +35,39 @@ timeout: 1800
 script:
     - "/usr/lib/ozios/install-to-target early"
 """
+KERNEL_CONF = """\
+# Added by ozios-settings.
+dontChroot: true
+timeout: 1800
+script:
+    - "/usr/lib/ozios/install-to-target kernel"
+"""
+
+# The driver step (chwd) stops the whole installation when it fails. A machine whose graphics
+# driver could not be set up still starts with the generic one, so the rewrite notes the failure
+# in the new system, for `ozi doctor`, and lets the installation go on.
+CHWD_MARKER = "/var/lib/ozios/chwd-failed"
+CHWD_RETURN = re.compile(r'^(\s*)return\s+"Failed to run chwd",\s*(.+?)\s*$', re.M)
+CHWD_DEBUG = re.compile(r'^(\s*)(libcalamares\.utils\.debug\("chwd: " \+ line\.strip\(\)\))\s*$', re.M)
+CHWD_HELPER = '''
+
+# Added by OziOS.
+ozios_chwd_output = []
+
+
+def ozios_chwd_failed(root, detail):
+    """Note the failure in the new system and let the installation go on."""
+    libcalamares.utils.warning("chwd failed, the installation goes on: {!s}".format(detail))
+    try:
+        path = os.path.join(root, "%s")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            fh.write("{!s}\\n".format(detail))
+            fh.write("\\n".join(ozios_chwd_output[-20:]) + "\\n")
+    except OSError:
+        pass
+    return None
+''' % CHWD_MARKER.lstrip("/")
 
 # A job that answers the questions the installer would otherwise ask a beginner: which boot loader.
 DEFAULTS_STEP = "ozios_defaults"
@@ -113,13 +147,23 @@ def patch_settings(text):
                 changed = True
                 break
     if EARLY not in text:
-        # Right after the extra packages: the kernel then exists before the
-        # initramfs and boot loader steps look for kernels.
+        # Right after the extra packages: the OziOS packages, which need the desktop in place.
         for i, line in enumerate(lines):
             m = re.match(r"^(\s*)-\s+packages@online\s*$", line)
             if m:
                 lines.insert(i + 1, "%s- %s" % (m.group(1), EARLY))
                 _instance(lines, "ozios_early", "shellprocess", "shellprocess_ozios_early.conf")
+                changed = True
+                break
+    if KERNEL not in text:
+        # Where the CachyOS kernels used to come in, with the base system: the driver step (chwd)
+        # runs next and asks pacman for "<kernel>-headers"; with no kernel yet that is "-headers",
+        # which pacman refuses, and the installation stopped on NVIDIA cards that need DKMS.
+        for i, line in enumerate(lines):
+            m = re.match(r"^(\s*)-\s+pacstrap\s*$", line)
+            if m:
+                lines.insert(i + 1, "%s- %s" % (m.group(1), KERNEL))
+                _instance(lines, "ozios_kernel", "shellprocess", "shellprocess_ozios_kernel.conf")
                 changed = True
                 break
 
@@ -246,6 +290,17 @@ def patch_bootloader_module(text):
     return LIMINE_STUB.sub("pass", text)
 
 
+def patch_chwd_module(text):
+    """The driver step: a failure is noted in the new system instead of stopping the installation."""
+    if "ozios_chwd_failed" in text:
+        return text
+    new = CHWD_RETURN.sub(r"\1return ozios_chwd_failed(root_mount_point, \2)", text)
+    if new == text:
+        return text
+    new = CHWD_DEBUG.sub(r"\1\2\n\1ozios_chwd_output.append(line.strip())", new)
+    return new.rstrip("\n") + "\n" + CHWD_HELPER
+
+
 def patch_partition(text):
     """ZFS as the root needs a module package built for the kernel, and OziOS's kernel has none."""
     lines = text.split("\n")
@@ -316,6 +371,7 @@ MODULES = {
     "pacstrap.conf": patch_pacstrap,
     "pacstrap/main.py": patch_pacstrap_module,
     "bootloader/main.py": patch_bootloader_module,
+    "chwd/main.py": patch_chwd_module,
     "partition.conf": patch_partition,
     "grubcfg.conf": patch_grubcfg,
     "bootloader.conf": patch_bootloader,
@@ -363,7 +419,8 @@ def apply(bases=("/etc/calamares", "/usr/share/calamares", "/usr/lib/calamares")
     if changed:
         modules = os.path.join(etc, "modules")
         os.makedirs(modules, exist_ok=True)
-        for name, text in (("shellprocess_ozios.conf", LATE_CONF), ("shellprocess_ozios_early.conf", EARLY_CONF)):
+        for name, text in (("shellprocess_ozios.conf", LATE_CONF), ("shellprocess_ozios_early.conf", EARLY_CONF),
+                           ("shellprocess_ozios_kernel.conf", KERNEL_CONF)):
             with open(os.path.join(modules, name), "w", encoding="utf-8") as fh:
                 fh.write(text)
         folder = os.path.join(libdir, "modules", DEFAULTS_STEP)

@@ -266,6 +266,7 @@
   "The review found something dangerous. Use --force to build anyway.": "İnceleme tehlikeli bir şey buldu. Yine de derlemek için --force kullan.",
   "The review found something dangerous. Use --force to install anyway.": "İnceleme tehlikeli bir şey buldu. Yine de kurmak için --force kullan.",
   "The screen works, but without acceleration or with a generic driver.": "Ekran çalışır, ama hızlandırma olmadan ya da genel bir sürücüyle.",
+  "Setting up the driver failed during the installation: {reason}": "Sürücü kurulum sırasında kurulamadı: {reason}",
   "The script adds an account or puts one in the administrator group.": "Betik bir hesap ekliyor ya da bir hesabı yönetici grubuna koyuyor.",
   "The script decodes text into commands and runs them. Honest installers have no reason to hide what they run.": "Betik metni komuta çevirip çalıştırıyor. Dürüst kurucuların çalıştırdıklarını gizlemesi için bir neden yoktur.",
   "The script edits files that decide who can log in or run commands as administrator.": "Betik, kimin giriş yapabileceğini veya yönetici olarak komut çalıştırabileceğini belirleyen dosyaları düzenliyor.",

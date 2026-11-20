@@ -132,6 +132,18 @@ class Gpu(unittest.TestCase):
         self.assertEqual(len(warn), 1)
         self.assertIn("chwd", warn[0].hint)
 
+    def test_a_driver_step_that_failed_during_installation_is_explained(self):
+        note = "Failed to run chwd\nchecking devices\nerror: target not found: -headers\n"
+        fake = Fake(files={"/proc/modules": "i915 1 0\n", doctor.CHWD_MARKER: note}, commands=self.commands)
+        warn = [c for c in doctor.check_gpu(fake) if c.level == "warn"]
+        self.assertIn("error: target not found: -headers", warn[0].detail)
+        self.assertIn("chwd", warn[0].hint)
+
+    def test_a_failed_driver_step_is_forgotten_once_the_driver_loads(self):
+        fake = Fake(files={"/proc/modules": "i915 1 0\nnvidia 1 0\n", doctor.CHWD_MARKER: "Failed to run chwd\n"},
+                    commands=self.commands)
+        self.assertFalse([c for c in doctor.check_gpu(fake) if c.level == "warn"])
+
     def test_no_lspci(self):
         self.assertEqual(levels(doctor.check_gpu(Fake())), {"gpu": "info"})
 

@@ -66,6 +66,8 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
 
 ## Not done yet
 
+- The installer fix for the driver step (`chwd`) is tested against stand-ins,
+  not yet on a machine with an NVIDIA card.
 - The live session has a polkit rule that allows everything without a password,
   so the password prompt of the helper has not been seen. It is the stock
   `auth_admin_keep` action.
@@ -100,7 +102,28 @@ tools are built on them:
 Cutting these needs an installer and a package repository of our own; that is a
 project of its own.
 
+## The driver step of the installer
+
+The installer runs `chwd --autoconfigure` in the new system right after the base
+system (`chwd` step). It used to stop the whole installation on some NVIDIA
+cards ("Failed to run chwd"): with the CachyOS kernels gone from the base system
+there was no kernel yet, and the profile for older cards (GTX 900 and 1000
+series, the 580xx driver) asks pacman for `<kernel>-headers`, which became
+`-headers`. Now:
+
+- `install-to-target kernel` runs right after the base system, before `chwd`. It
+  keeps the OziOS packages on the new disk as a package source (`[ozios]` in
+  `/etc/pacman.conf`, `file:///opt/ozios`) and installs `linux-ozios` and
+  `linux-ozios-headers` by name, so `chwd` finds a kernel and can ask for its
+  headers, now and later (`sudo chwd -a`).
+- NVIDIA modules on an installed system come from DKMS (`chwd` falls back to it
+  for kernels that are not CachyOS's), so they always match the driver that is
+  installed and survive driver updates. The prebuilt `linux-ozios-nvidia-open`
+  stays in the package source and on the live medium, where its version fits.
+- If `chwd` still fails, the installation goes on with the generic driver; the
+  failure and chwd's last lines are kept in `/var/lib/ozios/chwd-failed`, and
+  `ozi doctor` shows them next to the driver that is not loaded.
+
 ## Known problems
 
-- `chwd` may still look for `linux-cachyos-*` module packages for the graphics
-  drivers; the OziOS kernel brings its own NVIDIA modules.
+- None recorded for the installer at the moment; see "Not done yet".
