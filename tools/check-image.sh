@@ -46,6 +46,10 @@ check "the Alt+Tab switcher is installed" 'test -f /usr/share/kwin-wayland/tabbo
 check "every colour theme is installed" 'for s in OziOS OziOSAurora OziOSEmber OziOSMint OziOSRose OziOSFrost; do test -f /usr/share/color-schemes/$s.colors && test -f /usr/share/konsole/$s.colorscheme || exit 1; done'
 check "the boot splash and the day and night timer are installed" 'test -f /usr/share/plymouth/themes/ozios/ozios.plymouth && test -f /usr/lib/systemd/user/ozios-theme-auto.timer'
 check "file search does not read every document" 'grep -q "only basic indexing=true" /etc/xdg/baloofilerc'
+check "the medium carries the kernel headers for NVIDIA's DKMS modules" 'ls /opt/ozios/linux-ozios-headers-*.pkg.tar.* | grep -qv "\.sig$"'
+check "windows animate also where KWin draws in software" 'grep -q "^KWIN_EFFECTS_FORCE_ANIMATIONS=1" /usr/lib/environment.d/60-ozios-animations.conf'
+check "developer tools are out of the program menu" '! test -f /usr/share/applications/avahi-discover.desktop || grep -q "^NoDisplay=true" /usr/share/applications/avahi-discover.desktop'
+check "the live user can open VirtualBox shared folders" '! getent group vboxsf >/dev/null || id -nG liveuser | grep -qw vboxsf'
 # In the live session itself, once the first login has applied the desktop:
 if [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]; then
   check "this session uses the OziOS Plasma style" 'test "$(kreadconfig6 --file plasmarc --group Theme --key name)" = ozios'

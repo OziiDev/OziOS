@@ -390,3 +390,35 @@ class Shell(unittest.TestCase):
         text = "[A]\nname=one\n[Theme]\nname = ozios\n"
         self.assertEqual(doctor.config_value(text, "Theme", "name"), "ozios")
         self.assertIsNone(doctor.config_value(text, "Theme", "other"))
+
+
+class Rendering(unittest.TestCase):
+    """Software drawing makes the desktop slow; in a VM the fix is the VM's 3D setting."""
+
+    KWIN = ("qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.supportInformation")
+
+    def check(self, renderer, virt="none"):
+        info = "Compositing\n===========\nOpenGL renderer string: %s\n" % renderer
+        fake = Fake(commands={self.KWIN: (0, info), ("systemd-detect-virt",): (0 if virt != "none" else 1, virt + "\n")})
+        return doctor.check_rendering(fake)
+
+    def test_a_graphics_card(self):
+        found = self.check("Mesa Intel(R) HD Graphics 5500 (BDW GT2)")
+        self.assertEqual((found[0].level, found[0].detail), ("ok", "Mesa Intel(R) HD Graphics 5500 (BDW GT2)"))
+
+    def test_virtualbox_without_3d_says_where_to_turn_it_on(self):
+        found = self.check("llvmpipe (LLVM 22.1.8, 256 bits)", "oracle")
+        self.assertEqual(found[0].level, "warn")
+        self.assertIn("VirtualBox", found[0].detail)
+        self.assertIn("3D", found[0].hint)
+
+    def test_another_virtual_machine(self):
+        found = self.check("llvmpipe (LLVM 22.1.8, 256 bits)", "kvm")
+        self.assertIn("virtual machine", found[0].hint)
+
+    def test_real_hardware_without_a_driver(self):
+        found = self.check("llvmpipe (LLVM 22.1.8, 256 bits)")
+        self.assertEqual(found[0].hint, "sudo chwd -a")
+
+    def test_outside_a_plasma_session_it_says_nothing(self):
+        self.assertEqual(doctor.check_rendering(Fake()), [])

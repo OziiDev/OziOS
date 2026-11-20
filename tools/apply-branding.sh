@@ -188,6 +188,9 @@ for name in scale glide fade; do kwin_effect "$name" false; done
 kwin_effect "$motion" true
 # Alt+Tab shows the OziOS switcher.
 kwriteconfig6 --file kwinrc --group TabBox --key LayoutName "$switcher"
+# A window wobbles a little while it is dragged (KWin's gentlest setting), but not
+# while it is resized, where the edges would swim away from the pointer.
+kwriteconfig6 --file kwinrc --group Effect-wobblywindows --key ResizeWobble false
 if $lite; then
   kwin_effect wobblywindows false
   kwin_effect blur false

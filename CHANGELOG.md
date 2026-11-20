@@ -3,12 +3,10 @@
 All notable changes to OziOS. Versions follow [Semantic Versioning](https://semver.org/);
 the rules for releases are in [docs/RELEASING.md](docs/RELEASING.md).
 
-## 0.1.1 (unreleased)
+## 0.2.0 (unreleased)
 
-CachyOS is out of the way: the OziOS image and the system the installer
-creates carry no CachyOS kernel, no CachyOS programs and no CachyOS artwork.
-The CachyOS repositories, keyring and mirror lists stay, because the installer
-and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
+The OziOS desktop of its own, tried in a real Plasma session this time, and an
+installer that gets through the driver step on NVIDIA cards.
 
 - Installing on a machine with an NVIDIA card no longer stops at "Failed to run
   chwd". The OziOS kernel and its headers now go in right after the base system,
@@ -41,6 +39,32 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
 - The wallpaper takes the theme's colours, breathes, and has motes of light
   drifting through it; all of it stops while a window covers the desktop.
 - The control widget and the new applets speak Turkish in a Turkish session.
+- Tested in a Plasma session (VirtualBox): the launcher loads (its avatar left
+  Kirigami in Frameworks 6), popups and tool tips are solid where nothing blurs
+  behind them, and files copied from a VirtualBox shared folder are readable.
+- Animations stay on where KWin draws in software, as in a virtual machine
+  without 3D, where KWin used to switch every one of them off and the desktop
+  felt dead (`/usr/lib/environment.d/60-ozios-animations.conf`). `ozi doctor`
+  says when the desktop is drawn in software and, in VirtualBox, where to turn
+  3D acceleration on.
+- Idle means idle: the wallpaper moves on one clock at 25 frames a second and
+  holds still in the light effects profile; the Welcome mark and the terminal's
+  pinned tesseract turn when something happens, then rest. Measured in the VM,
+  an idle desktop went from more than two processor cores to under one percent.
+- Soft shadows under popups, tool tips and the floating bar and dock.
+- Developer and test tools (Avahi browsers, Qt's tools, v4l2 tests, lstopo,
+  lftp) stay installed but out of the program menu.
+- Windows: in VirtualBox the folders shared with Windows open in the file
+  manager (the live user and the installed system's people are in `vboxsf`);
+  installed next to Windows, the hardware clock keeps local time so the clock is
+  right in both systems.
+
+## 0.1.1 (unreleased)
+
+CachyOS is out of the way: the OziOS image and the system the installer
+creates carry no CachyOS kernel, no CachyOS programs and no CachyOS artwork.
+The CachyOS repositories, keyring and mirror lists stay, because the installer
+and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
 
 - The long-term CachyOS kernel is gone from the ISO; the fallback entries of
   the boot menu, BIOS included, start the OziOS kernel.

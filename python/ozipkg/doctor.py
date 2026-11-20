@@ -404,6 +404,32 @@ def check_shell(p):
     return out
 
 
+SOFTWARE_RENDERERS = re.compile(r"llvmpipe|softpipe|Software Rasterizer", re.I)
+
+
+def check_rendering(p):
+    """Whether the desktop is drawn by the graphics card or, slowly, by the processor."""
+    code, info = p.run(["qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.supportInformation"])
+    if code != 0 or not info:
+        return []                               # not in a Plasma session
+    match = re.search(r"OpenGL renderer string:\s*(.+)", info)
+    renderer = match.group(1).strip() if match else ""
+    if renderer and not SOFTWARE_RENDERERS.search(renderer):
+        return [Check("rendering", "ok", tr("The desktop is drawn by the graphics card"), renderer)]
+    if not renderer:
+        return []
+    title = tr("The desktop is drawn in software, which is slow")
+    _, virt = p.run(["systemd-detect-virt"])
+    virt = virt.strip()
+    if virt == "oracle":
+        return [Check("rendering", "warn", title, tr("This VirtualBox machine has 3D acceleration turned off."),
+                      tr("Power off the machine, then in VirtualBox: Settings, Display, Enable 3D Acceleration"))]
+    if virt and virt != "none":
+        return [Check("rendering", "warn", title, tr("This virtual machine has no 3D acceleration."),
+                      tr("Turn on 3D acceleration in the virtual machine's display settings"))]
+    return [Check("rendering", "warn", title, tr("No working driver for the graphics card was found."), "sudo chwd -a")]
+
+
 def check_gaming(p):
     out = []
     count = (p.read("/proc/sys/vm/max_map_count") or "").strip()
@@ -425,8 +451,8 @@ def check_gaming(p):
 
 
 CHECKS = (check_identity, check_kernel, check_firmware, check_memory, check_disk, check_gpu, check_virtualization,
-          check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_shell, check_gaming,
-          check_edition)
+          check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_shell,
+          check_rendering, check_gaming, check_edition)
 
 
 def run_checks(probe=None):
