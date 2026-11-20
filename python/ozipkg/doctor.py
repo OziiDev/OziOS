@@ -6,6 +6,7 @@ something is wrong the finding says which command would fix it.
 """
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -356,6 +357,53 @@ def check_edition(p):
     return [Check("edu", "ok", tr("The Education edition is complete"))]
 
 
+def config_value(text, group, key):
+    """A value from a KDE config file's text, or None."""
+    current = ""
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1]
+        elif current == group and "=" in line:
+            name, value = line.split("=", 1)
+            if name.strip() == key:
+                return value.strip()
+    return None
+
+
+def check_shell(p):
+    """The OziOS desktop: its Plasma style, the window motion, the dock and the launcher on a panel."""
+    # Linux paths, joined as such, so the check can be tested anywhere.
+    config = os.environ.get("XDG_CONFIG_HOME") or posixpath.join(os.path.expanduser("~"), ".config")
+    applets = p.read(posixpath.join(config, "plasma-org.kde.plasma.desktop-appletsrc"))
+    if applets is None:
+        return []                               # not a desktop session, or one that never started
+    out = []
+    style = config_value(p.read(posixpath.join(config, "plasmarc")), "Theme", "name") or "default"
+    if style == "ozios":
+        out.append(Check("plasma-style", "ok", tr("The OziOS Plasma style is in use")))
+    else:
+        out.append(Check("plasma-style", "info", tr("The Plasma style is {name}, not OziOS's", name=style), "",
+                         "plasma-apply-desktoptheme ozios"))
+    motion = config_value(p.read(posixpath.join(config, "kwinrc")), "Plugins", "ozios_motionEnabled")
+    if motion == "true":
+        out.append(Check("motion", "ok", tr("Windows open and close with the OziOS motion")))
+    else:
+        out.append(Check("motion", "info", tr("The OziOS window motion is off"), "", "ozi effects full"))
+    dock, launcher = ("plugin=org.ozios.dock" in applets), ("plugin=org.ozios.launcher" in applets)
+    if dock and launcher:
+        out.append(Check("panels", "ok", tr("The OziOS dock and launcher are on the panels")))
+    else:
+        title = (tr("The OziOS launcher is not on a panel") if dock else
+                 tr("The OziOS dock is not on a panel") if launcher else
+                 tr("The OziOS dock and launcher are not on a panel"))
+        out.append(Check("panels", "info", title, tr("Another layout was chosen, or the panels were changed by hand."),
+                         "ozi layout default"))
+    if p.exists(posixpath.join(config, "ozios", "theme-auto.json")):
+        out.append(Check("theme-auto", "info", tr("The colours follow the time of day"), "", "ozi theme auto off"))
+    return out
+
+
 def check_gaming(p):
     out = []
     count = (p.read("/proc/sys/vm/max_map_count") or "").strip()
@@ -377,7 +425,8 @@ def check_gaming(p):
 
 
 CHECKS = (check_identity, check_kernel, check_firmware, check_memory, check_disk, check_gpu, check_virtualization,
-          check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_gaming, check_edition)
+          check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_shell, check_gaming,
+          check_edition)
 
 
 def run_checks(probe=None):

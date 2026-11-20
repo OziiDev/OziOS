@@ -341,3 +341,52 @@ class Whole(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Shell(unittest.TestCase):
+    def setUp(self):
+        self.saved = os.environ.get("XDG_CONFIG_HOME")
+        os.environ["XDG_CONFIG_HOME"] = "/home/ada/.config"
+
+    def tearDown(self):
+        if self.saved is None:
+            del os.environ["XDG_CONFIG_HOME"]
+        else:
+            os.environ["XDG_CONFIG_HOME"] = self.saved
+
+    def files(self, **changes):
+        files = {"/home/ada/.config/plasma-org.kde.plasma.desktop-appletsrc": "[Containments][2][Applets][3]\nplugin=org.ozios.launcher\n"
+                                                                             "[Containments][9][Applets][10]\nplugin=org.ozios.dock\n",
+                 "/home/ada/.config/plasmarc": "[Theme]\nname=ozios\n",
+                 "/home/ada/.config/kwinrc": "[Plugins]\nblurEnabled=true\nozios_motionEnabled=true\n"}
+        files.update(changes)
+        return {k: v for k, v in files.items() if v is not None}
+
+    def test_the_ozios_desktop_in_use(self):
+        result = doctor.check_shell(Fake(files=self.files()))
+        self.assertEqual({c.id: c.level for c in result}, {"plasma-style": "ok", "motion": "ok", "panels": "ok"})
+
+    def test_what_differs_is_told_with_the_command_that_brings_it_back(self):
+        result = doctor.check_shell(Fake(files=self.files(**{
+            "/home/ada/.config/plasmarc": "[Theme]\nname=default\n",
+            "/home/ada/.config/kwinrc": "[Plugins]\nscaleEnabled=true\n",
+            "/home/ada/.config/plasma-org.kde.plasma.desktop-appletsrc": "plugin=org.kde.plasma.kickoff\nplugin=org.ozios.dock\n"})))
+        by_id = {c.id: c for c in result}
+        self.assertEqual(by_id["plasma-style"].level, "info")
+        self.assertIn("default", by_id["plasma-style"].title)
+        self.assertEqual(by_id["motion"].hint, "ozi effects full")
+        self.assertIn("launcher", by_id["panels"].title)
+        self.assertEqual(by_id["panels"].hint, "ozi layout default")
+
+    def test_outside_a_desktop_session_nothing_is_said(self):
+        self.assertEqual(doctor.check_shell(Fake()), [])
+
+    def test_day_and_night_is_mentioned(self):
+        fake = Fake(files=self.files(), programs=())
+        fake.exists = lambda path: path == "/home/ada/.config/ozios/theme-auto.json"
+        self.assertIn("theme-auto", [c.id for c in doctor.check_shell(fake)])
+
+    def test_config_values_are_read_by_group(self):
+        text = "[A]\nname=one\n[Theme]\nname = ozios\n"
+        self.assertEqual(doctor.config_value(text, "Theme", "name"), "ozios")
+        self.assertIsNone(doctor.config_value(text, "Theme", "other"))
