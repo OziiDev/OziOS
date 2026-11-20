@@ -17,6 +17,10 @@ ACTIONS = {
     "gaming": ["konsole", "--hold", "-e", "ozi", "gaming", "--yes"],
     "store": ["ozi-store"],
     "windows": ["ozi-winsetup", "--gui"],
+    # The network as the file manager sees it: Windows computers nearby and their
+    # shared folders (WS-Discovery and SMB). In a VirtualBox guest the folders the
+    # host shares are added as tabs (see command()).
+    "windowsnet": ["dolphin", "--new-window", "network:/"],
     "theme": ["bash", "/usr/share/ozios/tools/apply-branding.sh"],
     "settings": ["systemsettings"],
     "terminal": ["konsole"],
@@ -52,18 +56,42 @@ def blocker(name, live=None, kvm_path="/dev/kvm"):
     return ""
 
 
-def launch(name, log=lambda line: None, popen=subprocess.Popen, live=None, kvm_path="/dev/kvm", wait=1.0):
+def shared_folders(mounts=None):
+    """Where the folders a VirtualBox host shares with this machine are mounted."""
+    if mounts is None:
+        try:
+            with open("/proc/mounts", encoding="utf-8", errors="replace") as fh:
+                mounts = fh.read()
+        except OSError:
+            return []
+    out = []
+    for line in mounts.splitlines():
+        fields = line.split()
+        if len(fields) > 2 and fields[2] == "vboxsf":
+            out.append(fields[1].replace("\\040", " "))      # /proc/mounts writes a space as \040
+    return out
+
+
+def command(name, mounts=None):
+    """The command behind a button."""
+    if name == "windowsnet":
+        return ACTIONS[name] + shared_folders(mounts)
+    return list(ACTIONS[name])
+
+
+def launch(name, log=lambda line: None, popen=subprocess.Popen, live=None, kvm_path="/dev/kvm", wait=1.0, mounts=None):
     if name not in ACTIONS:
         raise ValueError("unknown action: %r" % (name,))
     reason = blocker(name, live, kvm_path)
     if reason:
         raise ValueError(reason)
+    cmd = command(name, mounts)
     with tempfile.TemporaryFile() as errors:           # the program keeps its own copy of the handle
         try:
-            proc = popen(ACTIONS[name], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors,
+            proc = popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors,
                          start_new_session=True)
         except OSError:
-            raise ValueError(tr("{program} is not installed.", program=ACTIONS[name][0])) from None
+            raise ValueError(tr("{program} is not installed.", program=cmd[0])) from None
         # A program that stops at once has something to say; without this the button just does nothing.
         poll = getattr(proc, "poll", None)
         if poll:
@@ -73,8 +101,8 @@ def launch(name, log=lambda line: None, popen=subprocess.Popen, live=None, kvm_p
                 errors.seek(0)
                 lines = errors.read().decode("utf-8", "replace").strip().splitlines()
                 why = lines[-1][:200] if lines else ""
-                raise ValueError(tr("{program} stopped right away: {why}", program=ACTIONS[name][0], why=why) if why
-                                 else tr("{program} stopped right away.", program=ACTIONS[name][0]))
+                raise ValueError(tr("{program} stopped right away: {why}", program=cmd[0], why=why) if why
+                                 else tr("{program} stopped right away.", program=cmd[0]))
     return {"started": name}
 
 

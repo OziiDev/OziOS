@@ -72,6 +72,16 @@ class Welcome(unittest.TestCase):
         welcome.launch("windows", popen=popen, live=False, kvm_path=__file__)
         self.assertEqual(started, [["ozi-winsetup", "--gui"]])
 
+    def test_the_windows_network_button_also_opens_what_a_virtualbox_host_shares(self):
+        mounts = "\n".join(["proc /proc proc rw 0 0", "ozios /mnt/ozios vboxsf rw,nodev 0 0",
+                            r"Belgelerim /media/sf_My\040Documents vboxsf rw 0 0", "/dev/sda2 / btrfs rw 0 0", ""])
+        self.assertEqual(welcome.command("windowsnet", mounts),
+                         ["dolphin", "--new-window", "network:/", "/mnt/ozios", "/media/sf_My Documents"])
+        self.assertEqual(welcome.command("windowsnet", "proc /proc proc rw 0 0"), ["dolphin", "--new-window", "network:/"])
+        started = []
+        welcome.launch("windowsnet", popen=lambda cmd, **k: started.append(cmd), mounts="", wait=0)
+        self.assertEqual(started, [["dolphin", "--new-window", "network:/"]])
+
     def test_show_at_login_round_trip(self):
         self.assertTrue(welcome.show_at_login())
         welcome.set_show_at_login(False)
