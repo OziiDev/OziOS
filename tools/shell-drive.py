@@ -183,6 +183,41 @@ def drive_control(engine, folder):
     return out
 
 
+def drive_switcher(engine, folder):
+    view = preview.open_scene(engine, "switcher", "cyan", folder)
+    QTest.qWait(500)
+    switcher = view.rootObject().findChild(QObject, "applet").property("item")
+    popups = [w for w in QGuiApplication.allWindows() if w is not view and w.isVisible() and hasattr(w, "contentItem")]
+    out = {"popup": bool(popups), "current": switcher.property("currentIndex")}
+    if not popups:
+        view.close()
+        return out
+    popup = popups[-1]
+    popup.requestActivate()
+    QTest.qWait(100)
+    QTest.keyClick(popup, Qt.Key.Key_Right)
+    QTest.qWait(100)
+    out["after_right"] = switcher.property("currentIndex")
+    QTest.keyClick(popup, Qt.Key.Key_Left)
+    QTest.keyClick(popup, Qt.Key.Key_Left)
+    QTest.qWait(100)
+    out["after_two_lefts"] = switcher.property("currentIndex")
+    cards = [c for c in visual_tree(popup.contentItem()) if c.metaObject().className().startswith("QQuickMouseArea")
+             and c.property("index") is not None]
+    cards.sort(key=lambda c: c.property("index"))
+    out["cards"] = len(cards)
+    plasma_stubs.CALLS.clear()
+    if len(cards) > 3:
+        point = cards[3].mapToScene(QPointF(cards[3].width() / 2, cards[3].height() / 3))
+        QTest.mouseClick(popup, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(int(point.x()), int(point.y())))
+        QTest.qWait(100)
+    out["click"] = calls()
+    for window in popups:
+        window.close()
+    view.close()
+    return out
+
+
 def drive_wallpaper(engine, folder):
     view = preview.open_scene(engine, "wallpaper", "cyan", folder)
     QTest.qWait(300)
@@ -206,7 +241,7 @@ def main():
     engine = QQmlEngine()
     result = {}
     for name, drive in (("dock", drive_dock), ("launcher", drive_launcher), ("control", drive_control),
-                        ("wallpaper", drive_wallpaper)):
+                        ("switcher", drive_switcher), ("wallpaper", drive_wallpaper)):
         try:
             result[name] = drive(engine, folder)
         except Exception as err:                 # report it with the rest instead of stopping

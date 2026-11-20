@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "KWin/WindowSwitcher",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OziOS"
+            }
+        ],
+        "Description": "Open windows as live pictures in one row; the chosen one comes forward",
+        "Icon": "preferences-system-windows-switcher-thumbnail-grid",
+        "Id": "org.ozios.switcher",
+        "License": "MIT",
+        "Name": "OziOS"
+    },
+    "X-Plasma-API": "declarativeappletscript"
+}

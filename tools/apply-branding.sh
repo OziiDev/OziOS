@@ -19,6 +19,7 @@ theme=org.ozios.desktop
 wallpaper=org.ozios.tesseract
 style=ozios                                  # the Plasma style: bar, dock and popup frames
 motion=ozios_motion                          # the window open and close animation
+switcher=org.ozios.switcher                  # the Alt+Tab window switcher
 applets="org.ozios.control org.ozios.dock org.ozios.launcher"
 qdbus="$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus || true)"
 
@@ -52,13 +53,14 @@ if [ "${1:-}" = "--undo" ]; then
   rm -f "$HOME/.local/bin/ozi-fetch" "$data"/color-schemes/OziOS*.colors \
         "$data"/konsole/OziOS*.colorscheme "$data/konsole/OziOS.profile"
   rm -rf "$data/ozios" "$data/plasma/look-and-feel/$theme" "$data/plasma/wallpapers/$wallpaper" \
-         "$data/plasma/desktoptheme/$style" "$data/kwin/effects/$motion"
+         "$data/plasma/desktoptheme/$style" "$data/kwin-wayland/effects/$motion" "$data/kwin-wayland/tabbox/$switcher"
   for applet in $applets; do rm -rf "$data/plasma/plasmoids/$applet"; done
   kwriteconfig6 --file konsolerc --group "Desktop Entry" --key DefaultProfile --delete
   for name in wobblywindows magiclamp squash blur scale glide fade "$motion"; do
     kwriteconfig6 --file kwinrc --group Plugins --key "${name}Enabled" --delete
   done
   kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor --delete
+  kwriteconfig6 --file kwinrc --group TabBox --key LayoutName --delete
   [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /KWin reconfigure >/dev/null 2>&1
   echo "OziOS desktop removed."
   exit 0
@@ -76,14 +78,16 @@ if [ -d "$root/desktop/look-and-feel/$theme" ]; then   # source checkout
   rm -rf "$data/plasma/look-and-feel/$theme" "$data/plasma/wallpapers/$wallpaper"
   cp -r "$root/desktop/look-and-feel/$theme" "$data/plasma/look-and-feel/"
   cp -r "$root/desktop/wallpaper/$wallpaper" "$data/plasma/wallpapers/"
-  mkdir -p "$data/plasma/plasmoids" "$data/plasma/desktoptheme" "$data/kwin/effects"
+  mkdir -p "$data/plasma/plasmoids" "$data/plasma/desktoptheme" "$data/kwin-wayland/effects"
   for applet in $applets; do
     rm -rf "$data/plasma/plasmoids/$applet"
     cp -r "$root/desktop/plasmoids/$applet" "$data/plasma/plasmoids/"
   done
-  rm -rf "$data/plasma/desktoptheme/$style" "$data/kwin/effects/$motion"
+  rm -rf "$data/plasma/desktoptheme/$style" "$data/kwin-wayland/effects/$motion"
   cp -r "$root/desktop/plasma-style/$style" "$data/plasma/desktoptheme/"
-  cp -r "$root/desktop/kwin/effects/$motion" "$data/kwin/effects/"
+  cp -r "$root/desktop/kwin/effects/$motion" "$data/kwin-wayland/effects/"
+  mkdir -p "$data/kwin-wayland/tabbox" && rm -rf "$data/kwin-wayland/tabbox/$switcher"
+  cp -r "$root/desktop/kwin/tabbox/$switcher" "$data/kwin-wayland/tabbox/"
   install -m644 "$src"/themes/*.colors "$data/color-schemes/"
   # The splash screen reuses the wallpaper's figure.
   cp "$root/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml" \
@@ -168,6 +172,8 @@ kwin_effect magiclamp true
 # Windows open and close with the OziOS motion; KWin's own animations of that kind step aside.
 for name in scale glide fade; do kwin_effect "$name" false; done
 kwin_effect "$motion" true
+# Alt+Tab shows the OziOS switcher.
+kwriteconfig6 --file kwinrc --group TabBox --key LayoutName "$switcher"
 if $lite; then
   kwin_effect wobblywindows false
   kwin_effect blur false

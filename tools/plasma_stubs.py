@@ -491,6 +491,41 @@ def _system_class():
 SystemModel = _system_class()
 
 
+# --- what KWin hands a window switcher ---------------------------------------------------------
+
+DEMO_WINDOWS = [("Firefox — OziOS", "firefox", 101), ("Dosyalar — Ev", "org.kde.dolphin", 102),
+                ("Konsole — ~", "org.kde.konsole", 103), ("Discord", "discord", 104), ("Steam", "steam", 105)]
+
+
+class TabBoxModel(QAbstractListModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._windows = list(DEMO_WINDOWS)
+
+    def rowCount(self, parent=QModelIndex()):
+        return 0 if parent.isValid() else len(self._windows)
+
+    def roleNames(self):
+        return {USER_ROLE + 1: b"caption", USER_ROLE + 2: b"icon", USER_ROLE + 3: b"windowId",
+                USER_ROLE + 4: b"closeable", USER_ROLE + 5: b"minimized", USER_ROLE + 6: b"desktopName"}
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole.value):
+        if not index.isValid() or not 0 <= index.row() < len(self._windows):
+            return None
+        caption, icon, window = self._windows[index.row()]
+        role = int(role.value if hasattr(role, "value") else role)
+        return {USER_ROLE + 1: caption, USER_ROLE + 2: icon, USER_ROLE + 3: window, USER_ROLE + 4: True,
+                USER_ROLE + 5: False, USER_ROLE + 6: "1"}.get(role)
+
+    @pyqtSlot(int)
+    def activate(self, index):
+        CALLS.append(("tabbox", "activate", index))
+
+    @pyqtSlot(int)
+    def close(self, index):
+        CALLS.append(("tabbox", "close", index))
+
+
 # --- the shell behind Plasma5Support.DataSource -------------------------------------------------
 
 class Shell(QObject):
@@ -536,8 +571,10 @@ def register():
     qmlRegisterSingletonInstance(plasmoid, 1, 0, "Plasmoid", STATE)
     qmlRegisterType(_url("plasma", "PlasmoidItem.qml"), plasmoid, 1, 0, "PlasmoidItem")
     qmlRegisterType(_url("plasma", "WallpaperItem.qml"), plasmoid, 1, 0, "WallpaperItem")
-    for name in ("Types", "ToolTipArea"):
+    for name in ("Types", "ToolTipArea", "Dialog"):
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.plasma.core", 1, 0, name)
+    for name in ("TabBoxSwitcher", "WindowThumbnail"):
+        qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.kwin", 3, 0, name)
     for name in ("Menu", "MenuItem", "SearchField"):
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.plasma.extras", 1, 0, name)
     for name in ("Label", "Button", "ToolButton", "Switch", "TextField"):
@@ -579,6 +616,8 @@ class Session:
 
     def prepare(self, engine):
         engine.rootContext().setContextProperty("stubShell", self.shell)
+        self.windows = TabBoxModel()
+        engine.rootContext().setContextProperty("stubWindows", self.windows)
         theme = engine.singletonInstance(qmlTypeId("org.kde.kirigami", 2, 0, "Theme"))
         for key, value in theme_colors(self.theme_id).items():
             theme.setProperty(key, value)

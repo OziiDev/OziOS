@@ -31,11 +31,14 @@ for applet in org.ozios.control org.ozios.dock org.ozios.launcher; do
   rm -rf "/usr/share/plasma/plasmoids/$applet"
   cp -r "$src/desktop/plasmoids/$applet" /usr/share/plasma/plasmoids/
 done
-rm -rf /usr/share/plasma/wallpapers/org.ozios.tesseract /usr/share/plasma/desktoptheme/ozios /usr/share/kwin/effects/ozios_motion
+rm -rf /usr/share/plasma/wallpapers/org.ozios.tesseract /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_motion
 cp -r "$src/desktop/wallpaper/org.ozios.tesseract" /usr/share/plasma/wallpapers/
-mkdir -p /usr/share/plasma/desktoptheme /usr/share/kwin/effects
+mkdir -p /usr/share/plasma/desktoptheme /usr/share/kwin-wayland/effects
 cp -r "$src/desktop/plasma-style/ozios" /usr/share/plasma/desktoptheme/
-cp -r "$src/desktop/kwin/effects/ozios_motion" /usr/share/kwin/effects/
+cp -r "$src/desktop/kwin/effects/ozios_motion" /usr/share/kwin-wayland/effects/
+rm -rf /usr/share/kwin-wayland/tabbox/org.ozios.switcher && mkdir -p /usr/share/kwin-wayland/tabbox
+cp -r "$src/desktop/kwin/tabbox/org.ozios.switcher" /usr/share/kwin-wayland/tabbox/
+install -m644 "$src"/branding/konsole/*.colorscheme /usr/share/konsole/
 install -m644 "$src/branding/OziOS.colors" "$src"/branding/themes/*.colors /usr/share/color-schemes/
 lnf=/usr/share/plasma/look-and-feel/org.ozios.desktop
 if [ -d "$lnf" ]; then

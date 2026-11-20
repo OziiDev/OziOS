@@ -41,13 +41,15 @@ check "CachyOS Hello is not running" '! pgrep -f cachyos-hello'
 # The OziOS shell.
 check "the dock and the launcher are installed" 'test -f /usr/share/plasma/plasmoids/org.ozios.dock/contents/ui/DockItem.qml && test -f /usr/share/plasma/plasmoids/org.ozios.launcher/contents/ui/AppTile.qml'
 check "the OziOS Plasma style is installed" 'test -f /usr/share/plasma/desktoptheme/ozios/widgets/panel-background.svg && test -f /usr/share/plasma/desktoptheme/ozios/translucent/dialogs/background.svg'
-check "the window motion is installed" 'test -f /usr/share/kwin/effects/ozios_motion/contents/code/main.js'
+check "the window motion is installed" 'test -f /usr/share/kwin-wayland/effects/ozios_motion/contents/code/main.js'
+check "the Alt+Tab switcher is installed" 'test -f /usr/share/kwin-wayland/tabbox/org.ozios.switcher/contents/ui/SwitcherCard.qml'
 check "every colour theme is installed" 'for s in OziOS OziOSAurora OziOSEmber OziOSMint OziOSRose OziOSFrost; do test -f /usr/share/color-schemes/$s.colors && test -f /usr/share/konsole/$s.colorscheme || exit 1; done'
 check "the boot splash and the day and night timer are installed" 'test -f /usr/share/plymouth/themes/ozios/ozios.plymouth && test -f /usr/lib/systemd/user/ozios-theme-auto.timer'
 check "file search does not read every document" 'grep -q "only basic indexing=true" /etc/xdg/baloofilerc'
 # In the live session itself, once the first login has applied the desktop:
 if [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]; then
   check "this session uses the OziOS Plasma style" 'test "$(kreadconfig6 --file plasmarc --group Theme --key name)" = ozios'
+  check "Alt+Tab shows the OziOS switcher" 'test "$(kreadconfig6 --file kwinrc --group TabBox --key LayoutName)" = org.ozios.switcher'
   check "this session uses the OziOS window motion" 'test "$(kreadconfig6 --file kwinrc --group Plugins --key ozios_motionEnabled)" = true'
   check "the panels hold the OziOS dock and launcher" 'grep -q "plugin=org.ozios.dock" ~/.config/plasma-org.kde.plasma.desktop-appletsrc && grep -q "plugin=org.ozios.launcher" ~/.config/plasma-org.kde.plasma.desktop-appletsrc'
   check "plasmashell reported no QML errors for OziOS" '! journalctl --user -b --no-pager 2>/dev/null | grep -i "org.ozios" | grep -qiE "error|unavailable|is not a type|cannot assign"'
