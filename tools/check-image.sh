@@ -50,6 +50,7 @@ check "the medium carries the kernel headers for NVIDIA's DKMS modules" 'ls /opt
 check "windows animate also where KWin draws in software" 'grep -q "^KWIN_EFFECTS_FORCE_ANIMATIONS=1" /usr/lib/environment.d/60-ozios-animations.conf'
 check "developer tools are out of the program menu" '! test -f /usr/share/applications/avahi-discover.desktop || grep -q "^NoDisplay=true" /usr/share/applications/avahi-discover.desktop'
 check "the live user can open VirtualBox shared folders" '! getent group vboxsf >/dev/null || id -nG liveuser | grep -qw vboxsf'
+check "the keyring set-up at boot leaves the desktop alone" 'grep -q "^Nice=19" /etc/systemd/system/pacman-init.service.d/ozios-nice.conf'
 # In the live session itself, once the first login has applied the desktop:
 if [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]; then
   check "this session uses the OziOS Plasma style" 'test "$(kreadconfig6 --file plasmarc --group Theme --key name)" = ozios'

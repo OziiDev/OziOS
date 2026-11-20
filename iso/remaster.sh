@@ -66,13 +66,16 @@ work="$(readlink -f "$work")"
 
 # Source medium: mounted already when we were booted from it.
 mnt=/run/archiso/bootmnt
+mounted_source=false
 if [ -z "$src" ]; then
   mountpoint -q "$mnt" || die "not booted from a live ISO; pass --iso"
   src="$(findmnt -no SOURCE "$mnt")"
 else
   mnt="$work/src"
   mkdir -p "$mnt"
-  mountpoint -q "$mnt" || mount -o ro,loop "$src" "$mnt"
+  if ! mountpoint -q "$mnt"; then
+    mount -o ro,loop "$src" "$mnt" && mounted_source=true
+  fi
 fi
 
 image="$(find "$mnt" -maxdepth 4 \( -name 'airootfs.sfs' -o -name 'airootfs.erofs' \) | head -n1)"
@@ -88,7 +91,8 @@ cleanup() {
   done
   return 0
 }
-trap cleanup EXIT
+# A source ISO mounted here is let go at the end, also when a step fails.
+trap 'cleanup; if $mounted_source; then umount "$mnt" 2>/dev/null; fi; true' EXIT
 
 step "Building the OziOS package"
 rm -rf "$work/pkgbuild" "$work/makepkg" "$work/pkg"
@@ -165,6 +169,9 @@ echo ozios > "$root/etc/hostname"
 if grep -q '^vboxsf:' "$root/etc/group" && grep -q '^liveuser:' "$root/etc/passwd"; then
   chroot "$root" gpasswd -a liveuser vboxsf >/dev/null
 fi
+# The live system sets up its pacman keyring at boot, while the desktop starts;
+# that work only gets the processor time the desktop leaves over.
+install -Dm644 "$repo/iso/live/pacman-init-nice.conf" "$root/etc/systemd/system/pacman-init.service.d/ozios-nice.conf"
 
 if [ "$edition" = edu ]; then
   step "Turkish defaults for the live session"
