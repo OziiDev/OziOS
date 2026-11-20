@@ -3,7 +3,7 @@
 
 Calamares installs software from lists that name CachyOS kernels and
 programs, and nothing from the live session reaches the installed system by
-itself. This changes the lists and adds two steps that put OziOS and its
+itself. This changes the lists and adds the steps that put OziOS and its
 kernel into the new system. The rules live in ozipkg/installer.py.
 
 Does nothing where Calamares is not installed, and never fails the caller.

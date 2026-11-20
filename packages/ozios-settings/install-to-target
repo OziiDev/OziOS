@@ -2,8 +2,11 @@
 # Run by Calamares during an installation to put OziOS into the new system. It
 # always exits 0, so a problem here can not fail an otherwise good install.
 #
+#   install-to-target kernel  right after the base system, before the driver step
+#                             (chwd): a package source for the OziOS packages on the
+#                             new disk, then the OziOS kernel and its headers
 #   install-to-target early   after the extra packages and before the initramfs
-#                             and boot loader steps: the OziOS packages and kernel
+#                             and boot loader steps: the OziOS packages
 #   install-to-target late    right before the unmount: boot menu details
 #
 # The installer's package lists no longer name CachyOS kernels. The OziOS kernel
@@ -19,10 +22,52 @@ if [ -z "$root" ]; then
   exit 0
 fi
 
+has_kernel() {
+  ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1
+}
+
 # arch-chroot mounts its own /tmp, so the file goes where the chroot can see it.
 install_pkg() {
   mkdir -p "$root/opt/ozios" && cp -f "$1" "$root/opt/ozios/" || return 1
   arch-chroot "$root" pacman --noconfirm --needed -U "/opt/ozios/$(basename "$1")"
+}
+
+# A package source on the new system's own disk. pacman then knows the OziOS
+# packages by name: the driver step asks it for "<kernel>-headers" when an NVIDIA
+# card needs a module built (DKMS), and `pacman -S linux-ozios-headers` works later.
+make_repo() {
+  mkdir -p "$root/opt/ozios" || return 1
+  cp -f "$src"/*.pkg.tar.* "$root/opt/ozios/" 2>/dev/null
+  pkgs="$(cd "$root/opt/ozios" && ls ./*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | sed 's|^\./||' | tr '\n' ' ')"
+  [ -n "$pkgs" ] || return 1
+  arch-chroot "$root" sh -c "cd /opt/ozios && rm -f ozios.db* ozios.files* && repo-add -q ozios.db.tar.gz $pkgs" || return 1
+  if ! grep -q '^\[ozios\]' "$root/etc/pacman.conf" 2>/dev/null; then
+    printf '\n# OziOS packages kept on this disk by the installer.\n[ozios]\nSigLevel = Optional TrustAll\nServer = file:///opt/ozios\n' \
+      >> "$root/etc/pacman.conf" || return 1
+  fi
+  # Only this repository's list is put in place; refreshing the others here would mix package versions.
+  mkdir -p "$root/var/lib/pacman/sync" &&
+    cp -f "$root/opt/ozios/ozios.db.tar.gz" "$root/var/lib/pacman/sync/ozios.db"
+}
+
+kernel() {
+  make_repo || echo "ozios: could not set up the package source for the OziOS packages"
+  if ! ls "$root"/usr/lib/modules/*-ozios/vmlinuz >/dev/null 2>&1; then
+    # The headers too: a driver built for the kernel during the installation (NVIDIA through DKMS) needs them.
+    if ! arch-chroot "$root" pacman --noconfirm --needed -S linux-ozios linux-ozios-headers; then
+      # Without the package source: straight from the files.
+      for name in linux-ozios linux-ozios-headers; do
+        file="$(ls "$root/opt/ozios/$name"-[0-9]*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
+        [ -n "$file" ] && { arch-chroot "$root" pacman --noconfirm --needed -U "/opt/ozios/$(basename "$file")" ||
+          echo "ozios: could not install $(basename "$file")"; }
+      done
+    fi
+  fi
+  # A system without a kernel does not boot.
+  if ! has_kernel; then
+    echo "ozios: no kernel was installed, falling back to the Arch kernel"
+    arch-chroot "$root" pacman --noconfirm --needed -S linux linux-headers || echo "ozios: could not install the Arch kernel either"
+  fi
 }
 
 early() {
@@ -37,23 +82,12 @@ early() {
     install_pkg "$edu" || echo "ozios: could not install $(basename "$edu")"
   done
 
-  # One by one: the NVIDIA modules need the exact driver version and may not
-  # match what the installer fetched; that must not block the kernel.
-  # (Not the ZFS modules: the installer does not offer ZFS as a root file system.)
-  for pkg in $(ls "$src"/linux-ozios*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | grep -v -- '-zfs-' | sort); do
-    install_pkg "$pkg" || echo "ozios: could not install $(basename "$pkg")"
-  done
-  mkdir -p "$root/opt/ozios" && cp -f "$src"/*.pkg.tar.* "$root/opt/ozios/" 2>/dev/null
-
-  # A system without a kernel does not boot.
-  if ! ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
-    echo "ozios: no kernel was installed, falling back to the Arch kernel"
-    arch-chroot "$root" pacman --noconfirm --needed -S linux || echo "ozios: could not install the Arch kernel either"
-  fi
+  # Normally the kernel stage did this; an installer set up before that stage existed relies on this one.
+  has_kernel || kernel
 
   # What the installer may still have brought along from CachyOS.
   unwanted="$(arch-chroot "$root" pacman -Qq 2>/dev/null | grep -E '^(linux-cachyos[a-z0-9.+-]*|cachyos-hello|cachyos-kernel-manager|cachyos-packageinstaller)$')"
-  if [ -n "$unwanted" ] && ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
+  if [ -n "$unwanted" ] && has_kernel; then
     # shellcheck disable=SC2086
     arch-chroot "$root" pacman --noconfirm -Rdd $unwanted || echo "ozios: could not remove $unwanted"
   fi
@@ -91,6 +125,7 @@ late() {
 }
 
 case "$stage" in
+  kernel) kernel ;;
   early) early ;;
   late) late ;;
   *) echo "ozios: unknown stage '$stage'" ;;

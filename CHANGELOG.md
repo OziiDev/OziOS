@@ -10,6 +10,12 @@ creates carry no CachyOS kernel, no CachyOS programs and no CachyOS artwork.
 The CachyOS repositories, keyring and mirror lists stay, because the installer
 and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
 
+- Installing on a machine with an NVIDIA card no longer stops at "Failed to run
+  chwd". The OziOS kernel and its headers now go in right after the base system,
+  before the driver step, from a package source the installer keeps on the new
+  disk (`[ozios]`, `/opt/ozios`); NVIDIA modules are built for the installed
+  driver (DKMS). A driver step that fails anyway no longer fails the
+  installation; `ozi doctor` shows what it said.
 - The long-term CachyOS kernel is gone from the ISO; the fallback entries of
   the boot menu, BIOS included, start the OziOS kernel.
 - CachyOS Hello, its CLI installer and `cachy-chroot` are removed from the image.
