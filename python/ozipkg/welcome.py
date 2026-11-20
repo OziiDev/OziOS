@@ -83,8 +83,9 @@ def theme_choices(log=lambda line: None):
     return themes.listing()
 
 
-def set_theme(theme_id, log=lambda line: None, run=subprocess.run, home=None):
-    """Switch the desktop to a theme; the window takes on its palette from the answer."""
+def set_theme(theme_id, log=lambda line: None, run=subprocess.run, home=None, config=None):
+    """Switch the desktop to a theme; the window takes on its palette from the answer.
+    A theme picked here ends the day and night switching, as `ozi theme <name>` does."""
     if theme_id not in themes.BY_ID:
         raise ValueError("unknown theme: %r" % (theme_id,))
     code = themes.apply(theme_id, run=run, home=home)
@@ -92,6 +93,7 @@ def set_theme(theme_id, log=lambda line: None, run=subprocess.run, home=None):
         raise ValueError(tr("plasma-apply-colorscheme is missing; run this inside the desktop session"))
     if code != 0:
         raise ValueError(tr("The colours could not be changed"))
+    themes.stop_auto(run, config)
     return {"theme": theme_id, "palette": themes.app_palette(theme_id)}
 
 

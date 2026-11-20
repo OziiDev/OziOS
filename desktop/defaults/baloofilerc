@@ -1,0 +1,6 @@
+# OziOS: file search indexes names only, not what is inside the files. Reading
+# every document after login keeps the disk and a processor core busy for a
+# long time on an ordinary computer. System Settings > Search turns content
+# indexing back on for a person who wants it.
+[General]
+only basic indexing=true

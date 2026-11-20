@@ -373,5 +373,10 @@
   "Rose": "Gül",
   "Frost (light)": "Ayaz (açık)",
   "Colours": "Renkler",
-  "The whole desktop changes with it. The panel has the same choice later.": "Tüm masaüstü onunla değişir. Aynı seçim daha sonra panelde de var."
+  "The whole desktop changes with it. The panel has the same choice later.": "Tüm masaüstü onunla değişir. Aynı seçim daha sonra panelde de var.",
+  "with auto: the theme from sunrise to sunset": "auto ile: gün doğumundan gün batımına kadarki tema",
+  "with auto: the theme at night": "auto ile: gece teması",
+  "The colours no longer follow the time of day": "Renkler artık günün saatine uymuyor",
+  "The timer could not be started; the colours change at the next login.": "Zamanlayıcı başlatılamadı; renkler bir sonraki girişte değişecek.",
+  "Day and night: {day} by day, {night} at night": "Gündüz ve gece: gündüz {day}, gece {night}"
 }

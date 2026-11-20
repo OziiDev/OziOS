@@ -10,7 +10,11 @@ _ozi() {
   case "${words[1]}" in
     layout)  [ "$cword" -eq 2 ] && COMPREPLY=($(compgen -W "default deck classic board" -- "$cur")) ;;
     effects) [ "$cword" -eq 2 ] && COMPREPLY=($(compgen -W "full light off" -- "$cur")) ;;
-    theme)   [ "$cword" -eq 2 ] && COMPREPLY=($(compgen -W "cyan aurora ember mint rose frost --json" -- "$cur")) ;;
+    theme)
+      case "$cword" in
+        2) COMPREPLY=($(compgen -W "cyan aurora ember mint rose frost auto --json" -- "$cur")) ;;
+        *) [ "${words[2]}" = auto ] && COMPREPLY=($(compgen -W "off --day --night" -- "$cur")) ;;
+      esac ;;
     mode)
       case "$cword" in
         2) COMPREPLY=($(compgen -W "game" -- "$cur")) ;;

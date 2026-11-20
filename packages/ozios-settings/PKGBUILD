@@ -96,6 +96,8 @@ package() {
   install -Dm644 "$src/branding/boot/desktop.png" "$share/branding/desktop.png"
 
   install -Dm644 "$src/branding/login/10-ozios.conf" "$pkgdir/etc/plasmalogin.conf.d/10-ozios.conf"
+  # Defaults for every user, which each person can still change: file search without content indexing.
+  install -Dm644 "$src/desktop/defaults/baloofilerc" "$pkgdir/etc/xdg/baloofilerc"
 
   install -Dm644 "$src/docs/man/ozi.1"     "$pkgdir/usr/share/man/man1/ozi.1"
   install -Dm644 "$src/docs/man/ozi-pkg.1" "$pkgdir/usr/share/man/man1/ozi-pkg.1"
@@ -128,4 +130,6 @@ package() {
   # Named to sort after the CachyOS hook that writes os-release, so ours has the last word.
   install -Dm644 "$here/zz-ozios.hook" "$pkgdir/usr/share/libalpm/hooks/zz-ozios.hook"
   install -Dm644 "$here/first-login.desktop" "$pkgdir/etc/xdg/autostart/ozios-first-login.desktop"
+  # `ozi theme auto`: day and night colours, switched by a timer of the user's own session.
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/user" "$here/ozios-theme-auto.service" "$here/ozios-theme-auto.timer"
 }
