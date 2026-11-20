@@ -34,6 +34,8 @@ if ! command -v xorriso >/dev/null; then
 fi
 command -v xorriso >/dev/null || { echo "build: no xorriso"; exit 1; }
 
+# A run that stopped early can leave the source ISO mounted inside the work folder.
+findmnt -rno TARGET | grep '^/mnt/build/remaster/' | sort -r | while read -r target; do umount -l "$target"; done
 rm -rf /mnt/build/remaster
 mkdir -p "$(dirname "$log")"
 rm -f "$log"
