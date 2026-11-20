@@ -24,6 +24,10 @@ başlat, Kur'a bas.
 - **Dosya yöneticisinden Windows programları** (devam ediyor): `.exe` ve `.msi`,
   kendi Windows ISO'nuzdan kurulan bir Windows konuğunda açılır. Windows
   dağıtılmaz.
+- **Windows ile yan yana:** ağdaki Windows bilgisayarlarının paylaşılan
+  klasörleri Hoş Geldin penceresinden tek tıkla açılır; VirtualBox'ta
+  Windows'la paylaşılan klasörler dosya yöneticisinde açılır; Windows'un yanına
+  kurulunca saat iki sistemde de doğru kalır.
 - **Kendi çekirdeği:** CachyOS çekirdek tarifi `linux-ozios` adıyla derlenir
   ve bu depodan yayımlanır. İmajda ve kurulan sistemde CachyOS çekirdeği,
   programı ya da görseli yok.

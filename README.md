@@ -37,6 +37,10 @@ start from it, press Install.
 - **Windows programs from the file manager** (in progress). `.exe` and `.msi`
   files open through a Windows guest that is installed from your own Windows
   ISO, with telemetry and bundled apps removed. OziOS does not ship Windows.
+- **Next to Windows.** The shared folders of Windows computers on the network
+  open from the Welcome window; in VirtualBox the folders shared with a Windows
+  host open in the file manager; installed beside Windows, the clock stays right
+  in both systems.
 - **Its own kernel.** The CachyOS kernel recipe, built as `linux-ozios` and
   released from this repository. The image and the installed system carry no
   CachyOS kernel, program or artwork.
