@@ -17,10 +17,11 @@ ACTIONS = {
     "gaming": ["konsole", "--hold", "-e", "ozi", "gaming", "--yes"],
     "store": ["ozi-store"],
     "windows": ["ozi-winsetup", "--gui"],
-    # The network as the file manager sees it: Windows computers nearby and their
-    # shared folders (WS-Discovery and SMB). In a VirtualBox guest the folders the
-    # host shares are added as tabs (see command()).
-    "windowsnet": ["dolphin", "--new-window", "network:/"],
+    # Windows computers nearby and their shared folders: the SMB worker of kio-extras
+    # finds them (WS-Discovery). network:/ is gone from Plasma 6; seen failing in a
+    # Plasma session. In a VirtualBox guest the folders the host shares are added
+    # as tabs (see command()).
+    "windowsnet": ["dolphin", "--new-window", "smb:/"],
     "theme": ["bash", "/usr/share/ozios/tools/apply-branding.sh"],
     "settings": ["systemsettings"],
     "terminal": ["konsole"],

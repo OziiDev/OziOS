@@ -76,11 +76,11 @@ class Welcome(unittest.TestCase):
         mounts = "\n".join(["proc /proc proc rw 0 0", "ozios /mnt/ozios vboxsf rw,nodev 0 0",
                             r"Belgelerim /media/sf_My\040Documents vboxsf rw 0 0", "/dev/sda2 / btrfs rw 0 0", ""])
         self.assertEqual(welcome.command("windowsnet", mounts),
-                         ["dolphin", "--new-window", "network:/", "/mnt/ozios", "/media/sf_My Documents"])
-        self.assertEqual(welcome.command("windowsnet", "proc /proc proc rw 0 0"), ["dolphin", "--new-window", "network:/"])
+                         ["dolphin", "--new-window", "smb:/", "/mnt/ozios", "/media/sf_My Documents"])
+        self.assertEqual(welcome.command("windowsnet", "proc /proc proc rw 0 0"), ["dolphin", "--new-window", "smb:/"])
         started = []
         welcome.launch("windowsnet", popen=lambda cmd, **k: started.append(cmd), mounts="", wait=0)
-        self.assertEqual(started, [["dolphin", "--new-window", "network:/"]])
+        self.assertEqual(started, [["dolphin", "--new-window", "smb:/"]])
 
     def test_show_at_login_round_trip(self):
         self.assertTrue(welcome.show_at_login())
