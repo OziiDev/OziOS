@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import time
 
-from . import paths
+from . import paths, themes
 from .i18n import tr
 
 # Our wrapper around the live image's own launcher (which prepares the keyring and mirrors, then starts Calamares).
@@ -76,6 +76,23 @@ def launch(name, log=lambda line: None, popen=subprocess.Popen, live=None, kvm_p
                 raise ValueError(tr("{program} stopped right away: {why}", program=ACTIONS[name][0], why=why) if why
                                  else tr("{program} stopped right away.", program=ACTIONS[name][0]))
     return {"started": name}
+
+
+def theme_choices(log=lambda line: None):
+    """The colour themes, the one in use marked, for the swatches."""
+    return themes.listing()
+
+
+def set_theme(theme_id, log=lambda line: None, run=subprocess.run, home=None):
+    """Switch the desktop to a theme; the window takes on its palette from the answer."""
+    if theme_id not in themes.BY_ID:
+        raise ValueError("unknown theme: %r" % (theme_id,))
+    code = themes.apply(theme_id, run=run, home=home)
+    if code == 127:
+        raise ValueError(tr("plasma-apply-colorscheme is missing; run this inside the desktop session"))
+    if code != 0:
+        raise ValueError(tr("The colours could not be changed"))
+    return {"theme": theme_id, "palette": themes.app_palette(theme_id)}
 
 
 def show_at_login():
