@@ -36,7 +36,9 @@ command -v xorriso >/dev/null || { echo "build: no xorriso"; exit 1; }
 
 # A run that stopped early can leave the source ISO mounted inside the work folder.
 findmnt -rno TARGET | grep '^/mnt/build/remaster/' | sort -r | while read -r target; do umount -l "$target"; done
-rm -rf /mnt/build/remaster
+# Everything from the last run except its downloaded packages.
+mkdir -p /mnt/build/remaster
+find /mnt/build/remaster -mindepth 1 -maxdepth 1 ! -name pkgcache -exec rm -rf {} +
 mkdir -p "$(dirname "$log")"
 rm -f "$log"
 systemd-run --unit "ozi-remaster-$$" --working-directory="$repo" bash -c \

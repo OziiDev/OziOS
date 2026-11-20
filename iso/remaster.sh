@@ -134,7 +134,8 @@ mount --bind "$work/pkgcache" "$root/var/cache/pacman/pkg"
 
 # The image has no pacman keyring of its own (the live system creates one at
 # boot), so verify with the keyring of the system we are running on.
-pm=(pacman --root "$root" --gpgdir /etc/pacman.d/gnupg --cachedir "$work/pkgcache" --noconfirm)
+# The Arch Linux Archive can be slow; pacman's own timeout once stopped a build there.
+pm=(pacman --root "$root" --gpgdir /etc/pacman.d/gnupg --cachedir "$work/pkgcache" --noconfirm --disable-download-timeout)
 if [ -n "$archive" ]; then
   cat > "$work/pacman-archive.conf" <<CONF
 [options]
