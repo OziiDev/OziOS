@@ -1,0 +1,8 @@
+# Switches between the day and the night colour theme (ozi theme auto).
+[Unit]
+Description=OziOS day and night colours
+ConditionPathExists=%h/.config/ozios/theme-auto.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ozi theme --auto-tick

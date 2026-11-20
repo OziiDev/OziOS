@@ -136,7 +136,7 @@ class Themes(unittest.TestCase):
             os.makedirs(os.path.join(home, "konsole"))
             with open(os.path.join(home, "konsole", "OziOS.profile"), "w", encoding="utf-8") as fh:
                 fh.write(read("branding", "konsole", "OziOS.profile"))
-            self.assertEqual(themes.main(["mint"], out=out.append, run=run, home=home), 0)
+            self.assertEqual(themes.main(["mint"], out=out.append, run=run, home=home, config=home), 0)
             with open(os.path.join(home, "konsole", "OziOS.profile"), encoding="utf-8") as fh:
                 profile = fh.read()
         self.assertEqual(calls, [["plasma-apply-colorscheme", "OziOSMint"]])
@@ -179,11 +179,96 @@ class Themes(unittest.TestCase):
         self.assertEqual(themes.theme_for_apps({"OZIOS_THEME": "rose"}, kdeglobals=os.devnull), "rose")
         self.assertEqual(themes.theme_for_apps({"OZIOS_THEME": "nope"}, kdeglobals=os.devnull), "cyan")
 
+    def test_day_and_night_follow_the_clock(self):
+        import datetime
+        settings = dict(themes.AUTO_DEFAULTS, day="frost", night="aurora")
+        for clock, expected in (("06:59", "aurora"), ("07:00", "frost"), ("18:59", "frost"), ("19:00", "aurora"), ("00:30", "aurora")):
+            hours, minutes = (int(x) for x in clock.split(":"))
+            self.assertEqual(themes.auto_choice(datetime.time(hours, minutes), settings), expected, clock)
+
+    def auto_run(self, calls, kdeglobals_scheme=""):
+        class Done:
+            returncode = 0
+
+        def run(argv, **kwargs):
+            calls.append(argv)
+            return Done()
+        return run
+
+    def test_auto_saves_the_choice_starts_the_timer_and_switches_now(self):
+        import datetime
+        calls, out = [], []
+        with tempfile.TemporaryDirectory() as folder:
+            code = themes.main(["auto", "--night", "rose"], out=out.append, run=self.auto_run(calls), home=folder,
+                               config=folder, kdeglobals=os.devnull, now=datetime.time(13, 0))
+            with open(themes.auto_path(folder), encoding="utf-8") as fh:
+                saved = json.load(fh)
+        self.assertEqual(code, 0)
+        self.assertEqual(saved["day"], "frost")
+        self.assertEqual(saved["night"], "rose")
+        self.assertIn(["systemctl", "--user", "enable", "--now", "ozios-theme-auto.timer"], calls)
+        self.assertIn(["plasma-apply-colorscheme", "OziOSFrost"], calls)        # it is day: frost at once
+        self.assertIn("Frost", out[-1])
+
+    def test_the_timer_switches_only_when_the_clock_asks_for_another_theme(self):
+        import datetime
+        with tempfile.TemporaryDirectory() as folder:
+            os.makedirs(os.path.join(folder, "ozios"))
+            with open(themes.auto_path(folder), "w", encoding="utf-8") as fh:
+                json.dump({"day": "frost", "night": "mint"}, fh)
+            kdeglobals = os.path.join(folder, "kdeglobals")
+            with open(kdeglobals, "w", encoding="utf-8") as fh:
+                fh.write("[General]\nColorScheme=OziOSMint\n")
+            calls = []
+            run = self.auto_run(calls)
+            self.assertEqual(themes.auto_tick(run=run, home=folder, config=folder, kdeglobals=kdeglobals, now=datetime.time(23, 0)), "")
+            self.assertEqual(calls, [])                                         # night, mint already: nothing to do
+            self.assertEqual(themes.auto_tick(run=run, home=folder, config=folder, kdeglobals=kdeglobals, now=datetime.time(9, 0)), "frost")
+            self.assertEqual(calls, [["plasma-apply-colorscheme", "OziOSFrost"]])
+        self.assertEqual(themes.auto_tick(run=run, config=os.path.join(folder, "gone")), "")   # not on: nothing
+
+    def test_picking_a_theme_by_hand_ends_auto(self):
+        calls = []
+        with tempfile.TemporaryDirectory() as folder:
+            os.makedirs(os.path.join(folder, "ozios"))
+            with open(themes.auto_path(folder), "w", encoding="utf-8") as fh:
+                json.dump({"day": "frost", "night": "cyan"}, fh)
+            themes.main(["ember"], out=lambda *_: None, run=self.auto_run(calls), home=folder, config=folder)
+            self.assertFalse(os.path.exists(themes.auto_path(folder)))
+        self.assertIn(["systemctl", "--user", "disable", "--now", "ozios-theme-auto.timer"], calls)
+
+    def test_auto_off(self):
+        calls, out = [], []
+        with tempfile.TemporaryDirectory() as folder:
+            os.makedirs(os.path.join(folder, "ozios"))
+            with open(themes.auto_path(folder), "w", encoding="utf-8") as fh:
+                json.dump({"day": "frost", "night": "cyan"}, fh)
+            self.assertEqual(themes.main(["auto", "off"], out=out.append, run=self.auto_run(calls), config=folder), 0)
+            self.assertFalse(os.path.exists(themes.auto_path(folder)))
+        self.assertIn(["systemctl", "--user", "disable", "--now", "ozios-theme-auto.timer"], calls)
+
+    def test_a_broken_settings_file_turns_nothing_on(self):
+        with tempfile.TemporaryDirectory() as folder:
+            os.makedirs(os.path.join(folder, "ozios"))
+            for text in ("not json", '{"day": "purple", "night": "cyan"}', '{"sunrise": "x"}'):
+                with open(themes.auto_path(folder), "w", encoding="utf-8") as fh:
+                    fh.write(text)
+                self.assertIsNone(themes.read_auto(folder), text)
+
+    def test_the_timer_runs_the_tick_and_is_installed(self):
+        service = read("packages", "ozios-settings", "ozios-theme-auto.service")
+        timer = read("packages", "ozios-settings", "ozios-theme-auto.timer")
+        self.assertIn("ExecStart=/usr/bin/ozi theme --auto-tick", service)
+        self.assertIn("ConditionPathExists=%h/.config/ozios/theme-auto.json", service)
+        self.assertIn("OnCalendar=", timer)
+        self.assertIn("WantedBy=timers.target", timer)
+        self.assertIn("ozios-theme-auto.timer", read("packages", "ozios-settings", "PKGBUILD"))
+
     def test_outside_the_desktop_it_says_so(self):
         def run(argv, **kwargs):
             raise FileNotFoundError(argv[0])
         out = []
-        self.assertEqual(themes.main(["rose"], out=out.append, run=run), 1)
+        self.assertEqual(themes.main(["rose"], out=out.append, run=run, config=os.devnull), 1)
         self.assertIn("plasma-apply-colorscheme", out[0])
 
     def test_an_unknown_theme_is_refused(self):
@@ -628,3 +713,12 @@ class StyleInQt(unittest.TestCase):
         self.assertGreater(image.pixelColor(0, 0).alpha(), 0)          # square, it meets the screen's corners
         top, bottom = image.pixelColor(200, 0), image.pixelColor(200, 31)
         self.assertNotEqual((top.red(), top.green(), top.blue()), (bottom.red(), bottom.green(), bottom.blue()))
+
+
+class Defaults(unittest.TestCase):
+    def test_file_search_does_not_read_every_document(self):
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.optionxform = str
+        parser.read_string(read("desktop", "defaults", "baloofilerc"))
+        self.assertEqual(parser["General"]["only basic indexing"], "true")
+        self.assertIn('"$src/desktop/defaults/baloofilerc" "$pkgdir/etc/xdg/baloofilerc"', read("packages", "ozios-settings", "PKGBUILD"))

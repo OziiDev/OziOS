@@ -122,7 +122,7 @@ class Colours(unittest.TestCase):
     def test_a_swatch_switches_the_desktop_and_hands_back_the_windows_palette(self):
         calls = []
         with tempfile.TemporaryDirectory() as home:
-            result = welcome.set_theme("ember", run=lambda argv, **kw: (calls.append(argv), self.Done(0))[1], home=home)
+            result = welcome.set_theme("ember", run=lambda argv, **kw: (calls.append(argv), self.Done(0))[1], home=home, config=home)
         self.assertEqual(calls, [["plasma-apply-colorscheme", "OziOSEmber"]])
         self.assertEqual(result["theme"], "ember")
         self.assertEqual(result["palette"]["cyan"], "#ff8c40")
@@ -132,10 +132,10 @@ class Colours(unittest.TestCase):
         def missing(argv, **kw):
             raise FileNotFoundError(argv[0])
         with self.assertRaises(ValueError) as caught:
-            welcome.set_theme("mint", run=missing)
+            welcome.set_theme("mint", run=missing, config=os.devnull)
         self.assertIn("plasma-apply-colorscheme", str(caught.exception))
         with self.assertRaises(ValueError):
-            welcome.set_theme("mint", run=lambda argv, **kw: self.Done(1))
+            welcome.set_theme("mint", run=lambda argv, **kw: self.Done(1), config=os.devnull)
 
     def test_only_known_themes(self):
         with self.assertRaises(ValueError):

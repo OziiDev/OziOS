@@ -28,6 +28,10 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
   Software, Classroom, Pen) open in the theme in use, and the terminal gets
   the theme's colours too. The Welcome window has a row of colour swatches:
   a click switches the desktop and the window flows into the new colours.
+- `ozi theme auto` follows the time of day: a light theme from sunrise to
+  sunset, a dark one at night, checked by a timer of the user's session.
+- File search indexes names only by default (`/etc/xdg/baloofilerc`): reading
+  every document after login kept an ordinary computer busy.
 - The wallpaper takes the theme's colours, breathes, and has motes of light
   drifting through it; all of it stops while a window covers the desktop.
 - The control widget and the new applets speak Turkish in a Turkish session.

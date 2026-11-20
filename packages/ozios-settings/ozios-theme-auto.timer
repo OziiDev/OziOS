@@ -1,0 +1,11 @@
+# Enabled by `ozi theme auto`, disabled by `ozi theme auto off` or by picking a theme by hand.
+[Unit]
+Description=OziOS day and night colours, checked every ten minutes
+
+[Timer]
+OnStartupSec=15
+OnCalendar=*:0/10
+Persistent=true
+
+[Install]
+WantedBy=timers.target

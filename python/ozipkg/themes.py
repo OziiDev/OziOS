@@ -347,12 +347,115 @@ def apply(theme_id, run=subprocess.run, home=None):
     return done.returncode
 
 
-def main(argv=None, out=print, run=subprocess.run, kdeglobals=None, home=None):
+# --- day and night ------------------------------------------------------------------------
+
+AUTO_FILE = "theme-auto.json"
+TIMER = "ozios-theme-auto.timer"
+AUTO_DEFAULTS = {"day": "frost", "night": DEFAULT, "sunrise": "07:00", "sunset": "19:00"}
+
+
+def auto_path(config=None):
+    return os.path.join(config or config_home(), "ozios", AUTO_FILE)
+
+
+def _minutes(text):
+    hours, _, minutes = text.partition(":")
+    return int(hours) * 60 + int(minutes or 0)
+
+
+def auto_choice(now, settings):
+    """The theme the clock asks for: the day theme from sunrise to sunset, the night theme otherwise.
+    `now` is a datetime.time."""
+    minute = now.hour * 60 + now.minute
+    day = _minutes(settings["sunrise"]) <= minute < _minutes(settings["sunset"])
+    return settings["day"] if day else settings["night"]
+
+
+def read_auto(config=None):
+    try:
+        with open(auto_path(config), encoding="utf-8") as fh:
+            settings = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    merged = dict(AUTO_DEFAULTS, **{k: v for k, v in settings.items() if k in AUTO_DEFAULTS})
+    if merged["day"] not in BY_ID or merged["night"] not in BY_ID:
+        return None
+    try:
+        _minutes(merged["sunrise"]), _minutes(merged["sunset"])
+    except ValueError:
+        return None
+    return merged
+
+
+def auto_tick(run=subprocess.run, home=None, config=None, kdeglobals=None, now=None):
+    """Run by the timer: switch when the clock asks for another theme than the one in use.
+    Returns the theme switched to, or ""."""
+    import datetime
+    settings = read_auto(config)
+    if settings is None:
+        return ""
+    wanted = auto_choice(now or datetime.datetime.now().time(), settings)
+    if current(kdeglobals) == wanted:
+        return ""
+    return wanted if apply(wanted, run=run, home=home) == 0 else ""
+
+
+def _timer(run, enable):
+    command = ["systemctl", "--user", "enable" if enable else "disable", "--now", TIMER]
+    try:
+        return run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    except FileNotFoundError:
+        return False
+
+
+def stop_auto(run=subprocess.run, config=None):
+    """End the day and night switching, if it is on: a theme picked by hand wins. Returns whether it was on."""
+    if read_auto(config) is None:
+        return False
+    try:
+        os.remove(auto_path(config))
+    except OSError:
+        pass
+    _timer(run, False)
+    return True
+
+
+def main(argv=None, out=print, run=subprocess.run, kdeglobals=None, home=None, config=None, now=None):
     import argparse
     parser = argparse.ArgumentParser(prog="ozi theme", description=tr("Choose the colours of the desktop."))
-    parser.add_argument("name", nargs="?", choices=[t.id for t in THEMES], help=tr("the theme to switch to"))
+    parser.add_argument("name", nargs="?", choices=[t.id for t in THEMES] + ["auto"], help=tr("the theme to switch to"))
+    parser.add_argument("state", nargs="?", choices=["on", "off"], default="on", help=argparse.SUPPRESS)
+    parser.add_argument("--day", choices=[t.id for t in THEMES], help=tr("with auto: the theme from sunrise to sunset"))
+    parser.add_argument("--night", choices=[t.id for t in THEMES], help=tr("with auto: the theme at night"))
+    parser.add_argument("--auto-tick", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--json", action="store_true", help=tr("machine-readable output"))
     args = parser.parse_args(argv)
+
+    if args.auto_tick:
+        switched = auto_tick(run=run, home=home, config=config, kdeglobals=kdeglobals, now=now)
+        if switched:
+            out(tr("Theme: {name}", name=title(BY_ID[switched])))
+        return 0
+    if args.name == "auto":
+        path = auto_path(config)
+        if args.state == "off":
+            stop_auto(run, config)
+            _timer(run, False)
+            out(tr("The colours no longer follow the time of day"))
+            return 0
+        settings = dict(read_auto(config) or AUTO_DEFAULTS)
+        if args.night is None and not read_auto(config):
+            settings["night"] = next((t.id for t in THEMES if t.id == current(kdeglobals) and not t.light), DEFAULT)
+        settings.update({k: v for k, v in (("day", args.day), ("night", args.night)) if v})
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(settings, fh, indent=2)
+        if not _timer(run, True):
+            out(tr("The timer could not be started; the colours change at the next login."))
+        auto_tick(run=run, home=home, config=config, kdeglobals=kdeglobals, now=now)
+        out(tr("Day and night: {day} by day, {night} at night",
+               day=title(BY_ID[settings["day"]]), night=title(BY_ID[settings["night"]])))
+        return 0
     if args.name:
         code = apply(args.name, run=run, home=home)
         if code == 127:
@@ -361,6 +464,7 @@ def main(argv=None, out=print, run=subprocess.run, kdeglobals=None, home=None):
         if code != 0:
             out(tr("The colours could not be changed"))
             return 1
+        stop_auto(run, config)                 # a theme picked by hand ends the automatic switching
         out(tr("Theme: {name}", name=title(BY_ID[args.name])))
         return 0
     items = listing(kdeglobals)
