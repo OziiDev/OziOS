@@ -16,10 +16,10 @@ for root in ("/usr/lib/ozios/python", os.path.join(HERE, "..", "python")):
         break
 
 from PyQt6.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot  # noqa: E402
-from PyQt6.QtGui import QGuiApplication, QIcon  # noqa: E402
-from PyQt6.QtQml import QQmlApplicationEngine  # noqa: E402
+from PyQt6.QtGui import QColor, QGuiApplication, QIcon  # noqa: E402
+from PyQt6.QtQml import QQmlApplicationEngine, QQmlComponent  # noqa: E402
 
-from ozipkg import i18n, service  # noqa: E402
+from ozipkg import i18n, service, themes  # noqa: E402
 
 
 class Backend(QObject):
@@ -75,6 +75,23 @@ class Backend(QObject):
         return QUrl(url).toLocalFile() if url.startswith("file:") else url
 
 
+def apply_theme(engine, theme_id=None):
+    """Give the OziUi palette the colours of the OziOS theme in use, before any window exists,
+    so the apps follow `ozi theme` like the rest of the desktop."""
+    palette = themes.app_palette(theme_id or themes.theme_for_apps())
+    component = QQmlComponent(engine)
+    component.setData(b"import QtQuick\nimport OziUi\nQtObject { property QtObject theme: Theme }",
+                      QUrl.fromLocalFile(os.path.join(HERE, "theme-probe.qml")))
+    probe = component.create()
+    if probe is None:
+        return False
+    singleton = probe.property("theme")
+    for key, value in palette.items():
+        singleton.setProperty(key, value if isinstance(value, bool) else QColor(value))
+    probe.deleteLater()
+    return True
+
+
 def run(qml_file, backend, title, desktop_name, icon="ozios"):
     app = QGuiApplication(sys.argv[:1])
     app.setApplicationName(title)
@@ -83,6 +100,7 @@ def run(qml_file, backend, title, desktop_name, icon="ozios"):
     engine = QQmlApplicationEngine()
     engine.addImportPath(HERE)
     engine.rootContext().setContextProperty("backend", backend)
+    apply_theme(engine)
     engine.load(QUrl.fromLocalFile(qml_file))
     if not engine.rootObjects():
         return 1

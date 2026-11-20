@@ -14,6 +14,7 @@ tools/make-themes.py; a test checks that they agree.
 """
 import json
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 
@@ -185,6 +186,72 @@ def render(theme):
     return "\n".join(lines) + "\n"
 
 
+# --- the terminal ------------------------------------------------------------------------
+
+# The ANSI colours keep their meaning in every theme (red is red); a light background
+# needs darker ones to stay readable.
+DARK_ANSI = ((255, 85, 110), (255, 130, 150), (60, 230, 160), (120, 245, 195), (255, 190, 90), (255, 215, 140),
+             (70, 150, 255), (130, 185, 255), (175, 130, 255), (205, 175, 255), (0, 229, 255), (130, 242, 255),
+             (200, 225, 232), (244, 252, 255))
+LIGHT_ANSI = ((196, 34, 66), (226, 60, 90), (18, 140, 84), (30, 170, 105), (176, 110, 0), (205, 135, 0),
+              (30, 100, 200), (60, 130, 225), (130, 70, 200), (155, 100, 220), (0, 130, 160), (0, 155, 185),
+              (70, 80, 90), (12, 19, 25))
+PROFILE = "OziOS.profile"
+
+
+def render_konsole(theme):
+    """The theme as a Konsole colour scheme (same name as the KDE colour scheme)."""
+    if theme.light:
+        black, black_intense, ansi, bright = (40, 48, 56), (90, 100, 110), LIGHT_ANSI, (0, 0, 0)
+    else:
+        black, black_intense, ansi, bright = theme.control, _mix(theme.control, theme.text, 0.2), DARK_ANSI, (255, 255, 255)
+        if theme.id == DEFAULT:
+            black_intense = (70, 90, 105)
+    sections = [
+        ("General", ["Description=" + ("OziOS" if theme.id == DEFAULT else "OziOS " + theme.title),
+                     "Opacity=%s" % ("0.96" if theme.light else "0.92"), "Blur=true", "Wallpaper="]),
+        ("Background", ["Color=" + _c(theme.ink)]),
+        ("BackgroundIntense", ["Color=" + _c(theme.raised)]),
+        ("BackgroundFaint", ["Color=" + _c(theme.ink)]),
+        ("Foreground", ["Color=" + _c(theme.text)]),
+        ("ForegroundIntense", ["Color=" + _c(bright)]),
+        ("ForegroundFaint", ["Color=" + _c(theme.muted)]),
+        ("Color0", ["Color=" + _c(black)]),
+        ("Color0Intense", ["Color=" + _c(black_intense)]),
+    ]
+    for number in range(1, 8):
+        sections.append(("Color%d" % number, ["Color=" + _c(ansi[(number - 1) * 2])]))
+        sections.append(("Color%dIntense" % number, ["Color=" + _c(ansi[(number - 1) * 2 + 1])]))
+    return "\n\n".join("[%s]\n%s" % (name, "\n".join(lines)) for name, lines in sections) + "\n"
+
+
+def data_home():
+    return os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+
+
+def set_konsole(theme, home=None, system_dirs=("/usr/share/konsole",)):
+    """Point the user's OziOS terminal profile at the theme's colours. Returns whether it did."""
+    home = home or data_home()
+    user = os.path.join(home, "konsole", PROFILE)
+    source = user if os.path.isfile(user) else next(
+        (os.path.join(d, PROFILE) for d in system_dirs if os.path.isfile(os.path.join(d, PROFILE))), None)
+    if source is None:
+        return False
+    with open(source, encoding="utf-8") as fh:
+        text = fh.read()
+    line = "ColorScheme=" + theme.scheme
+    if re.search(r"(?m)^ColorScheme=.*$", text):
+        text = re.sub(r"(?m)^ColorScheme=.*$", line, text)
+    elif re.search(r"(?m)^\[Appearance\]\s*$", text):
+        text = re.sub(r"(?m)^\[Appearance\]\s*$", "[Appearance]\n" + line, text, count=1)
+    else:
+        text = "[Appearance]\n%s\n\n%s" % (line, text)
+    os.makedirs(os.path.dirname(user), exist_ok=True)
+    with open(user, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    return True
+
+
 # --- the theme in use ---------------------------------------------------------------
 
 def config_home():
@@ -230,30 +297,64 @@ def title(theme):
     }.get(theme.id, theme.title)
 
 
+def app_palette(theme_id):
+    """The colours the OziOS apps draw with (apps/OziUi/Theme.qml), for a theme.
+
+    `cyan` is the accent of any theme; `mid` and `far` are the accent sinking
+    into the background, the depth ramp of the design. The cyan theme keeps the
+    values it was designed with."""
+    theme = BY_ID[theme_id]
+
+    def hexa(rgb):
+        return "#%02x%02x%02x" % rgb
+    if theme.id == DEFAULT:
+        mid, far = (0, 152, 176), (0, 70, 92)
+    else:
+        mid, far = _mix(theme.accent, theme.ink, 0.35), _mix(theme.accent, theme.ink, 0.7)
+    return {"ink": hexa(theme.ink), "raised": hexa(theme.raised), "control": hexa(theme.control),
+            "cyan": hexa(theme.accent), "mid": hexa(mid), "far": hexa(far), "ice": hexa(theme.text),
+            "muted": hexa(theme.muted), "onAccent": hexa(theme.on_accent or theme.ink), "light": theme.light}
+
+
+def theme_for_apps(environ=None, kdeglobals=None):
+    """The theme the apps should use: OZIOS_THEME if set (tests, previews), else the one in use."""
+    environ = os.environ if environ is None else environ
+    wanted = environ.get("OZIOS_THEME", "")
+    if wanted in BY_ID:
+        return wanted
+    return current(kdeglobals) or DEFAULT
+
+
 def listing(kdeglobals=None):
     now = current(kdeglobals)
     return [{"id": t.id, "name": title(t), "accent": "#%02x%02x%02x" % t.accent,
              "background": "#%02x%02x%02x" % t.ink, "light": t.light, "current": t.id == now} for t in THEMES]
 
 
-def apply(theme_id, run=subprocess.run):
-    """Switch to a theme. Returns the command's exit status."""
+def apply(theme_id, run=subprocess.run, home=None):
+    """Switch to a theme: the desktop's colour scheme, then the terminal's. Returns the exit status
+    of plasma-apply-colorscheme."""
     theme = BY_ID[theme_id]
     try:
         done = run(["plasma-apply-colorscheme", theme.scheme], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     except FileNotFoundError:
         return 127
+    if done.returncode == 0:
+        try:
+            set_konsole(theme, home=home)
+        except OSError:
+            pass                        # the desktop changed; a terminal profile that can not be written is no reason to fail
     return done.returncode
 
 
-def main(argv=None, out=print, run=subprocess.run, kdeglobals=None):
+def main(argv=None, out=print, run=subprocess.run, kdeglobals=None, home=None):
     import argparse
     parser = argparse.ArgumentParser(prog="ozi theme", description=tr("Choose the colours of the desktop."))
     parser.add_argument("name", nargs="?", choices=[t.id for t in THEMES], help=tr("the theme to switch to"))
     parser.add_argument("--json", action="store_true", help=tr("machine-readable output"))
     args = parser.parse_args(argv)
     if args.name:
-        code = apply(args.name, run=run)
+        code = apply(args.name, run=run, home=home)
         if code == 127:
             out(tr("plasma-apply-colorscheme is missing; run this inside the desktop session"))
             return 1

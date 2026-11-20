@@ -61,6 +61,10 @@ def rgb(value):
     return tuple(int(x) for x in value.split(","))
 
 
+def rgb_hex(value):
+    return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
+
+
 # --- colour themes ------------------------------------------------------------------
 
 class Themes(unittest.TestCase):
@@ -118,7 +122,7 @@ class Themes(unittest.TestCase):
             self.assertEqual([i["id"] for i in items if i["current"]], ["ember"])
             self.assertEqual(themes.current(os.path.join(folder, "missing")), "")
 
-    def test_switching_runs_plasma_apply_colorscheme(self):
+    def test_switching_runs_plasma_apply_colorscheme_and_recolours_the_terminal(self):
         calls = []
 
         class Done:
@@ -128,9 +132,52 @@ class Themes(unittest.TestCase):
             calls.append(argv)
             return Done()
         out = []
-        self.assertEqual(themes.main(["mint"], out=out.append, run=run), 0)
+        with tempfile.TemporaryDirectory() as home:
+            os.makedirs(os.path.join(home, "konsole"))
+            with open(os.path.join(home, "konsole", "OziOS.profile"), "w", encoding="utf-8") as fh:
+                fh.write(read("branding", "konsole", "OziOS.profile"))
+            self.assertEqual(themes.main(["mint"], out=out.append, run=run, home=home), 0)
+            with open(os.path.join(home, "konsole", "OziOS.profile"), encoding="utf-8") as fh:
+                profile = fh.read()
         self.assertEqual(calls, [["plasma-apply-colorscheme", "OziOSMint"]])
         self.assertIn("Mint", out[0])
+        self.assertIn("ColorScheme=OziOSMint", profile)
+        self.assertIn("TerminalColumns=110", profile)                  # the rest of the profile stays
+
+    def test_the_terminal_profile_comes_from_the_system_copy_the_first_time(self):
+        with tempfile.TemporaryDirectory() as folder:
+            system, home = os.path.join(folder, "system"), os.path.join(folder, "home")
+            os.makedirs(system)
+            with open(os.path.join(system, "OziOS.profile"), "w", encoding="utf-8") as fh:
+                fh.write("[General]\nName=OziOS\n")
+            self.assertTrue(themes.set_konsole(themes.BY_ID["frost"], home=home, system_dirs=(system,)))
+            with open(os.path.join(home, "konsole", "OziOS.profile"), encoding="utf-8") as fh:
+                self.assertIn("[Appearance]\nColorScheme=OziOSFrost", fh.read())
+            self.assertFalse(themes.set_konsole(themes.BY_ID["frost"], home=os.path.join(folder, "nobody"), system_dirs=()))
+
+    def test_every_theme_has_a_terminal_scheme_and_cyan_keeps_the_original(self):
+        for theme in themes.THEMES:
+            text = read("branding", "konsole", theme.scheme + ".colorscheme")
+            self.assertEqual(text, themes.render_konsole(theme), "%s is stale: run tools/make-themes.py" % theme.scheme)
+            parser = configparser.ConfigParser(interpolation=None)
+            parser.optionxform = str
+            parser.read_string(text)
+            background, foreground = rgb(parser["Background"]["Color"]), rgb(parser["Foreground"]["Color"])
+            self.assertGreaterEqual(contrast(foreground, background), 7, theme.id)
+            for number in range(1, 7):                                  # the coloured ANSI text stays readable
+                self.assertGreaterEqual(contrast(rgb(parser["Color%d" % number]["Color"]), background), 3, (theme.id, number))
+
+    def test_apps_get_the_themes_palette(self):
+        cyan = themes.app_palette("cyan")
+        theme_qml = read("apps", "OziUi", "Theme.qml")
+        defaults = {k: v.lower() for k, v in re.findall(r'property color (\w+): "(#[0-9A-Fa-f]{6})"', theme_qml)}
+        for key in ("ink", "raised", "control", "cyan", "mid", "far", "ice", "muted", "onAccent"):
+            self.assertEqual(cyan[key], defaults[key], key)                 # the cyan theme is what the QML says
+        frost = themes.app_palette("frost")
+        self.assertTrue(frost["light"])
+        self.assertGreaterEqual(contrast(rgb_hex(frost["ice"]), rgb_hex(frost["ink"])), 7)
+        self.assertEqual(themes.theme_for_apps({"OZIOS_THEME": "rose"}, kdeglobals=os.devnull), "rose")
+        self.assertEqual(themes.theme_for_apps({"OZIOS_THEME": "nope"}, kdeglobals=os.devnull), "cyan")
 
     def test_outside_the_desktop_it_says_so(self):
         def run(argv, **kwargs):
@@ -532,3 +579,52 @@ class ShellInQt(unittest.TestCase):
         wallpaper = result["wallpaper"]
         self.assertTrue(wallpaper["turning"])
         self.assertFalse(wallpaper["turning_when_covered"])
+
+
+@unittest.skipUnless(HAVE_QT, "PyQt6 is not installed")
+class StyleInQt(unittest.TestCase):
+    """The Plasma style's frames drawn with Qt's SVG renderer, which KSvg uses too."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PyQt6.QtGui import QGuiApplication
+        cls.app = QGuiApplication.instance() or QGuiApplication([])
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import plasma_style
+        cls.style = plasma_style
+
+    def draw(self, name, theme_id, width, height, borders=("top", "bottom", "left", "right"), variant=""):
+        from PyQt6.QtCore import QRectF, Qt
+        from PyQt6.QtGui import QImage, QPainter
+        image = QImage(width, height, QImage.Format.Format_ARGB32)
+        image.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(image)
+        self.style.frame(painter, name, QRectF(0, 0, width, height), theme_id, borders=borders, variant=variant)
+        painter.end()
+        return image
+
+    def test_frames_have_round_corners_a_rim_and_no_seams(self):
+        for name in ("widgets/panel-background", "dialogs/background", "widgets/tooltip", "widgets/background"):
+            for variant in ("", "translucent/", "opaque/"):
+                image = self.draw(name, "cyan", 300, 90, variant=variant)
+                self.assertEqual(image.pixelColor(0, 0).alpha(), 0, (name, variant))        # outside the round corner
+                self.assertGreater(image.pixelColor(150, 0).alpha(), 0, (name, variant))     # the rim
+                middle = {image.pixelColor(x, 45).alpha() for x in range(1, 299)}
+                self.assertEqual(len(middle), 1, (name, variant, middle))                    # one sheet, no seams
+                column = {image.pixelColor(150, y).alpha() for y in range(1, 89)}
+                self.assertEqual(len(column), 1, (name, variant, column))
+
+    def test_the_sheet_takes_each_themes_colours(self):
+        for theme in themes.THEMES:
+            image = self.draw("dialogs/background", theme.id, 200, 100, variant="opaque/")
+            centre = image.pixelColor(100, 50)
+            self.assertEqual((centre.red(), centre.green(), centre.blue()), theme.ink, theme.id)
+            rim = image.pixelColor(100, 0)
+            self.assertGreater(sum(abs(a - b) for a, b in zip((rim.red(), rim.green(), rim.blue()), theme.ink)), 20, theme.id)
+
+    def test_a_bar_at_the_top_edge_has_only_its_bottom_line(self):
+        image = self.draw("widgets/panel-background", "cyan", 400, 32, borders=("bottom",))
+        self.assertGreater(image.pixelColor(0, 0).alpha(), 0)          # square, it meets the screen's corners
+        top, bottom = image.pixelColor(200, 0), image.pixelColor(200, 31)
+        self.assertNotEqual((top.red(), top.green(), top.blue()), (bottom.red(), bottom.green(), bottom.blue()))

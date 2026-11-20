@@ -50,7 +50,7 @@ if [ "${1:-}" = "--undo" ]; then
   rm -f "$conf/autostart/cachyos-hello.desktop"
   command -v plasma-apply-desktoptheme >/dev/null && plasma-apply-desktoptheme default >/dev/null 2>&1
   rm -f "$HOME/.local/bin/ozi-fetch" "$data"/color-schemes/OziOS*.colors \
-        "$data/konsole/OziOS.colorscheme" "$data/konsole/OziOS.profile"
+        "$data"/konsole/OziOS*.colorscheme "$data/konsole/OziOS.profile"
   rm -rf "$data/ozios" "$data/plasma/look-and-feel/$theme" "$data/plasma/wallpapers/$wallpaper" \
          "$data/plasma/desktoptheme/$style" "$data/kwin/effects/$motion"
   for applet in $applets; do rm -rf "$data/plasma/plasmoids/$applet"; done
@@ -68,7 +68,8 @@ say "Copying files"
 mkdir -p "$HOME/.local/bin" "$data/color-schemes" "$data/konsole" "$data/ozios"
 install -m755 "$src/ozi-fetch" "$HOME/.local/bin/ozi-fetch"
 install -m644 "$src/OziOS.colors" "$data/color-schemes/"
-install -m644 "$src/konsole/OziOS.colorscheme" "$src/konsole/OziOS.profile" "$data/konsole/"
+# The terminal colours of every theme; `ozi theme` points the profile at one of them.
+install -m644 "$src"/konsole/*.colorscheme "$src/konsole/OziOS.profile" "$data/konsole/"
 install -m644 "$src/logo.svg" "$src/wallpaper.svg" "$data/ozios/"
 if [ -d "$root/desktop/look-and-feel/$theme" ]; then   # source checkout
   mkdir -p "$data/plasma/look-and-feel" "$data/plasma/wallpapers"

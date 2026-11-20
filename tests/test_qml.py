@@ -32,14 +32,16 @@ class Windows(unittest.TestCase):
     def test_each_app_loads_clean(self):
         names = apps()
         self.assertTrue(names)
-        env = offscreen_env()
-        for name in names:
-            with self.subTest(app=name):
-                result = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "qml-check.py"),
-                                         os.path.join("apps", name), "1"],
-                                        capture_output=True, text=True, env=env, timeout=120, cwd=ROOT)
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("loaded: True | warnings: 0", result.stdout)
+        # The default theme, and the light one, whose palette the apps take on at start-up.
+        for theme in ("cyan", "frost"):
+            env = offscreen_env(OZIOS_THEME=theme)
+            for name in names:
+                with self.subTest(app=name, theme=theme):
+                    result = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "qml-check.py"),
+                                             os.path.join("apps", name), "1"],
+                                            capture_output=True, text=True, env=env, timeout=120, cwd=ROOT)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("loaded: True | warnings: 0", result.stdout)
 
 
 class Sources(unittest.TestCase):
