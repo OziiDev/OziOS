@@ -168,8 +168,8 @@ def check_gpu(p):
     # What the installer's driver step said when it failed: pacman's own error line if there is one,
     # it names the cause; chwd's last words ("script failed!") do not.
     said = [line.strip() for line in (p.read(CHWD_MARKER) or "").splitlines() if line.strip()]
-    said = ([line for line in said if line.lower().startswith("error:")] or
-            [line for line in said if "error" in line.lower()] or said)
+    said = ([line for line in said if line.startswith("error:")]           # pacman's own, in lower case
+            or [line for line in said if "error" in line.lower()] or said)
     out = []
     for vendor, description in gpus:
         if vendor in wanted and not (wanted[vendor] & modules):
