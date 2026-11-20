@@ -378,6 +378,15 @@ class Shell(unittest.TestCase):
         self.assertIn("launcher", by_id["panels"].title)
         self.assertEqual(by_id["panels"].hint, "ozi layout default")
 
+    def test_the_global_themes_values_count_until_the_user_changes_them(self):
+        # Seen on the 0.2.0 live ISO: the global theme writes plasmarc to kdedefaults/ only.
+        files = self.files(**{"/home/ada/.config/plasmarc": None,
+                              "/home/ada/.config/kdedefaults/plasmarc": "[Theme]\nname=ozios\n"})
+        self.assertEqual({c.id: c.level for c in doctor.check_shell(Fake(files=files))}["plasma-style"], "ok")
+        files["/home/ada/.config/plasmarc"] = "[Theme]\nname=breeze-dark\n"
+        style = {c.id: c for c in doctor.check_shell(Fake(files=files))}["plasma-style"]
+        self.assertEqual((style.level, "breeze-dark" in style.title), ("info", True))
+
     def test_outside_a_desktop_session_nothing_is_said(self):
         self.assertEqual(doctor.check_shell(Fake()), [])
 

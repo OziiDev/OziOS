@@ -379,13 +379,19 @@ def check_shell(p):
     if applets is None:
         return []                               # not a desktop session, or one that never started
     out = []
-    style = config_value(p.read(posixpath.join(config, "plasmarc")), "Theme", "name") or "default"
+
+    def setting(name, group, key):
+        # The user's own value, else the global theme's: Plasma writes those to kdedefaults/.
+        return (config_value(p.read(posixpath.join(config, name)), group, key)
+                or config_value(p.read(posixpath.join(config, "kdedefaults", name)), group, key))
+
+    style = setting("plasmarc", "Theme", "name") or "default"
     if style == "ozios":
         out.append(Check("plasma-style", "ok", tr("The OziOS Plasma style is in use")))
     else:
         out.append(Check("plasma-style", "info", tr("The Plasma style is {name}, not OziOS's", name=style), "",
                          "plasma-apply-desktoptheme ozios"))
-    motion = config_value(p.read(posixpath.join(config, "kwinrc")), "Plugins", "ozios_motionEnabled")
+    motion = setting("kwinrc", "Plugins", "ozios_motionEnabled")
     if motion == "true":
         out.append(Check("motion", "ok", tr("Windows open and close with the OziOS motion")))
     else:
