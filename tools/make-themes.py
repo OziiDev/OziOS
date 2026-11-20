@@ -3,7 +3,8 @@
     python3 tools/make-themes.py
 
 The cyan theme is branding/OziOS.colors (the original file, kept where it was);
-the others go to branding/themes/.
+the others go to branding/themes/. Each theme also gets a terminal colour scheme
+in branding/konsole/ (cyan's is the original OziOS.colorscheme).
 """
 import os
 import sys
@@ -26,6 +27,10 @@ def main():
         with open(target(theme), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(themes.render(theme))
         print(os.path.relpath(target(theme), root))
+        terminal = os.path.join(root, "branding", "konsole", theme.scheme + ".colorscheme")
+        with open(terminal, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(themes.render_konsole(theme))
+        print(os.path.relpath(terminal, root))
 
 
 if __name__ == "__main__":

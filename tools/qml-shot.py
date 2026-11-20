@@ -72,6 +72,8 @@ app = QGuiApplication(sys.argv[:1])
 engine = QQmlApplicationEngine()
 engine.addImportPath(os.path.join(root_dir, "apps"))
 engine.rootContext().setContextProperty("backend", backend)
+import ozi_qt  # noqa: E402  the apps' own start-up: the palette of the theme in use (OZIOS_THEME)
+ozi_qt.apply_theme(engine)
 engine.load(QUrl.fromLocalFile(os.path.join(app_dir, "Main.qml")))
 if not engine.rootObjects():
     print("\n".join(messages))

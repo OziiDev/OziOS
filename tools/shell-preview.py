@@ -36,13 +36,14 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
-from PyQt6.QtCore import QLocale, QPoint, QUrl, Qt, qInstallMessageHandler  # noqa: E402
+from PyQt6.QtCore import QLocale, QPoint, QPointF, QRectF, QUrl, Qt, qInstallMessageHandler  # noqa: E402
 from PyQt6.QtGui import QColor, QFont, QGuiApplication, QImage, QPainter, QPalette  # noqa: E402
 from PyQt6.QtQml import QQmlEngine  # noqa: E402
-from PyQt6.QtQuick import QQuickView  # noqa: E402
+from PyQt6.QtQuick import QQuickItem, QQuickView  # noqa: E402
 from PyQt6.QtTest import QTest  # noqa: E402
 
 import plasma_stubs  # noqa: E402
+import plasma_style  # noqa: E402
 from ozipkg import themes  # noqa: E402
 
 DESKTOP = os.path.join(ROOT, "desktop")
@@ -68,7 +69,7 @@ import QtQuick.Layouts
 import org.kde.kirigami as K
 Item {
     width: 760; height: 128
-    Rectangle {
+    Item {
         id: panel
         objectName: "panel"
         anchors.horizontalCenter: parent.horizontalCenter
@@ -76,10 +77,6 @@ Item {
         anchors.bottomMargin: 12
         height: 65
         width: (dock.item ? dock.item.Layout.preferredWidth : 300) + 8
-        radius: 12
-        color: Qt.rgba(K.Theme.backgroundColor.r, K.Theme.backgroundColor.g, K.Theme.backgroundColor.b, 0.94)
-        border.width: 1
-        border.color: Qt.rgba(K.Theme.highlightColor.r, K.Theme.highlightColor.g, K.Theme.highlightColor.b, 0.30)
         Loader {
             id: dock
             objectName: "applet"
@@ -93,12 +90,8 @@ Item {
     "launcher": ("""
 import QtQuick
 import org.kde.kirigami as K
-Rectangle {
+Item {
     width: 880; height: 620
-    color: K.Theme.backgroundColor
-    border.width: 1
-    border.color: Qt.rgba(K.Theme.highlightColor.r, K.Theme.highlightColor.g, K.Theme.highlightColor.b, 0.22)
-    radius: 12
     Loader {
         id: launcher
         objectName: "applet"
@@ -113,12 +106,8 @@ Rectangle {
     "control": ("""
 import QtQuick
 import org.kde.kirigami as K
-Rectangle {
+Item {
     width: 380; height: 330
-    color: K.Theme.backgroundColor
-    border.width: 1
-    border.color: Qt.rgba(K.Theme.highlightColor.r, K.Theme.highlightColor.g, K.Theme.highlightColor.b, 0.22)
-    radius: 12
     Loader {
         objectName: "applet"
         anchors.fill: parent
@@ -235,9 +224,29 @@ def run_scene(engine, scene, theme_id, folder, still, quick=False):
         QTest.keyClick(view, Qt.Key.Key_O)
     step(min(SETTLE[scene], 400) if quick else SETTLE[scene])
     image = view.grabWindow()
+    frames = []
+    if scene == "dock":
+        panel = view.rootObject().findChild(QQuickItem, "panel")
+        corner = panel.mapToScene(QPointF(0, 0))
+        frames.append(("widgets/panel-background", QRectF(corner.x(), corner.y(), panel.width(), panel.height())))
+    elif scene in ("launcher", "search", "control"):
+        frames.append(("dialogs/background", QRectF(0, 0, image.width(), image.height())))
     view.close()
     view.deleteLater()
-    return image
+    return image, frames
+
+
+def compose(image, frames, theme_id, background=None):
+    """The scene laid over its Plasma style frames, on a solid colour or see-through."""
+    out = QImage(image.size(), QImage.Format.Format_ARGB32_Premultiplied)
+    out.fill(QColor(*background) if background else QColor(0, 0, 0, 0))
+    painter = QPainter(out)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    for name, rect in frames:
+        plasma_style.frame(painter, name, rect, theme_id)
+    painter.drawImage(0, 0, image)
+    painter.end()
+    return out
 
 
 def showcase(images, theme_id, path):
@@ -249,16 +258,12 @@ def showcase(images, theme_id, path):
     painter = QPainter(canvas)
     painter.drawImage(0, 0, base)
     theme = themes.BY_ID[theme_id]
-    bar = QColor(*theme.ink)
-    bar.setAlphaF(0.94)
-    painter.fillRect(0, 0, canvas.width(), 32, bar)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    plasma_style.frame(painter, "widgets/panel-background", QRectF(0, 0, canvas.width(), 32), theme_id, borders=("bottom",))
     painter.setPen(QColor(*theme.text))
     font = QFont("Segoe UI", 10)
     painter.setFont(font)
     painter.drawText(canvas.rect().adjusted(0, 0, 0, -canvas.height() + 32), int(Qt.AlignmentFlag.AlignCenter), "Per 20 Kas  21:40")
-    accent = QColor(*theme.accent)
-    accent.setAlphaF(0.3)
-    painter.fillRect(0, 31, canvas.width(), 1, accent)
     launcher = images.get("launcher")
     if launcher is not None and not launcher.isNull():
         scaled = launcher.scaledToWidth(int(canvas.width() * 0.56), Qt.TransformationMode.SmoothTransformation)
@@ -301,15 +306,16 @@ def main():
         images = {}
         for scene in scenes:
             before = len(messages)
-            image = run_scene(engine, scene, theme_id, folder, args.still, quick=args.check)
+            result = run_scene(engine, scene, theme_id, folder, args.still, quick=args.check)
             for line in messages[before:]:
                 print("[%s/%s] %s" % (theme_id, scene, line), file=sys.stderr)
-            if image is None:
+            if result is None:
                 continue
-            images[scene] = image
+            image, frames = result
+            images[scene] = compose(image, frames, theme_id)
             if not args.check:
                 path = os.path.join(args.outdir, "%s-%s.png" % (scene, theme_id))
-                flatten(image, themes.BY_ID[theme_id].raised).save(path)
+                compose(image, frames, theme_id, background=themes.BY_ID[theme_id].raised).save(path)
                 print("saved", path)
         if not args.check and {"wallpaper", "dock", "launcher"} <= set(images):
             path = os.path.join(args.outdir, "showcase-%s.png" % theme_id)

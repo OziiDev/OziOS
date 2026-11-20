@@ -18,7 +18,7 @@ Button {
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        color: !control.enabled ? Theme.far : (control.primary ? Theme.ink : Theme.ice)
+        color: !control.enabled ? Theme.far : (control.primary ? Theme.onAccent : Theme.ice)
     }
 
     background: Rectangle {
