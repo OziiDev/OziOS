@@ -173,6 +173,20 @@ class Stages(unittest.TestCase):
         self.run_stage("early")
         self.assertTrue(self.has_our_kernel())
 
+    def test_the_boot_splash_is_set_before_the_initramfs_is_built(self):
+        theme = os.path.join(self.target, "usr", "share", "plymouth", "themes", "ozios")
+        os.makedirs(theme)
+        open(os.path.join(theme, "ozios.plymouth"), "w").close()
+        tool = os.path.join(self.target, "usr", "bin", "plymouth-set-default-theme")
+        os.makedirs(os.path.dirname(tool))
+        executable(tool, "#!/bin/sh\n")
+        self.run_stage("early")
+        self.assertTrue([line for line in self.calls() if line.endswith("plymouth-set-default-theme ozios")])
+
+    def test_without_plymouth_the_splash_is_left_alone(self):
+        self.run_stage("early")
+        self.assertFalse([line for line in self.calls() if "plymouth" in line])
+
     def test_cachyos_kernels_and_programs_go_once_ours_is_in(self):
         with open(self.installed, "w") as fh:
             fh.write("base\nlinux-cachyos\nlinux-cachyos-headers\nlinux-cachyos-lts\ncachyos-hello\nlinux-ozios\ncachyos-settings\n")

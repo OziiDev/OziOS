@@ -94,6 +94,8 @@ package() {
   install -Dm644 "$src/branding/boot/background.png" "$pkgdir/usr/share/grub/themes/ozios/background.png"
   install -Dm644 "$src/branding/boot/limine-splash.png" "$share/branding/limine-splash.png"
   install -Dm644 "$src/branding/boot/desktop.png" "$share/branding/desktop.png"
+  # The boot splash: Plymouth's two-step plugin with the turning tesseract (tools/make-plymouth.py).
+  install -Dm644 -t "$pkgdir/usr/share/plymouth/themes/ozios" "$src"/branding/plymouth/ozios/*
 
   install -Dm644 "$src/branding/login/10-ozios.conf" "$pkgdir/etc/plasmalogin.conf.d/10-ozios.conf"
   # Defaults for every user, which each person can still change: file search without content indexing.

@@ -1,0 +1,45 @@
+[Plymouth Theme]
+Name=OziOS
+Description=The OziOS tesseract, turning while the computer starts
+ModuleName=two-step
+
+[two-step]
+Font=Overpass 12
+TitleFont=Overpass Light 30
+ImageDir=/usr/share/plymouth/themes/ozios
+DialogHorizontalAlignment=.5
+DialogVerticalAlignment=.66
+TitleHorizontalAlignment=.5
+TitleVerticalAlignment=.3
+HorizontalAlignment=.5
+VerticalAlignment=.46
+Transition=none
+TransitionDuration=0.0
+BackgroundStartColor=0x080b10
+BackgroundEndColor=0x080b10
+ProgressBarBackgroundColor=0x141b26
+ProgressBarForegroundColor=0x00e5ff
+MessageBelowAnimation=true
+
+[boot-up]
+UseEndAnimation=false
+
+[shutdown]
+UseEndAnimation=false
+
+[reboot]
+UseEndAnimation=false
+
+[updates]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Installing updates
+SubTitle=Do not turn off the computer
+
+[system-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Upgrading the system
+SubTitle=Do not turn off the computer

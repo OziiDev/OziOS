@@ -85,6 +85,11 @@ early() {
   # Normally the kernel stage did this; an installer set up before that stage existed relies on this one.
   has_kernel || kernel
 
+  # The OziOS boot splash. Set before the initramfs is built, which then carries it.
+  if [ -f "$root/usr/share/plymouth/themes/ozios/ozios.plymouth" ] && [ -x "$root/usr/bin/plymouth-set-default-theme" ]; then
+    arch-chroot "$root" plymouth-set-default-theme ozios || echo "ozios: could not set the boot splash"
+  fi
+
   # What the installer may still have brought along from CachyOS.
   unwanted="$(arch-chroot "$root" pacman -Qq 2>/dev/null | grep -E '^(linux-cachyos[a-z0-9.+-]*|cachyos-hello|cachyos-kernel-manager|cachyos-packageinstaller)$')"
   if [ -n "$unwanted" ] && has_kernel; then
