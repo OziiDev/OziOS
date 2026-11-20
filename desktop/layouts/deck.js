@@ -9,9 +9,9 @@ bar.lengthMode = "fill"
 bar.hiding = "none"
 bar.floating = false
 
-bar.addWidget("org.kde.plasma.kickoff")
+bar.addWidget("org.ozios.launcher")
 
-var tasks = bar.addWidget("org.kde.plasma.icontasks")
+var tasks = bar.addWidget("org.ozios.dock")
 tasks.currentConfigGroup = ["General"]
 tasks.writeConfig("launchers", [
     "applications:steam.desktop",

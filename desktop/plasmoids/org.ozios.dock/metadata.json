@@ -1,0 +1,22 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OziOS"
+            }
+        ],
+        "Category": "Windows and Tasks",
+        "Description": "Pinned programs and open windows that move with the pointer",
+        "Icon": "preferences-system-windows",
+        "Id": "org.ozios.dock",
+        "License": "MIT",
+        "Name": "OziOS Dock",
+        "Version": "0.2",
+        "Website": "https://github.com/OziiDev/OziOS"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.multitasking"
+    ]
+}

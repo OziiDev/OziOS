@@ -2,7 +2,7 @@
 _ozi() {
   local cur prev words cword
   _init_completion 2>/dev/null || { cur="${COMP_WORDS[COMP_CWORD]}"; prev="${COMP_WORDS[COMP_CWORD-1]}"; cword=$COMP_CWORD; words=("${COMP_WORDS[@]}"); }
-  local commands="update install remove search review box apps rollback layout effects mode status doctor report clean play gaming winsetup reboot-windows hw help"
+  local commands="update install remove search review box apps rollback layout theme effects mode status doctor report clean play gaming winsetup reboot-windows hw help"
   if [ "$cword" -eq 1 ]; then
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
@@ -10,6 +10,7 @@ _ozi() {
   case "${words[1]}" in
     layout)  [ "$cword" -eq 2 ] && COMPREPLY=($(compgen -W "default deck classic board" -- "$cur")) ;;
     effects) [ "$cword" -eq 2 ] && COMPREPLY=($(compgen -W "full light off" -- "$cur")) ;;
+    theme)   [ "$cword" -eq 2 ] && COMPREPLY=($(compgen -W "cyan aurora ember mint rose frost --json" -- "$cur")) ;;
     mode)
       case "$cword" in
         2) COMPREPLY=($(compgen -W "game" -- "$cur")) ;;

@@ -23,10 +23,12 @@ start from it, press Install.
 
 ## What it is
 
-- **A desktop of its own on top of Plasma.** Top bar, floating dock, a
-  tesseract wallpaper that stops moving whenever a window covers it, matching
-  terminal, boot menu and login splash. Cyan `#00E5FF` on ink `#080B10` with
-  ice `#F4FCFF` for text.
+- **A desktop of its own on top of KWin.** Its own dock (icons grow toward the
+  pointer, hop while a program starts), its own launcher, window motion, a
+  Plasma style for the bar and every popup, and a living tesseract wallpaper
+  that stops whenever a window covers it. Six colour themes (`ozi theme`):
+  Cyan `#00E5FF` on ink `#080B10` by default, plus Aurora, Ember, Mint, Rose
+  and a light Frost. See [desktop/README.md](desktop/README.md).
 - **A package installer that explains itself.** It reviews a package before
   installing it, runs Debian and Ubuntu `.deb` files in an isolated rootless
   container and AppImages in a sandbox, builds AUR packages in a throwaway

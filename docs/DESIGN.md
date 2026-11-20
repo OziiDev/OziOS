@@ -90,11 +90,13 @@ Delivered as standard Plasma packages so System Settings keeps working.
 |---|---|---|
 | Global theme `org.ozios.desktop` | `desktop/look-and-feel/` | colours, layout, splash, defaults |
 | Layouts | same, `contents/layouts/` | Bridge (top bar + floating dock, default), Deck (one floating bar at the bottom), Classic (Plasma default) |
-| Plasma style `OziOS` | `desktop/plasma-style/` | `colors`, `plasmarc`, only the SVGs that must differ from Breeze |
-| Colour scheme | `branding/OziOS.colors` | add accent colour and the depth ramp |
+| Dock `org.ozios.dock` | `desktop/plasmoids/` | own task model view; motion in `DockItem.qml` (plain Qt Quick) |
+| Launcher `org.ozios.launcher` | `desktop/plasmoids/` | Kicker's models, own grid and motion; provides `launchermenu`, so Meta opens it |
+| Plasma style `ozios` | `desktop/plasma-style/ozios` | written by `tools/make-plasma-style.py`: panel, dialog, tooltip and widget frames, normal, translucent and opaque; colours from the scheme |
+| Colour schemes | `branding/OziOS.colors`, `branding/themes/` | written by `tools/make-themes.py` from `ozipkg/themes.py`; `ozi theme` |
 | Window decoration | Breeze, configured through `breezerc` | no custom decoration engine |
 | Wallpaper `org.ozios.tesseract` | `desktop/wallpaper/` | add settings (animate, speed, size) and still variants |
-| Window effects | `desktop/kwin-effects/` | scripted (JavaScript) open/close effect; built-in effects tuned by config |
+| Window effects | `desktop/kwin/effects/ozios_motion` | scripted (JavaScript) open/close effect in KWin's open/close group; built-in effects tuned by config |
 | Control widget `org.ozios.control` | `desktop/plasmoids/` | tray popup: game mode, effects level, wallpaper motion, power profile, Windows guest, updates |
 | Lock screen | `kscreenlockerrc` | uses the tesseract wallpaper |
 | Login screen | plasma-login-manager config | verify in VM what can be themed |

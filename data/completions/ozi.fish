@@ -1,9 +1,11 @@
 # fish completion for ozi
-set -l commands update install remove search review box apps rollback layout effects mode status doctor report clean play gaming winsetup reboot-windows hw help
+set -l commands update install remove search review box apps rollback layout theme effects mode status doctor report clean play gaming winsetup reboot-windows hw help
 complete -c ozi -f
 complete -c ozi -n "not __fish_seen_subcommand_from $commands" -a "$commands"
 complete -c ozi -n "__fish_seen_subcommand_from layout" -a "default deck classic board"
 complete -c ozi -n "__fish_seen_subcommand_from effects" -a "full light off"
+complete -c ozi -n "__fish_seen_subcommand_from theme" -a "cyan aurora ember mint rose frost"
+complete -c ozi -n "__fish_seen_subcommand_from theme" -l json -d "machine-readable output"
 complete -c ozi -n "__fish_seen_subcommand_from mode" -a "game"
 complete -c ozi -n "__fish_seen_subcommand_from mode; and __fish_seen_subcommand_from game" -a "on off"
 complete -c ozi -n "__fish_seen_subcommand_from status" -l json -d "machine-readable output"

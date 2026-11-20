@@ -1,0 +1,22 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OziOS"
+            }
+        ],
+        "Category": "Application Launchers",
+        "Description": "All programs in a grid that flows in, with search and categories",
+        "Icon": "ozios",
+        "Id": "org.ozios.launcher",
+        "License": "MIT",
+        "Name": "OziOS Launcher",
+        "Version": "0.2",
+        "Website": "https://github.com/OziiDev/OziOS"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.launchermenu"
+    ]
+}

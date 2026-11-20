@@ -12,9 +12,11 @@ donanımda hiçbir şey denenmedi. Ayrıntılar: [docs/DEVELOPMENT.md](docs/DEVE
 Denemek için: [docs/KURULUM.md](docs/KURULUM.md). ISO'yu USB belleğe koy, bellekten
 başlat, Kur'a bas.
 
-- **Plasma üstünde kendi masaüstü:** üst çubuk, yüzen dock, pencere kapatınca
-  duran dönen tesseract duvar kâğıdı; terminal, açılış menüsü ve giriş
-  ekranında aynı görünüm.
+- **KWin üstünde kendi masaüstü:** kendi dock'u (simgeler fareye doğru büyür,
+  açılan program zıplar), kendi başlatıcısı, pencere hareketleri, çubuk ve tüm
+  açılır pencereler için kendi Plasma stili, pencere kapatınca duran canlı
+  tesseract duvar kâğıdı. Altı renk teması (`ozi theme`): Camgöbeği, Kutup
+  Işığı, Kor, Nane, Gül ve açık renkli Ayaz. Ayrıntı: [desktop/README.md](desktop/README.md).
 - **Kendini anlatan paket kurucu:** kurmadan önce paketi inceler,
   Debian/Ubuntu `.deb` paketlerini izole bir kutuda, AppImage dosyalarını bir
   kum havuzunda çalıştırır, AUR paketlerini atılabilir bir kapta derler, her

@@ -360,5 +360,16 @@
   "{program} stopped right away: {why}": "{program} hemen durdu: {why}",
   "{program} was not found.": "{program} bulunamadı.",
   "{size} of memory": "{size} bellek",
-  "{user} has no user-id range for boxes yet": "{user} için henüz kutulara ayrılmış kullanıcı kimliği aralığı yok"
+  "{user} has no user-id range for boxes yet": "{user} için henüz kutulara ayrılmış kullanıcı kimliği aralığı yok",
+  "Choose the colours of the desktop.": "Masaüstünün renklerini seç.",
+  "the theme to switch to": "geçilecek tema",
+  "plasma-apply-colorscheme is missing; run this inside the desktop session": "plasma-apply-colorscheme bulunamadı; bunu masaüstü oturumunda çalıştır",
+  "The colours could not be changed": "Renkler değiştirilemedi",
+  "Theme: {name}": "Tema: {name}",
+  "Cyan": "Camgöbeği",
+  "Aurora": "Kutup Işığı",
+  "Ember": "Kor",
+  "Mint": "Nane",
+  "Rose": "Gül",
+  "Frost (light)": "Ayaz (açık)"
 }

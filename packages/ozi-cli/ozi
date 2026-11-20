@@ -30,6 +30,7 @@ usage: ozi <command>
   apps                 list boxed apps
   rollback             list snapshots
   layout <name>        panel layout: default, deck, classic (board in the Education edition)
+  theme [name]         colours: cyan, aurora, ember, mint, rose, frost (light)
   effects <level>      window effects: full, light or off
   mode game on|off     game mode: performance profile, no compositing effects
   status [--json]      version, kernel, effects, game mode, Windows guest, updates
@@ -52,16 +53,21 @@ kwin_effect() {  # kwin_effect <name> <true|false>
   "$qdbus" org.kde.KWin /Effects "org.kde.kwin.Effects.$method" "$1" >/dev/null 2>&1 || true
 }
 
+motion() {  # motion <true|false>: the OziOS open and close animation instead of KWin's own
+  kwin_effect scale false; kwin_effect glide false; kwin_effect fade false
+  kwin_effect ozios_motion "$1"
+}
+
 set_effects() {  # set_effects full|light|off
   case "$1" in
     full)
-      kwin_effect magiclamp true; kwin_effect wobblywindows true; kwin_effect blur true
+      motion true; kwin_effect magiclamp true; kwin_effect wobblywindows true; kwin_effect blur true
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 1 ;;
     light)
-      kwin_effect magiclamp true; kwin_effect wobblywindows false; kwin_effect blur false
+      motion true; kwin_effect magiclamp true; kwin_effect wobblywindows false; kwin_effect blur false
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.5 ;;
     off)
-      kwin_effect magiclamp false; kwin_effect wobblywindows false; kwin_effect blur false
+      motion false; kwin_effect magiclamp false; kwin_effect wobblywindows false; kwin_effect blur false
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0 ;;
     *) echo "ozi: effects takes full, light or off" >&2; exit 2 ;;
   esac
@@ -215,7 +221,7 @@ case "$cmd" in
   status)
     status "${1:-}"
     ;;
-  doctor | report | clean | play | gaming)
+  doctor | report | clean | play | gaming | theme)
     exec ozi-tools "$cmd" "$@"
     ;;
   winsetup)

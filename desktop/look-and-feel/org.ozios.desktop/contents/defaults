@@ -8,7 +8,7 @@ ColorScheme=OziOS
 Theme=breeze-dark
 
 [plasmarc][Theme]
-name=default
+name=ozios
 
 [kcminputrc][Mouse]
 cursorTheme=breeze_cursors
