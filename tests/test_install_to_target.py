@@ -40,6 +40,9 @@ case "$args" in
   *-S\ linux\ linux-headers)
     [ -n "$FAKE_NO_ARCH_KERNEL" ] && exit 1
     mkdir -p "$root/usr/lib/modules/6.99-arch"; touch "$root/usr/lib/modules/6.99-arch/vmlinuz"; exit 0 ;;
+  *-S\ *)
+    fails "$args" && exit 1
+    exit 0 ;;
 esac
 exit 0
 """
@@ -69,6 +72,8 @@ class Target(unittest.TestCase):
             executable(os.path.join(self.bin, name), PLAIN)
         # Never the real os-prober: it would scan this machine's disks.
         executable(os.path.join(self.bin, "os-prober"), '#!/bin/bash\nprintf "%s" "$FAKE_OS_PROBER"\n')
+        # The machine the tests run on may be a virtual machine itself.
+        executable(os.path.join(self.bin, "systemd-detect-virt"), '#!/bin/bash\necho "$FAKE_VIRT"\n[ "$FAKE_VIRT" != none ]\n')
         for name in ("ozios-settings-0.1.1-1-any", "ozios-edu-0.1.1-1-any", "linux-ozios-7.1.6-1-x86_64",
                      "linux-ozios-headers-7.1.6-1-x86_64", "linux-ozios-nvidia-open-7.1.6-1-x86_64",
                      "linux-ozios-zfs-7.1.6-1-x86_64"):
@@ -87,7 +92,7 @@ class Target(unittest.TestCase):
     def run_stage(self, stage, **extra):
         env = dict(os.environ, PATH=self.bin + os.pathsep + os.environ["PATH"], OZIOS_PACKAGES=self.packages,
                    OZIOS_TARGET=self.target, FAKE_LOG=self.log, FAKE_INSTALLED=self.installed,
-                   FAKE_FAIL="", FAKE_NO_ARCH_KERNEL="", FAKE_NO_REPO="", FAKE_OS_PROBER="")
+                   FAKE_FAIL="", FAKE_NO_ARCH_KERNEL="", FAKE_NO_REPO="", FAKE_OS_PROBER="", FAKE_VIRT="none")
         env.update(extra)
         done = subprocess.run([BASH, SCRIPT, stage], capture_output=True, text=True, env=env, timeout=60)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -318,3 +323,33 @@ class LateStage(Target):
     def test_without_windows_the_clock_is_left_alone(self):
         self.run_stage("late")
         self.assertIsNone(self.adjtime())
+
+
+@unittest.skipUnless(BASH, "bash is not available here")
+class GuestTools(Target):
+    """Installed in a virtual machine, the system gets that machine's guest tools."""
+
+    def guest_calls(self):
+        return [c.split(" ", 2)[2] for c in self.calls() if c.startswith("chroot ") and
+                ("guest" in c or "vm-tools" in c or "vdagent" in c or "systemctl" in c)]
+
+    def test_virtualbox_gets_its_tools_and_starts_them_at_boot(self):
+        self.run_stage("early", FAKE_VIRT="oracle")
+        self.assertEqual(self.guest_calls(), ["pacman --noconfirm --needed -S virtualbox-guest-utils",
+                                              "systemctl enable vboxservice.service"])
+
+    def test_vmware_and_kvm_get_theirs(self):
+        self.run_stage("early", FAKE_VIRT="vmware")
+        self.assertEqual(self.guest_calls(), ["pacman --noconfirm --needed -S open-vm-tools", "systemctl enable vmtoolsd.service"])
+        os.remove(self.log)
+        self.run_stage("early", FAKE_VIRT="kvm")
+        self.assertEqual(self.guest_calls(), ["pacman --noconfirm --needed -S qemu-guest-agent spice-vdagent"])
+
+    def test_real_hardware_gets_none(self):
+        self.run_stage("early")
+        self.assertEqual(self.guest_calls(), [])
+
+    def test_tools_that_will_not_install_do_not_stop_the_installation(self):
+        out = self.run_stage("early", FAKE_VIRT="oracle", FAKE_FAIL="virtualbox-guest-utils")
+        self.assertIn("could not install virtualbox-guest-utils", out)
+        self.assertNotIn("systemctl enable vboxservice.service", " ".join(self.guest_calls()))

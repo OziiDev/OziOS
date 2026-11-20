@@ -6,7 +6,8 @@
 #                             (chwd): a package source for the OziOS packages on the
 #                             new disk, then the OziOS kernel and its headers
 #   install-to-target early   after the extra packages and before the initramfs
-#                             and boot loader steps: the OziOS packages
+#                             and boot loader steps: the OziOS packages, and the
+#                             guest tools when installing in a virtual machine
 #   install-to-target late    right before the unmount: boot menu details, VirtualBox's
 #                             shared folders, the clock next to Windows
 #
@@ -25,6 +26,26 @@ fi
 
 has_kernel() {
   ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1
+}
+
+# In a virtual machine, its guest tools: the folders the host shares (for VirtualBox
+# on Windows, the Windows folders), a shared clipboard, a screen that follows the
+# window. The driver step (chwd) only looks at real hardware, and the installer's
+# package list has none of them, so a system installed in a VM had none.
+guest_tools() {
+  unit=""
+  case "$(systemd-detect-virt 2>/dev/null)" in
+    oracle) pkgs="virtualbox-guest-utils"; unit=vboxservice.service ;;
+    vmware) pkgs="open-vm-tools"; unit=vmtoolsd.service ;;
+    kvm | qemu) pkgs="qemu-guest-agent spice-vdagent" ;;
+    *) return 0 ;;
+  esac
+  # shellcheck disable=SC2086
+  if arch-chroot "$root" pacman --noconfirm --needed -S $pkgs; then
+    [ -z "$unit" ] || arch-chroot "$root" systemctl enable "$unit" || echo "ozios: could not enable $unit"
+  else
+    echo "ozios: could not install $pkgs"
+  fi
 }
 
 # Is Windows on this computer? Its boot manager on the EFI partition the new
@@ -94,6 +115,8 @@ early() {
 
   # Normally the kernel stage did this; an installer set up before that stage existed relies on this one.
   has_kernel || kernel
+
+  guest_tools
 
   # The OziOS boot splash. Set before the initramfs is built, which then carries it.
   if [ -f "$root/usr/share/plymouth/themes/ozios/ozios.plymouth" ] && [ -x "$root/usr/bin/plymouth-set-default-theme" ]; then
