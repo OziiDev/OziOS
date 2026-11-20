@@ -378,5 +378,15 @@
   "with auto: the theme at night": "auto ile: gece teması",
   "The colours no longer follow the time of day": "Renkler artık günün saatine uymuyor",
   "The timer could not be started; the colours change at the next login.": "Zamanlayıcı başlatılamadı; renkler bir sonraki girişte değişecek.",
-  "Day and night: {day} by day, {night} at night": "Gündüz ve gece: gündüz {day}, gece {night}"
+  "Day and night: {day} by day, {night} at night": "Gündüz ve gece: gündüz {day}, gece {night}",
+  "The OziOS Plasma style is in use": "OziOS Plasma stili kullanılıyor",
+  "The Plasma style is {name}, not OziOS's": "Plasma stili {name}, OziOS'unki değil",
+  "Windows open and close with the OziOS motion": "Pencereler OziOS hareketiyle açılıp kapanıyor",
+  "The OziOS window motion is off": "OziOS pencere hareketi kapalı",
+  "Another layout was chosen, or the panels were changed by hand.": "Başka bir düzen seçilmiş ya da paneller elle değiştirilmiş.",
+  "The OziOS dock and launcher are on the panels": "OziOS dock'u ve başlatıcısı panellerde",
+  "The colours follow the time of day": "Renkler günün saatine uyuyor",
+  "The OziOS launcher is not on a panel": "OziOS başlatıcısı panelde değil",
+  "The OziOS dock is not on a panel": "OziOS dock'u panelde değil",
+  "The OziOS dock and launcher are not on a panel": "OziOS dock'u ve başlatıcısı panelde değil"
 }
