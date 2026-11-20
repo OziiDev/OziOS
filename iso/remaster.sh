@@ -160,6 +160,11 @@ rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*
 install -Dm644 "$package" "$root/opt/ozios/$(basename "$package")"
 [ -z "$edu_package" ] || install -Dm644 "$edu_package" "$root/opt/ozios/$(basename "$edu_package")"
 echo ozios > "$root/etc/hostname"
+# In VirtualBox the folders shared with the host belong to the group vboxsf; the live
+# user in it can open them, for example a Windows folder in the file manager.
+if grep -q '^vboxsf:' "$root/etc/group" && grep -q '^liveuser:' "$root/etc/passwd"; then
+  chroot "$root" gpasswd -a liveuser vboxsf >/dev/null
+fi
 
 if [ "$edition" = edu ]; then
   step "Turkish defaults for the live session"
@@ -215,9 +220,14 @@ if [ -n "$kernel" ]; then
   done
   [ "${#old_pkgs[@]}" -eq 0 ] || "${pm[@]}" -Rdd "${old_pkgs[@]}"
   "${pm[@]}" -U "${new_pkgs[@]}"
+  # The headers are not installed into the live system, which needs none, but kept
+  # on the medium: the installed system builds NVIDIA modules against them (DKMS),
+  # and the installer puts them in before the driver step asks for them.
+  headers="$(find "$kernel" -maxdepth 1 -name "linux-ozios-headers-[0-9]*.pkg.tar.*" ! -name '*.sig' | head -n1)"
+  [ -n "$headers" ] || echo "note: no linux-ozios-headers package; NVIDIA drivers built with DKMS will fail on installed systems" >&2
   # Keep the packages on the medium: the installer puts them into the new system.
   rm -f "$root"/opt/ozios/linux-ozios*.pkg.tar.*
-  install -Dm644 -t "$root/opt/ozios" "${new_pkgs[@]}"
+  install -Dm644 -t "$root/opt/ozios" "${new_pkgs[@]}" ${headers:+"$headers"}
 
   kver="$(ls "$root/usr/lib/modules" | grep -- '-ozios$' | head -n1)"
   [ -n "$kver" ] || die "the kernel package installed no modules"

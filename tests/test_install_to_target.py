@@ -54,8 +54,8 @@ def executable(path, text):
     os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
 
 
-@unittest.skipUnless(BASH, "bash is not available here")
-class Stages(unittest.TestCase):
+class Target(unittest.TestCase):
+    """A fake installation target and stand-ins for the programs the stages call."""
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         base = self.tmp.name
@@ -67,6 +67,8 @@ class Stages(unittest.TestCase):
         executable(os.path.join(self.bin, "arch-chroot"), ARCH_CHROOT)
         for name in ("pacman", "kernel-install"):
             executable(os.path.join(self.bin, name), PLAIN)
+        # Never the real os-prober: it would scan this machine's disks.
+        executable(os.path.join(self.bin, "os-prober"), '#!/bin/bash\nprintf "%s" "$FAKE_OS_PROBER"\n')
         for name in ("ozios-settings-0.1.1-1-any", "ozios-edu-0.1.1-1-any", "linux-ozios-7.1.6-1-x86_64",
                      "linux-ozios-headers-7.1.6-1-x86_64", "linux-ozios-nvidia-open-7.1.6-1-x86_64",
                      "linux-ozios-zfs-7.1.6-1-x86_64"):
@@ -85,7 +87,7 @@ class Stages(unittest.TestCase):
     def run_stage(self, stage, **extra):
         env = dict(os.environ, PATH=self.bin + os.pathsep + os.environ["PATH"], OZIOS_PACKAGES=self.packages,
                    OZIOS_TARGET=self.target, FAKE_LOG=self.log, FAKE_INSTALLED=self.installed,
-                   FAKE_FAIL="", FAKE_NO_ARCH_KERNEL="", FAKE_NO_REPO="")
+                   FAKE_FAIL="", FAKE_NO_ARCH_KERNEL="", FAKE_NO_REPO="", FAKE_OS_PROBER="")
         env.update(extra)
         done = subprocess.run([BASH, SCRIPT, stage], capture_output=True, text=True, env=env, timeout=60)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -105,6 +107,9 @@ class Stages(unittest.TestCase):
     def has_our_kernel(self):
         return os.path.isfile(os.path.join(self.target, "usr", "lib", "modules", "7.1.6-1-ozios", "vmlinuz"))
 
+
+@unittest.skipUnless(BASH, "bash is not available here")
+class Stages(Target):
     # --- kernel stage: before the driver step -------------------------------------
 
     def test_the_kernel_stage_makes_a_package_source_of_the_ozios_packages(self):
@@ -267,3 +272,49 @@ class Stages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(BASH, "bash is not available here")
+class LateStage(Target):
+    """The last step: VirtualBox's shared folders, and the clock next to Windows."""
+
+    def write(self, relative, text):
+        path = os.path.join(self.target, *relative.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        return path
+
+    def adjtime(self):
+        try:
+            with open(os.path.join(self.target, "etc", "adjtime"), encoding="utf-8") as fh:
+                return fh.read().splitlines()
+        except OSError:
+            return None
+
+    def test_people_can_open_the_virtualbox_shared_folders(self):
+        self.write("etc/group", "root:x:0:\nwheel:x:998:tester\nvboxsf:x:109:\n")
+        self.write("etc/passwd", "root:x:0:0::/root:/bin/bash\nsvc:x:970:970::/:/usr/bin/nologin\n"
+                                 "tester:x:1000:1000::/home/tester:/bin/bash\nnobody:x:65534:65534::/:/usr/bin/nologin\n")
+        self.run_stage("late")
+        self.assertEqual([c for c in self.calls() if "gpasswd" in c],
+                         ["chroot %s gpasswd -a tester vboxsf" % self.target])
+
+    def test_outside_virtualbox_the_groups_are_left_alone(self):
+        self.write("etc/group", "root:x:0:\nwheel:x:998:tester\n")
+        self.write("etc/passwd", "tester:x:1000:1000::/home/tester:/bin/bash\n")
+        self.run_stage("late")
+        self.assertFalse([c for c in self.calls() if "gpasswd" in c])
+
+    def test_next_to_windows_the_hardware_clock_keeps_local_time(self):
+        self.write("boot/EFI/Microsoft/Boot/bootmgfw.efi", "")
+        self.run_stage("late")
+        self.assertEqual(self.adjtime()[2], "LOCAL")
+
+    def test_windows_on_another_partition_counts_too(self):
+        self.run_stage("late", FAKE_OS_PROBER="/dev/sda1@/EFI/Microsoft/Boot/bootmgfw.efi:Windows Boot Manager:Windows:efi\n")
+        self.assertEqual(self.adjtime()[2], "LOCAL")
+
+    def test_without_windows_the_clock_is_left_alone(self):
+        self.run_stage("late")
+        self.assertIsNone(self.adjtime())

@@ -42,8 +42,19 @@ ister, sürücü, çoklu monitör, HDR ve erişilebilirlik işi yıllar sürer. 
 
 ## Durum
 
-Plasma oturumunda henüz çalıştırılmadı. Testler (`tests/test_desktop.py`) şunları
-doğrular: üretilen dosyalar üreticileriyle aynı, çerçeve parçalarının geometrisi doğru,
-temaların kontrastı yeterli, KWin efekti KWin'in betik API'sinin bir taklidinde doğru
-animasyonları istiyor, QML dosyaları dengeli ve yalnızca Qt/Plasma modüllerini içe aktarıyor.
-İlk iş: VM'de bir Plasma oturumunda açıp `journalctl --user -b | grep -i qml` çıktısına bakmak.
+Gerçek bir Plasma oturumunda (VirtualBox, 3D kapalı, yazılımsal çizim) denendi: dock,
+başlatıcı (arama, kategoriler, Enter ile açma), kontrol paneli ve tema değişimi, Alt+Tab,
+pencere hareketi ve gölgeler çalışıyor; plasmashell OziOS için QML hatası vermiyor.
+Hafif profilde boştaki masaüstü işlemcinin yüzde birinden azını kullanıyor.
+
+Öğrenilenler:
+- KWin yazılımsal çizimde bütün animasyonları kapatır; OziOS bunu
+  `/usr/lib/environment.d/60-ozios-animations.conf` ile açık tutar.
+- Qt Quick her değişiklikte bütün pencereyi yeniden çizer. Duvar kâğıdındaki hareket
+  bu yüzden tek bir saate bağlıdır (saniyede 25 kare); hafif profilde durur.
+- Blur yokken yarı saydam açılır pencereler okunmaz; Plasma stilinin normal takımı opaktır.
+
+Testler (`tests/test_desktop.py`) ayrıca şunları doğrular: üretilen dosyalar üreticileriyle
+aynı, çerçeve parçalarının geometrisi doğru, temaların kontrastı yeterli, KWin efekti KWin'in
+betik API'sinin bir taklidinde doğru animasyonları istiyor, QML dosyaları dengeli ve yalnızca
+Qt/Plasma modüllerini içe aktarıyor.

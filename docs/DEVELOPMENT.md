@@ -48,6 +48,36 @@ It works as far as the package list but was not finished.
   at and exercised without a desktop. `tools/qml-check.py` only loads the window
   and reports every warning Qt printed.
 
+### A test VM on a Windows host
+
+VirtualBox on Windows works for all of the above. What was found setting it up:
+
+- Give the VM two shared folders with auto-mount points: the checkout (or a
+  worktree) as `ozios` at `/mnt/ozios`, and, read-only, the folder with the
+  big files (`CachyOS.iso`, `.kernel-pkgs`) as `ozihost` at `/mnt/ozihost`.
+  Attach only one ISO with the CachyOS volume id at boot: both the CachyOS ISO
+  and ours carry `COS_202608`, and the live system mounts the root image of
+  whichever it finds first (an OziOS kernel with CachyOS modules does not work).
+- `VBoxManage guestcontrol <vm> run --username liveuser --password x` runs
+  commands in the live session (its empty password takes anything); with
+  `sudo -n` they run as root. In PowerShell 5 an empty `--password ""` is lost,
+  so pass some text. Under Git Bash set `MSYS_NO_PATHCONV=1`.
+- `VBoxManage controlvm <vm> screenshotpng` takes pictures; keys go in with
+  `keyboardputscancode` (Meta is `e0 5b e0 db`). Pointer clicks need the COM
+  API: `IConsole.Mouse.PutMouseEventAbsolute(x, y, 0, 0, buttons)` after
+  `LockMachine` with a shared lock, from PowerShell through
+  `New-Object -ComObject VirtualBox.VirtualBoxClient`.
+- Files copied from a shared folder are `rwxrwx---`: copy them and fix the
+  modes (`tools/sync-live.sh` does).
+- With 3D acceleration off the VM draws in software (llvmpipe). KWin then
+  switches every animation off unless `KWIN_EFFECTS_FORCE_ANIMATIONS=1` is set
+  (OziOS sets it), and every moving frame of a full screen costs a processor
+  core, which is what the light profile is for.
+- Restarting `plasma-kwin_wayland.service` inside a session does not come back
+  cleanly; log in again instead (restart `plasmalogin.service` in a live session).
+- `tools/build-iso-in-vm.sh` converts from an OziOS live session too:
+  `OZI_SOURCE_ISO=/mnt/ozihost/CachyOS.iso OZI_KERNEL_DIR=/mnt/ozihost/.kernel-pkgs`.
+
 ## State of things
 
 Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
@@ -64,13 +94,16 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
   screen and desktop, and the boot menu starts it by itself. `tools/launch-installer.sh`,
   `tools/drive-calamares.sh` and `tools/inspect-target.sh` repeat that test.
 
+- The OziOS shell in a Plasma session (VirtualBox, drawn in software): the dock,
+  the launcher with search and categories, the control widget switching themes,
+  Alt+Tab with live pictures, the window motion (seen frame by frame with slowed
+  animations), the shadows; plasmashell reported no QML errors for OziOS. With
+  the light profile an idle desktop uses under one percent of a processor.
+
 ## Not done yet
 
-- The OziOS shell (dock, launcher, Plasma style, window motion, colour themes,
-  the livelier wallpaper) has only been checked outside Plasma: the KWin effect
-  runs against a stand-in for KWin's script API, the frames' geometry and the
-  themes' contrast are tested, the QML is checked for balance and imports. It
-  has not been started in a Plasma session yet; do that first in the VM.
+- The shell has not been seen with a real graphics card, where the full profile
+  (blur, wobble, the moving wallpaper) applies.
 - The boot splash has not been seen on a real boot. If the screen stays black
   or shows text, `plymouth-set-default-theme -l` should list `ozios`, and
   `/etc/plymouth/plymouthd.conf` should name it.

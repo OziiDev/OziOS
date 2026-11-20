@@ -7,7 +7,8 @@
 #                             new disk, then the OziOS kernel and its headers
 #   install-to-target early   after the extra packages and before the initramfs
 #                             and boot loader steps: the OziOS packages
-#   install-to-target late    right before the unmount: boot menu details
+#   install-to-target late    right before the unmount: boot menu details, VirtualBox's
+#                             shared folders, the clock next to Windows
 #
 # The installer's package lists no longer name CachyOS kernels. The OziOS kernel
 # comes from the medium; if it can not be installed the Arch kernel is, so the
@@ -24,6 +25,15 @@ fi
 
 has_kernel() {
   ls "$root"/usr/lib/modules/*/vmlinuz >/dev/null 2>&1
+}
+
+# Is Windows on this computer? Its boot manager on the EFI partition the new
+# system uses, or anything os-prober finds on the other partitions.
+windows_beside() {
+  for esp in "$root/boot" "$root/efi" "$root/boot/efi"; do
+    [ -f "$esp/EFI/Microsoft/Boot/bootmgfw.efi" ] && return 0
+  done
+  command -v os-prober >/dev/null 2>&1 && os-prober 2>/dev/null | grep -qi windows
 }
 
 # arch-chroot mounts its own /tmp, so the file goes where the chroot can see it.
@@ -99,6 +109,22 @@ early() {
 }
 
 late() {
+  # VirtualBox hands the folders shared with the computer it runs on to the group
+  # vboxsf (its guest tools, put in by the driver step, create it). In it, the
+  # people of the new system can open them.
+  if grep -q '^vboxsf:' "$root/etc/group" 2>/dev/null; then
+    for user in $(awk -F: '$3 >= 1000 && $3 < 60000 { print $1 }' "$root/etc/passwd" 2>/dev/null); do
+      arch-chroot "$root" gpasswd -a "$user" vboxsf >/dev/null || echo "ozios: could not add $user to vboxsf"
+    done
+  fi
+
+  # Windows keeps the hardware clock in local time. Next to it OziOS does the same;
+  # otherwise the clock is off by the time zone after every switch between the two.
+  if windows_beside; then
+    printf '0.0 0 0.0\n0\nLOCAL\n' > "$root/etc/adjtime" &&
+      echo "ozios: Windows is on this computer, so the hardware clock keeps local time"
+  fi
+
   # Limine: an empty group named after CachyOS, written first by the installer, would show
   # in the menu and make the default entry a group, which does not boot. The installer's
   # rewrite stops it being written; this takes it out of a configuration that has it anyway.
