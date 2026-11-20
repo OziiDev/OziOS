@@ -70,10 +70,13 @@ package() {
   while IFS= read -r file; do
     install -Dm644 "$src/desktop/plasma-style/ozios/$file" "$pkgdir/usr/share/plasma/desktoptheme/ozios/$file"
   done < <(cd "$src/desktop/plasma-style/ozios" && find . -type f -printf '%P\n')
-  install -Dm644 "$src/desktop/kwin/effects/ozios_motion/metadata.json" "$pkgdir/usr/share/kwin/effects/ozios_motion/metadata.json"
+  install -Dm644 "$src/desktop/kwin/effects/ozios_motion/metadata.json" "$pkgdir/usr/share/kwin-wayland/effects/ozios_motion/metadata.json"
   install -Dm644 "$src/desktop/kwin/effects/ozios_motion/contents/code/main.js" \
-    "$pkgdir/usr/share/kwin/effects/ozios_motion/contents/code/main.js"
+    "$pkgdir/usr/share/kwin-wayland/effects/ozios_motion/contents/code/main.js"
   install -Dm644 -t "$pkgdir/usr/share/color-schemes" "$src"/branding/themes/*.colors
+  local switcher="$pkgdir/usr/share/kwin-wayland/tabbox/org.ozios.switcher"
+  install -Dm644 "$src/desktop/kwin/tabbox/org.ozios.switcher/metadata.json" "$switcher/metadata.json"
+  install -Dm644 -t "$switcher/contents/ui" "$src"/desktop/kwin/tabbox/org.ozios.switcher/contents/ui/*.qml
 
   # Global theme: colours, panel layout, splash. The splash reuses the
   # wallpaper's figure, so that one file is installed into both.

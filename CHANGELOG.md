@@ -35,6 +35,9 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
 - A boot splash of our own: the tesseract turns while the computer starts
   (Plymouth, two-step plugin; tools/make-plymouth.py draws the frames). The
   installer sets it before the initramfs is built.
+- Alt+Tab shows the OziOS switcher: the open windows as live pictures in one
+  row, the chosen one forward in the accent colour, the row gliding to keep
+  it in the middle (`org.ozios.switcher`).
 - The wallpaper takes the theme's colours, breathes, and has motes of light
   drifting through it; all of it stops while a window covers the desktop.
 - The control widget and the new applets speak Turkish in a Turkish session.

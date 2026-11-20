@@ -382,6 +382,7 @@ PACKAGES = {
     "Plasma/LookAndFeel": glob.glob(os.path.join(DESKTOP, "look-and-feel", "*")),
     "Plasma/Theme": glob.glob(os.path.join(DESKTOP, "plasma-style", "*")),
     "KWin/Effect": glob.glob(os.path.join(DESKTOP, "kwin", "effects", "*")),
+    "KWin/WindowSwitcher": glob.glob(os.path.join(DESKTOP, "kwin", "tabbox", "*")),
 }
 
 
@@ -424,7 +425,8 @@ class Packages(unittest.TestCase):
     def test_the_package_installs_the_shell(self):
         text = read("packages", "ozios-settings", "PKGBUILD")
         for needle in ("org.ozios.dock org.ozios.launcher", "/usr/share/plasma/desktoptheme/ozios/",
-                       "/usr/share/kwin/effects/ozios_motion/contents/code/main.js", "branding/themes/*.colors"):
+                       "/usr/share/kwin-wayland/tabbox/org.ozios.switcher",
+                       "/usr/share/kwin-wayland/effects/ozios_motion/contents/code/main.js", "branding/themes/*.colors"):
             self.assertIn(needle, text)
 
     def test_layouts_use_widgets_that_exist(self):
@@ -496,7 +498,7 @@ class Qml(unittest.TestCase):
             folder = os.path.dirname(path)
             with open(path, encoding="utf-8") as fh:
                 code = strip_code(fh.read())
-            for name in set(re.findall(r"(?m)^\s*(DockItem|AppTile|Tesseract)\s*\{", code)):
+            for name in set(re.findall(r"(?m)^\s*(DockItem|AppTile|Tesseract|SwitcherCard)\s*\{", code)):
                 # The splash screen gets the wallpaper's figure copied in when it is installed.
                 shared = os.path.join(DESKTOP, "wallpaper", "org.ozios.tesseract", "contents", "ui", name + ".qml")
                 self.assertTrue(os.path.isfile(os.path.join(folder, name + ".qml")) or
@@ -660,6 +662,12 @@ class ShellInQt(unittest.TestCase):
         control = result["control"]
         self.assertEqual(control["swatches"], [t.id for t in themes.THEMES])
         self.assertEqual(control["commands"], ["ozi theme aurora", "ozi effects off", "ozi mode game on"])
+
+        switcher = result["switcher"]
+        self.assertTrue(switcher["popup"])
+        self.assertEqual(switcher["cards"], 5)
+        self.assertEqual((switcher["current"], switcher["after_right"], switcher["after_two_lefts"]), (1, 2, 0))
+        self.assertEqual(switcher["click"], [["tabbox", "activate", 3]])
 
         wallpaper = result["wallpaper"]
         self.assertTrue(wallpaper["turning"])

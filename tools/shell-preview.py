@@ -39,7 +39,7 @@ os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 from PyQt6.QtCore import QLocale, QPoint, QPointF, QRectF, QUrl, Qt, qInstallMessageHandler  # noqa: E402
 from PyQt6.QtGui import QColor, QFont, QGuiApplication, QImage, QPainter, QPalette  # noqa: E402
 from PyQt6.QtQml import QQmlEngine  # noqa: E402
-from PyQt6.QtQuick import QQuickItem, QQuickView  # noqa: E402
+from PyQt6.QtQuick import QQuickItem, QQuickView, QQuickWindow  # noqa: E402
 from PyQt6.QtTest import QTest  # noqa: E402
 
 import plasma_stubs  # noqa: E402
@@ -47,7 +47,7 @@ import plasma_style  # noqa: E402
 from ozipkg import themes  # noqa: E402
 
 DESKTOP = os.path.join(ROOT, "desktop")
-SCENES = ("dock", "launcher", "search", "control", "wallpaper")
+SCENES = ("dock", "launcher", "search", "control", "switcher", "wallpaper")
 
 messages = []
 
@@ -129,12 +129,29 @@ Item {
 }
 """, (1280, 720)),
 }
+# The switcher opens its own popup window; this item only holds it.
+HARNESS["switcher"] = ("""
+import QtQuick
+Item {
+    width: 40; height: 40
+    Loader {
+        objectName: "applet"
+        source: "%(switcher)s"
+        onLoaded: {
+            item.screenGeometry = Qt.rect(0, 0, 1600, 900)
+            item.model = stubWindows
+            item.currentIndex = 1
+        }
+    }
+}
+""", (40, 40))
 HARNESS["search"] = HARNESS["launcher"]
 PACKAGES = {
     "dock": ("plasmoids", "org.ozios.dock"),
     "launcher": ("plasmoids", "org.ozios.launcher"),
     "control": ("plasmoids", "org.ozios.control"),
     "wallpaper": ("wallpaper", "org.ozios.tesseract"),
+    "switcher": ("kwin/tabbox", "org.ozios.switcher"),
 }
 
 
@@ -142,11 +159,11 @@ def sources(folder):
     """The main.qml of each package, from a copy that loads with the stand-ins."""
     out = {}
     for name, (kind, package) in PACKAGES.items():
-        copy = plasma_stubs.prepared(os.path.join(DESKTOP, kind, package, "contents", "ui"), folder)
+        copy = plasma_stubs.prepared(os.path.join(DESKTOP, *kind.split("/"), package, "contents", "ui"), folder)
         out[name] = QUrl.fromLocalFile(os.path.join(copy, "main.qml")).toString()
     return out
 # How long each scene runs before its picture is taken, in milliseconds.
-SETTLE = {"dock": 1400, "launcher": 1500, "search": 1200, "control": 700, "wallpaper": 5200}
+SETTLE = {"dock": 1400, "launcher": 1500, "search": 1200, "control": 700, "switcher": 900, "wallpaper": 5200}
 CONFIG = {"launchers": ["applications:org.kde.konsole.desktop", "applications:ozi-store.desktop",
                         "applications:systemsettings.desktop"], "magnify": True, "icon": "ozios",
           "favoritesPortedToKAstats": True}
@@ -225,6 +242,16 @@ def run_scene(engine, scene, theme_id, folder, still, quick=False):
     step(min(SETTLE[scene], 400) if quick else SETTLE[scene])
     image = view.grabWindow()
     frames = []
+    if scene == "switcher":
+        popups = [w for w in QGuiApplication.allWindows() if w is not view and isinstance(w, QQuickWindow) and w.isVisible()]
+        if not popups:
+            messages.append("switcher: no popup opened")
+            view.close()
+            return None
+        image = popups[-1].grabWindow()
+        frames.append(("dialogs/background", QRectF(0, 0, image.width(), image.height())))
+        for popup in popups:
+            popup.close()
     if scene == "dock":
         panel = view.rootObject().findChild(QQuickItem, "panel")
         corner = panel.mapToScene(QPointF(0, 0))
