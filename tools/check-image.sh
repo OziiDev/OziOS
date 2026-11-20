@@ -53,7 +53,8 @@ check "the live user can open VirtualBox shared folders" '! getent group vboxsf 
 check "the keyring set-up at boot leaves the desktop alone" 'grep -q "^Nice=19" /etc/systemd/system/pacman-init.service.d/ozios-nice.conf'
 # In the live session itself, once the first login has applied the desktop:
 if [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]; then
-  check "this session uses the OziOS Plasma style" 'test "$(kreadconfig6 --file plasmarc --group Theme --key name)" = ozios'
+  # The global theme's values live in ~/.config/kdedefaults, which the session puts in XDG_CONFIG_DIRS.
+  check "this session uses the OziOS Plasma style" 'test "$(XDG_CONFIG_DIRS="$HOME/.config/kdedefaults:${XDG_CONFIG_DIRS:-/etc/xdg}" kreadconfig6 --file plasmarc --group Theme --key name)" = ozios'
   check "Alt+Tab shows the OziOS switcher" 'test "$(kreadconfig6 --file kwinrc --group TabBox --key LayoutName)" = org.ozios.switcher'
   check "this session uses the OziOS window motion" 'test "$(kreadconfig6 --file kwinrc --group Plugins --key ozios_motionEnabled)" = true'
   check "the panels hold the OziOS dock and launcher" 'grep -q "plugin=org.ozios.dock" ~/.config/plasma-org.kde.plasma.desktop-appletsrc && grep -q "plugin=org.ozios.launcher" ~/.config/plasma-org.kde.plasma.desktop-appletsrc'
