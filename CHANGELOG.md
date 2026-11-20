@@ -57,7 +57,14 @@ installer that gets through the driver step on NVIDIA cards.
 - Windows: in VirtualBox the folders shared with Windows open in the file
   manager (the live user and the installed system's people are in `vboxsf`);
   installed next to Windows, the hardware clock keeps local time so the clock is
-  right in both systems.
+  right in both systems. The Welcome window opens the shared folders of Windows
+  computers on the network.
+- Installed in a virtual machine, the system gets that machine's guest tools
+  (VirtualBox, VMware, KVM): shared folders, a shared clipboard, a screen that
+  follows the window. The driver step only looks at real hardware, so before
+  this a system installed in VirtualBox had none.
+- `ozi doctor` reads the global theme's values from `kdedefaults`, so a fresh
+  system no longer says its Plasma style is not OziOS's.
 
 ## 0.1.1 (unreleased)
 
