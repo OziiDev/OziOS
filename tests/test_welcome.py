@@ -114,5 +114,46 @@ class Welcome(unittest.TestCase):
         self.assertRegex(welcome.version(), r"^\d+\.\d+\.\d+$")
 
 
+class Colours(unittest.TestCase):
+    class Done:
+        def __init__(self, code):
+            self.returncode = code
+
+    def test_a_swatch_switches_the_desktop_and_hands_back_the_windows_palette(self):
+        calls = []
+        with tempfile.TemporaryDirectory() as home:
+            result = welcome.set_theme("ember", run=lambda argv, **kw: (calls.append(argv), self.Done(0))[1], home=home)
+        self.assertEqual(calls, [["plasma-apply-colorscheme", "OziOSEmber"]])
+        self.assertEqual(result["theme"], "ember")
+        self.assertEqual(result["palette"]["cyan"], "#ff8c40")
+        self.assertFalse(result["palette"]["light"])
+
+    def test_outside_plasma_it_says_why(self):
+        def missing(argv, **kw):
+            raise FileNotFoundError(argv[0])
+        with self.assertRaises(ValueError) as caught:
+            welcome.set_theme("mint", run=missing)
+        self.assertIn("plasma-apply-colorscheme", str(caught.exception))
+        with self.assertRaises(ValueError):
+            welcome.set_theme("mint", run=lambda argv, **kw: self.Done(1))
+
+    def test_only_known_themes(self):
+        with self.assertRaises(ValueError):
+            welcome.set_theme("../../etc/passwd")
+
+    def test_the_choices_are_every_theme(self):
+        self.assertEqual([c["id"] for c in welcome.theme_choices()], ["cyan", "aurora", "ember", "mint", "rose", "frost"])
+
+    def test_the_window_asks_only_for_what_the_backend_allows(self):
+        here = os.path.join(os.path.dirname(__file__), "..", "apps", "ozi-welcome")
+        with open(os.path.join(here, "ozi-welcome"), encoding="utf-8") as fh:
+            backend = fh.read()
+        with open(os.path.join(here, "Main.qml"), encoding="utf-8") as fh:
+            window = fh.read()
+        import re
+        for name in set(re.findall(r'backend\.call\("[^"]+", "([^"]+)"', window)):
+            self.assertIn('"%s":' % name, backend, name)
+
+
 if __name__ == "__main__":
     unittest.main()

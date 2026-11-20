@@ -18,8 +18,13 @@ ApplicationWindow {
     property bool live: false
     property bool edu: false
     property string message: ""
+    property var themeChoices: []
+    property var targetPalette: ({})
 
-    Component.onCompleted: backend.call("info", "info", "[]")
+    Component.onCompleted: {
+        backend.call("info", "info", "[]")
+        backend.call("themes", "themes", "[]")
+    }
 
     Connections {
         target: backend
@@ -30,6 +35,11 @@ ApplicationWindow {
                 window.showAtLogin = result.show
                 window.live = result.live
                 window.edu = result.edu
+            } else if (task === "themes") {
+                window.themeChoices = result
+            } else if (task === "setTheme") {
+                window.morphTo(result.palette)
+                backend.call("themes", "themes", "[]")
             }
         }
         function onFailed(task, text) {
@@ -40,6 +50,26 @@ ApplicationWindow {
     function launch(name) {
         message = ""
         backend.call("launch", "launch", JSON.stringify([name]))
+    }
+
+    // The window flows into the new theme's colours while the desktop switches with it.
+    function morphTo(palette) {
+        targetPalette = palette
+        Theme.light = palette.light
+        morph.restart()
+    }
+
+    ParallelAnimation {
+        id: morph
+        ColorAnimation { target: Theme; property: "ink"; to: window.targetPalette.ink || Theme.ink; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "raised"; to: window.targetPalette.raised || Theme.raised; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "control"; to: window.targetPalette.control || Theme.control; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "cyan"; to: window.targetPalette.cyan || Theme.cyan; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "mid"; to: window.targetPalette.mid || Theme.mid; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "far"; to: window.targetPalette.far || Theme.far; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "ice"; to: window.targetPalette.ice || Theme.ice; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "muted"; to: window.targetPalette.muted || Theme.muted; duration: 450; easing.type: Easing.InOutCubic }
+        ColorAnimation { target: Theme; property: "onAccent"; to: window.targetPalette.onAccent || Theme.onAccent; duration: 450; easing.type: Easing.InOutCubic }
     }
 
     ColumnLayout {
@@ -60,6 +90,10 @@ ApplicationWindow {
                 property real angle: 0
                 NumberAnimation on angle { from: 0; to: Math.PI * 2; duration: 24000; loops: Animation.Infinite; running: window.visible && window.active }
                 onAngleChanged: canvas.requestPaint()
+                Connections {
+                    target: Theme
+                    function onCyanChanged() { canvas.requestPaint() }
+                }
 
                 Canvas {
                     id: canvas
@@ -85,7 +119,7 @@ ApplicationWindow {
                                 var q = p ^ (1 << bit)
                                 if (q < p) continue
                                 var nearness = (verts[p].near + verts[q].near) / 2
-                                ctx.strokeStyle = Qt.rgba(0, 0.9, 1, 0.25 + 0.75 * nearness)
+                                ctx.strokeStyle = Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.25 + 0.75 * nearness)
                                 ctx.lineWidth = 1 + 1.4 * nearness
                                 ctx.beginPath()
                                 ctx.moveTo(verts[p].x, verts[p].y)
@@ -121,6 +155,72 @@ ApplicationWindow {
             color: Theme.muted
             font.family: Theme.family
             font.pixelSize: 15
+        }
+
+        // The colours of the whole desktop, one swatch per theme; this window changes with it.
+        RowLayout {
+            Layout.fillWidth: true
+            visible: window.themeChoices.length > 0
+            spacing: 10
+
+            Text {
+                Layout.preferredWidth: 182
+                leftPadding: 8
+                text: backend.tr("Colours")
+                color: Theme.cyan
+                font.family: Theme.family
+                font.pixelSize: 17
+            }
+            Repeater {
+                model: window.themeChoices
+                delegate: Item {
+                    id: swatch
+                    required property var modelData
+                    objectName: "theme-" + modelData.id
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: swatchArea.containsMouse ? 34 : 30
+                        height: width
+                        radius: width / 2
+                        color: swatch.modelData.background
+                        border.width: swatch.modelData.current ? 2 : 1
+                        border.color: swatch.modelData.current ? Theme.ice : Theme.far
+                        Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width * 0.5
+                            height: width
+                            radius: width / 2
+                            color: swatch.modelData.accent
+                        }
+                    }
+                    MouseArea {
+                        id: swatchArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            window.message = ""
+                            backend.call("setTheme", "setTheme", JSON.stringify([swatch.modelData.id]))
+                        }
+                    }
+                    ToolTip.visible: swatchArea.containsMouse
+                    ToolTip.text: swatch.modelData.name
+                    ToolTip.delay: 300
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                leftPadding: 8
+                wrapMode: Text.WordWrap
+                text: backend.tr("The whole desktop changes with it. The panel has the same choice later.")
+                color: Theme.muted
+                font.family: Theme.family
+                font.pixelSize: 13
+            }
         }
 
         // Only in a live session: this is how the system gets onto a disk.
