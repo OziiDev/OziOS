@@ -6,7 +6,19 @@ import sys
 import unittest
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
-HAVE_QT = importlib.util.find_spec("PyQt6") is not None
+# The windows load in a child Python started with -I, which ignores the user's own
+# site-packages; ask that Python, not this one, whether Qt is there.
+HAVE_QT = importlib.util.find_spec("PyQt6") is not None and subprocess.run(
+    [sys.executable, "-I", "-c", "import PyQt6.QtCore"], capture_output=True).returncode == 0
+
+
+def offscreen_env(**extra):
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software", LANG="C.UTF-8")
+    if os.name == "nt":
+        # Qt's offscreen platform on Windows looks for fonts next to Qt itself, where there are none.
+        env.setdefault("QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"))
+    env.update(extra)
+    return env
 
 
 def apps():
@@ -20,7 +32,7 @@ class Windows(unittest.TestCase):
     def test_each_app_loads_clean(self):
         names = apps()
         self.assertTrue(names)
-        env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software", LANG="C.UTF-8")
+        env = offscreen_env()
         for name in names:
             with self.subTest(app=name):
                 result = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "qml-check.py"),

@@ -66,6 +66,11 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
 
 ## Not done yet
 
+- The OziOS shell (dock, launcher, Plasma style, window motion, colour themes,
+  the livelier wallpaper) has only been checked outside Plasma: the KWin effect
+  runs against a stand-in for KWin's script API, the frames' geometry and the
+  themes' contrast are tested, the QML is checked for balance and imports. It
+  has not been started in a Plasma session yet; do that first in the VM.
 - The installer fix for the driver step (`chwd`) is tested against stand-ins,
   not yet on a machine with an NVIDIA card.
 - The live session has a polkit rule that allows everything without a password,

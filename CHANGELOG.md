@@ -16,6 +16,19 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
   disk (`[ozios]`, `/opt/ozios`); NVIDIA modules are built for the installed
   driver (DKMS). A driver step that fails anyway no longer fails the
   installation; `ozi doctor` shows what it said.
+- The OziOS shell, the desktop's own pieces on top of KWin: a dock whose icons
+  grow toward the pointer, hop while a program starts and pulse for attention;
+  a launcher (Meta key) with a greeting, search, category chips and a grid that
+  flows in; window open and close motion (`ozios_motion`); the OziOS Plasma style
+  for the bar, the dock and every popup. All motion is transforms and opacity,
+  and it follows the animation speed setting (`ozi effects off` stops it).
+- Colour themes: Cyan, Aurora, Ember, Mint, Rose and Frost (light). `ozi theme
+  <name>` or the swatches in the control widget switch the bar, the dock,
+  popups, the wallpaper and window frames at once.
+- The wallpaper takes the theme's colours, breathes, and has motes of light
+  drifting through it; all of it stops while a window covers the desktop.
+- The control widget and the new applets speak Turkish in a Turkish session.
+
 - The long-term CachyOS kernel is gone from the ISO; the fallback entries of
   the boot menu, BIOS included, start the OziOS kernel.
 - CachyOS Hello, its CLI installer and `cachy-chroot` are removed from the image.

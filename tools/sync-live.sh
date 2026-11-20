@@ -25,6 +25,23 @@ mkdir -p /usr/share/ozios/branding /usr/share/ozios/layouts
 install -m644 "$src"/branding/boot/limine-splash.png "$src"/branding/boot/desktop.png /usr/share/ozios/branding/
 install -m644 "$src"/desktop/layouts/*.js /usr/share/ozios/layouts/
 [ ! -d "$src/edu/layouts" ] || install -m644 "$src"/edu/layouts/*.js /usr/share/ozios/layouts/
+
+# The OziOS shell: dock, launcher, control widget, wallpaper, Plasma style, window motion, colour themes.
+for applet in org.ozios.control org.ozios.dock org.ozios.launcher; do
+  rm -rf "/usr/share/plasma/plasmoids/$applet"
+  cp -r "$src/desktop/plasmoids/$applet" /usr/share/plasma/plasmoids/
+done
+rm -rf /usr/share/plasma/wallpapers/org.ozios.tesseract /usr/share/plasma/desktoptheme/ozios /usr/share/kwin/effects/ozios_motion
+cp -r "$src/desktop/wallpaper/org.ozios.tesseract" /usr/share/plasma/wallpapers/
+mkdir -p /usr/share/plasma/desktoptheme /usr/share/kwin/effects
+cp -r "$src/desktop/plasma-style/ozios" /usr/share/plasma/desktoptheme/
+cp -r "$src/desktop/kwin/effects/ozios_motion" /usr/share/kwin/effects/
+install -m644 "$src/branding/OziOS.colors" "$src"/branding/themes/*.colors /usr/share/color-schemes/
+lnf=/usr/share/plasma/look-and-feel/org.ozios.desktop
+if [ -d "$lnf" ]; then
+  install -m644 "$src/desktop/look-and-feel/org.ozios.desktop/contents/defaults" "$lnf/contents/defaults"
+  install -m644 "$src"/desktop/look-and-feel/org.ozios.desktop/contents/layouts/*.js "$lnf/contents/layouts/"
+fi
 mkdir -p /usr/share/calamares/branding/ozios /usr/share/grub/themes/ozios
 install -m644 "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml,OziSlide.qml} /usr/share/calamares/branding/ozios/
 install -m644 "$src"/branding/boot/theme.txt "$src"/branding/boot/background.png /usr/share/grub/themes/ozios/

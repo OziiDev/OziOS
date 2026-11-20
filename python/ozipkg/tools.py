@@ -1,7 +1,7 @@
-"""The commands `ozi` hands to Python: doctor, report, clean, play and gaming."""
+"""The commands `ozi` hands to Python: doctor, report, clean, play, gaming and theme."""
 import sys
 
-from . import clean, doctor, gaming, play, report
+from . import clean, doctor, gaming, play, report, themes
 
 COMMANDS = {
     "doctor": doctor.main,
@@ -9,6 +9,7 @@ COMMANDS = {
     "clean": clean.main,
     "play": play.main,
     "gaming": gaming.main,
+    "theme": themes.main,
 }
 
 USAGE = """usage: ozi-tools <command> [options]
@@ -18,6 +19,7 @@ USAGE = """usage: ozi-tools <command> [options]
   clean     free disk space
   play      run a game with game mode on
   gaming    install what games need for this graphics card
+  theme     choose the colours of the desktop
 """
 
 

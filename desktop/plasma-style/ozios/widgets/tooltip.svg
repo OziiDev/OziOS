@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Written by tools/make-plasma-style.py; edit that instead. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="110" viewBox="0 0 160 110">
+<style type="text/css" id="current-color-scheme">
+.ColorScheme-Background { color:#080b10; }
+.ColorScheme-Text { color:#f4fcff; }
+.ColorScheme-Highlight { color:#00e5ff; }
+</style>
+<g id="topleft"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 1,8 A 7,7 0 0 1 8,1 L 8,8 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 0,8 A 8,8 0 0 1 8,0 L 8,1 A 7,7 0 0 0 1,8 Z"/></g>
+<g id="top"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 8,1 H 24 V 8 H 8 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 8,0 H 24 V 1 H 8 Z"/></g>
+<g id="topright"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 24,1 A 7,7 0 0 1 31,8 L 24,8 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 24,0 A 8,8 0 0 1 32,8 L 31,8 A 7,7 0 0 0 24,1 Z"/></g>
+<g id="left"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 1,8 H 8 V 24 H 1 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 0,8 H 1 V 24 H 0 Z"/></g>
+<g id="center"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 8,8 H 24 V 24 H 8 Z"/></g>
+<g id="right"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 24,8 H 31 V 24 H 24 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 31,8 H 32 V 24 H 31 Z"/></g>
+<g id="bottomleft"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 1,24 A 7,7 0 0 0 8,31 L 8,24 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 8,32 A 8,8 0 0 1 0,24 L 1,24 A 7,7 0 0 0 8,31 Z"/></g>
+<g id="bottom"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 8,24 H 24 V 31 H 8 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 8,31 H 24 V 32 H 8 Z"/></g>
+<g id="bottomright"><path class="ColorScheme-Background" style="fill:currentColor;fill-opacity:0.97" d="M 31,24 A 7,7 0 0 1 24,31 L 24,24 Z"/><path class="ColorScheme-Text" style="fill:currentColor;fill-opacity:0.12" d="M 32,24 A 8,8 0 0 1 24,32 L 24,31 A 7,7 0 0 0 31,24 Z"/></g>
+<path id="mask-topleft" style="fill:#000000" d="M 100,8 A 8,8 0 0 1 108,0 L 108,8 Z"/>
+<path id="mask-top" style="fill:#000000" d="M 108,0 H 124 V 8 H 108 Z"/>
+<path id="mask-topright" style="fill:#000000" d="M 124,0 A 8,8 0 0 1 132,8 L 124,8 Z"/>
+<path id="mask-left" style="fill:#000000" d="M 100,8 H 108 V 24 H 100 Z"/>
+<path id="mask-center" style="fill:#000000" d="M 108,8 H 124 V 24 H 108 Z"/>
+<path id="mask-right" style="fill:#000000" d="M 124,8 H 132 V 24 H 124 Z"/>
+<path id="mask-bottomleft" style="fill:#000000" d="M 100,24 A 8,8 0 0 0 108,32 L 108,24 Z"/>
+<path id="mask-bottom" style="fill:#000000" d="M 108,24 H 124 V 32 H 108 Z"/>
+<path id="mask-bottomright" style="fill:#000000" d="M 132,24 A 8,8 0 0 1 124,32 L 124,24 Z"/>
+<rect id="hint-top-margin" x="0" y="100" width="2" height="6" style="fill:#ff00ff"/>
+<rect id="hint-bottom-margin" x="4" y="100" width="2" height="6" style="fill:#ff00ff"/>
+<rect id="hint-left-margin" x="8" y="100" width="6" height="2" style="fill:#ff00ff"/>
+<rect id="hint-right-margin" x="8" y="104" width="6" height="2" style="fill:#ff00ff"/>
+<rect id="hint-stretch-borders" x="20" y="100" width="2" height="2" style="fill:#ff6600"/>
+</svg>

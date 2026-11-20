@@ -8,7 +8,7 @@ bar.lengthMode = "fill"
 bar.hiding = "none"
 bar.floating = false
 
-bar.addWidget("org.kde.plasma.kickoff")
+bar.addWidget("org.ozios.launcher")
 bar.addWidget("org.kde.plasma.pager")
 bar.addWidget("org.kde.plasma.panelspacer")
 bar.addWidget("org.kde.plasma.digitalclock")
@@ -18,13 +18,13 @@ bar.addWidget("org.kde.plasma.systemtray")
 
 var dock = new Panel
 dock.location = "bottom"
-dock.height = Math.round(gridUnit * 3)
+dock.height = Math.round(gridUnit * 3.6)
 dock.alignment = "center"
 dock.lengthMode = "fit"
 dock.floating = true
 dock.hiding = "dodgewindows"
 
-var tasks = dock.addWidget("org.kde.plasma.icontasks")
+var tasks = dock.addWidget("org.ozios.dock")
 tasks.currentConfigGroup = ["General"]
 tasks.writeConfig("launchers", [
     "preferred://filemanager",

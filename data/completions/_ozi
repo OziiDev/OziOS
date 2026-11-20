@@ -11,6 +11,7 @@ commands=(
   'apps:list boxed apps'
   'rollback:list snapshots'
   'layout:panel layout'
+  'theme:colours of the desktop'
   'effects:window effects'
   'mode:game mode'
   'status:version, kernel, effects and updates'
@@ -31,6 +32,7 @@ fi
 case $words[2] in
   layout)  _values 'layout' default deck classic board ;;
   effects) _values 'level' full light off ;;
+  theme)   _values 'theme' cyan aurora ember mint rose frost ;;
   mode)    (( CURRENT == 3 )) && _values 'mode' game || _values 'state' on off ;;
   status)  _arguments '--json[machine-readable output]' ;;
   doctor)  _arguments '--json[machine-readable output]' '--quiet[only warnings and problems]' ;;

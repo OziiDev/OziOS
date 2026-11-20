@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "Plasma/Theme",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OziOS"
+            }
+        ],
+        "Category": "",
+        "Description": "Ink glass in the colours of the scheme in use",
+        "EnabledByDefault": true,
+        "Id": "ozios",
+        "License": "MIT",
+        "Name": "OziOS",
+        "Version": "0.2",
+        "Website": "https://github.com/OziiDev/OziOS"
+    },
+    "X-Plasma-API": "5.0"
+}

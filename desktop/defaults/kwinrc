@@ -1,4 +1,8 @@
 [Plugins]
+ozios_motionEnabled=true
+scaleEnabled=false
+glideEnabled=false
+fadeEnabled=false
 blurEnabled=true
 wobblywindowsEnabled=true
 magiclampEnabled=true
