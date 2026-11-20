@@ -722,3 +722,38 @@ class Defaults(unittest.TestCase):
         parser.read_string(read("desktop", "defaults", "baloofilerc"))
         self.assertEqual(parser["General"]["only basic indexing"], "true")
         self.assertIn('"$src/desktop/defaults/baloofilerc" "$pkgdir/etc/xdg/baloofilerc"', read("packages", "ozios-settings", "PKGBUILD"))
+
+
+class BootSplash(unittest.TestCase):
+    folder = os.path.join(ROOT, "branding", "plymouth", "ozios")
+
+    def test_it_is_a_two_step_theme_where_the_package_puts_it(self):
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.optionxform = str
+        parser.read_string(read("branding", "plymouth", "ozios", "ozios.plymouth"))
+        self.assertEqual(parser["Plymouth Theme"]["ModuleName"], "two-step")
+        self.assertEqual(parser["two-step"]["ImageDir"], "/usr/share/plymouth/themes/ozios")
+        self.assertEqual(parser["two-step"]["BackgroundStartColor"], "0x080b10")
+        self.assertIn('"$pkgdir/usr/share/plymouth/themes/ozios" "$src"/branding/plymouth/ozios/*',
+                      read("packages", "ozios-settings", "PKGBUILD"))
+
+    def test_the_images_two_step_needs_are_there(self):
+        names = set(os.listdir(self.folder))
+        for required in ("lock.png", "entry.png", "bullet.png", "throbber-0001.png", "animation-0001.png"):
+            self.assertIn(required, names)
+        throbber = sorted(n for n in names if n.startswith("throbber-"))
+        self.assertEqual(throbber, ["throbber-%04d.png" % i for i in range(1, len(throbber) + 1)])   # no gaps
+        self.assertGreaterEqual(len(throbber), 24)
+        for name in names:
+            if name.endswith(".png"):
+                with open(os.path.join(self.folder, name), "rb") as fh:
+                    self.assertEqual(fh.read(8), b"\x89PNG\r\n\x1a\n", name)
+
+    @unittest.skipUnless(HAVE_QT, "PyQt6 is not installed")
+    def test_the_loop_ends_where_it_began(self):
+        maker = load_tool("make-plymouth.py")
+        start = sorted((round(x, 6), round(y, 6)) for x, y, _ in maker.project(0.0))
+        end = sorted((round(x, 6), round(y, 6)) for x, y, _ in maker.project(1.0))
+        self.assertEqual(start, end)
+        middle = sorted((round(x, 6), round(y, 6)) for x, y, _ in maker.project(0.5))
+        self.assertNotEqual(start, middle)                      # and it does turn in between

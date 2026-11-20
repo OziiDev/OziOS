@@ -71,6 +71,9 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
   runs against a stand-in for KWin's script API, the frames' geometry and the
   themes' contrast are tested, the QML is checked for balance and imports. It
   has not been started in a Plasma session yet; do that first in the VM.
+- The boot splash has not been seen on a real boot. If the screen stays black
+  or shows text, `plymouth-set-default-theme -l` should list `ozios`, and
+  `/etc/plymouth/plymouthd.conf` should name it.
 - The installer fix for the driver step (`chwd`) is tested against stand-ins,
   not yet on a machine with an NVIDIA card.
 - The live session has a polkit rule that allows everything without a password,

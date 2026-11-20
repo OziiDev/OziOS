@@ -32,6 +32,9 @@ and the hardware tools are built on them (see `docs/DEVELOPMENT.md`).
   sunset, a dark one at night, checked by a timer of the user's session.
 - File search indexes names only by default (`/etc/xdg/baloofilerc`): reading
   every document after login kept an ordinary computer busy.
+- A boot splash of our own: the tesseract turns while the computer starts
+  (Plymouth, two-step plugin; tools/make-plymouth.py draws the frames). The
+  installer sets it before the initramfs is built.
 - The wallpaper takes the theme's colours, breathes, and has motes of light
   drifting through it; all of it stops while a window covers the desktop.
 - The control widget and the new applets speak Turkish in a Turkish session.
