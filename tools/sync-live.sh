@@ -13,9 +13,13 @@ src="${1:-/mnt/ozios}"
 
 cp -r "$src/python/ozipkg/." /usr/lib/ozios/python/ozipkg/
 find /usr/lib/ozios/python -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
-for f in identity patch-installer install-to-target first-login start-installer ozi-pkg-helper; do
+for f in identity patch-installer install-to-target first-login start-installer ozi-pkg-helper tidy-menu; do
   install -m755 "$src/packages/ozios-settings/$f" "/usr/lib/ozios/$f"
 done
+install -Dm644 "$src/packages/ozios-settings/zz-ozios-menu.hook" /usr/share/libalpm/hooks/zz-ozios-menu.hook
+install -Dm644 "$src/packages/ozios-settings/60-ozios-animations.conf" /usr/lib/environment.d/60-ozios-animations.conf
+install -m644 "$src/winbridge/ozi-winrun.desktop" /usr/share/applications/ozi-winrun.desktop
+/usr/lib/ozios/tidy-menu
 for f in ozi ozi-pkg ozi-box ozi-tools; do
   install -m755 "$src/packages/ozi-cli/$f" "/usr/bin/$f"
 done
@@ -52,5 +56,11 @@ install -m644 "$src/data/i18n/tr.json" /usr/share/ozios/data/i18n/tr.json
 mkdir -p /etc/plasmalogin.conf.d && install -m644 "$src/branding/login/10-ozios.conf" /etc/plasmalogin.conf.d/10-ozios.conf
 version="$(tr -d '[:space:]' < "$src/VERSION")"
 sed "s/@VERSION@/$version/g" "$src/branding/calamares/ozios/branding.desc" > /usr/share/calamares/branding/ozios/branding.desc
+# A VirtualBox shared folder hands out its files as rwxrwx--- and cp keeps that, so
+# new files would be readable by root only: the desktop could not load them.
+chmod -R go+rX,go-w /usr/lib/ozios/python/ozipkg /usr/lib/ozios/apps \
+  /usr/share/plasma/plasmoids/org.ozios.* /usr/share/plasma/wallpapers/org.ozios.tesseract \
+  /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_motion \
+  /usr/share/kwin-wayland/tabbox/org.ozios.switcher
 /usr/lib/ozios/patch-installer
 echo "live session now runs the checkout ($version)"

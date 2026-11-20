@@ -58,16 +58,26 @@ motion() {  # motion <true|false>: the OziOS open and close animation instead of
   kwin_effect ozios_motion "$1"
 }
 
+wallpaper_motion() {  # wallpaper_motion <true|false>: the OziOS wallpaper turns, or holds still
+  [ -n "$qdbus" ] || return 0
+  "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+    "for (const d of desktops()) { if (d.wallpaperPlugin == 'org.ozios.tesseract') { d.currentConfigGroup = ['Wallpaper', 'org.ozios.tesseract', 'General']; d.writeConfig('Animated', $1); } }" \
+    >/dev/null 2>&1 || true
+}
+
 set_effects() {  # set_effects full|light|off
   case "$1" in
     full)
       motion true; kwin_effect magiclamp true; kwin_effect wobblywindows true; kwin_effect blur true
-      kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 1 ;;
+      wallpaper_motion true
+      kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.7 ;;
     light)
       motion true; kwin_effect magiclamp true; kwin_effect wobblywindows false; kwin_effect blur false
+      wallpaper_motion false
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.5 ;;
     off)
       motion false; kwin_effect magiclamp false; kwin_effect wobblywindows false; kwin_effect blur false
+      wallpaper_motion false
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0 ;;
     *) echo "ozi: effects takes full, light or off" >&2; exit 2 ;;
   esac

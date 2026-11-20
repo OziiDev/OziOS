@@ -218,16 +218,30 @@ def drive_switcher(engine, folder):
     return out
 
 
+def turning(figure, wait=300):
+    """Whether the figure moved on during the wait."""
+    before = figure.property("t")
+    QTest.qWait(wait)
+    return figure.property("t") != before
+
+
 def drive_wallpaper(engine, folder):
     view = preview.open_scene(engine, "wallpaper", "cyan", folder)
     QTest.qWait(300)
-    figure = [o for o in view.rootObject().findChildren(QQuickItem) if o.property("speed") is not None]
-    out = {"turning": bool(figure) and bool(figure[0].property("running"))}
+    items = [view.rootObject()] + view.rootObject().findChildren(QQuickItem)
+    figure = [o for o in items if o.property("speed") is not None]
+    wallpaper = [o for o in items if o.property("clock") is not None]
+    out = {"turning": bool(figure) and turning(figure[0])}
+    # The light effects profile: the wallpaper holds still.
+    if wallpaper:
+        wallpaper[0].setProperty("configuration", {"Animated": False})
+        out["turning_in_light_profile"] = bool(figure) and turning(figure[0])
+        wallpaper[0].setProperty("configuration", {})
     # A maximized window: the wallpaper stops.
     if plasma_stubs.INSTANCES:
         plasma_stubs.INSTANCES[-1].change(0, IsMaximized=True)
         QTest.qWait(200)
-    out["turning_when_covered"] = bool(figure) and bool(figure[0].property("running"))
+    out["turning_when_covered"] = bool(figure) and turning(figure[0])
     view.close()
     return out
 

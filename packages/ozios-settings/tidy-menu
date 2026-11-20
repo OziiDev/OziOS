@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Keep tools for developers and testers out of the program menu. They stay
+# installed and a search still finds them, but the menu and the OziOS launcher
+# show the programs people came for. A pacman hook runs this whenever one of
+# them is installed or updated, since an update brings the entry back.
+#
+#   /usr/lib/ozios/tidy-menu [applications-dir]
+set -u
+dir="${1:-/usr/share/applications}"
+hide=(
+  avahi-discover.desktop bssh.desktop bvnc.desktop                        # Avahi's network browsers
+  lstopo.desktop                                                          # hwloc's topology viewer
+  qv4l2.desktop qvidcap.desktop                                           # test programs of v4l-utils
+  assistant.desktop designer.desktop linguist.desktop qdbusviewer.desktop # Qt's tools for developers
+  lftp.desktop                                                            # a command line FTP client
+)
+for name in "${hide[@]}"; do
+  entry="$dir/$name"
+  [ -f "$entry" ] || continue
+  if grep -q '^NoDisplay=' "$entry"; then
+    sed -i 's/^NoDisplay=.*/NoDisplay=true/' "$entry"
+  else
+    # Into the [Desktop Entry] group, not after the last action group.
+    sed -i '0,/^\[Desktop Entry\][[:space:]]*$/s//[Desktop Entry]\nNoDisplay=true/' "$entry"
+  fi
+done
+exit 0

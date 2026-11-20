@@ -510,10 +510,17 @@ class Qml(unittest.TestCase):
         for component in (("org.ozios.dock", "DockItem.qml"), ("org.ozios.launcher", "AppTile.qml")):
             self.assertIn("property bool animate", read("desktop", "plasmoids", component[0], "contents", "ui", component[1]))
 
-    def test_the_wallpaper_follows_the_theme_and_stops_when_covered(self):
+    def test_the_wallpaper_follows_the_theme_and_stops_when_it_should(self):
         text = read("desktop", "wallpaper", "org.ozios.tesseract", "contents", "ui", "main.qml")
         self.assertIn("Kirigami.Theme.highlightColor", text)
-        self.assertGreaterEqual(text.count("running: !root.still"), 3)
+        # One clock moves everything, 25 times a second; animators would draw the
+        # whole desktop at the screen's rate.
+        self.assertNotIn("Animator", text)
+        self.assertNotIn("Animation.Infinite", text)
+        self.assertIn("running: root.moving", text)
+        for condition in ("!covered", "configuration.Animated !== false", "Kirigami.Units.longDuration > 1"):
+            self.assertIn(condition, text)
+        self.assertIn('name="Animated"', read("desktop", "wallpaper", "org.ozios.tesseract", "contents", "config", "main.xml"))
 
 
 # --- the KWin effect, run against a stand-in for KWin ---------------------------------
@@ -671,6 +678,7 @@ class ShellInQt(unittest.TestCase):
 
         wallpaper = result["wallpaper"]
         self.assertTrue(wallpaper["turning"])
+        self.assertFalse(wallpaper["turning_in_light_profile"])
         self.assertFalse(wallpaper["turning_when_covered"])
 
 
@@ -765,3 +773,50 @@ class BootSplash(unittest.TestCase):
         self.assertEqual(start, end)
         middle = sorted((round(x, 6), round(y, 6)) for x, y, _ in maker.project(0.5))
         self.assertNotEqual(start, middle)                      # and it does turn in between
+
+
+BASH = shutil.which("bash")
+
+
+@unittest.skipUnless(BASH, "bash is not available here")
+class TidyMenu(unittest.TestCase):
+    """Developer and test tools leave the program menu, and a pacman hook keeps them out."""
+
+    SCRIPT = os.path.join(ROOT, "packages", "ozios-settings", "tidy-menu")
+
+    def run_on(self, folder):
+        done = subprocess.run([BASH, self.SCRIPT, folder], capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_hides_the_listed_tools_once_and_leaves_the_rest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            def write(name, text):
+                with open(os.path.join(folder, name), "w", encoding="utf-8", newline="\n") as fh:
+                    fh.write(text)
+            write("bvnc.desktop", "[Desktop Entry]\nName=Avahi VNC\nExec=bvnc\n\n[Desktop Action New]\nName=New\nExec=bvnc --new\n")
+            write("lstopo.desktop", "[Desktop Entry]\nName=lstopo\nNoDisplay=false\nExec=lstopo\n")
+            write("org.kde.dolphin.desktop", "[Desktop Entry]\nName=Dolphin\nExec=dolphin\n")
+            for _ in range(2):                          # a second run changes nothing
+                self.run_on(folder)
+
+            def parsed(name):
+                config = configparser.ConfigParser(interpolation=None, strict=False)
+                config.optionxform = str
+                config.read(os.path.join(folder, name), encoding="utf-8")
+                return config
+
+            self.assertEqual(parsed("bvnc.desktop")["Desktop Entry"].get("NoDisplay"), "true")
+            self.assertNotIn("NoDisplay", parsed("bvnc.desktop")["Desktop Action New"])
+            self.assertEqual(parsed("lstopo.desktop")["Desktop Entry"].get("NoDisplay"), "true")
+            self.assertNotIn("NoDisplay", parsed("org.kde.dolphin.desktop")["Desktop Entry"])
+            with open(os.path.join(folder, "bvnc.desktop"), encoding="utf-8") as fh:
+                self.assertEqual(fh.read().count("NoDisplay"), 1)
+
+    def test_the_hook_watches_every_listed_tool(self):
+        with open(self.SCRIPT, encoding="utf-8") as fh:
+            listed = set(re.findall(r"([\w.-]+\.desktop)", fh.read()))
+        with open(os.path.join(ROOT, "packages", "ozios-settings", "zz-ozios-menu.hook"), encoding="utf-8") as fh:
+            hook = fh.read()
+        watched = set(re.findall(r"Target = usr/share/applications/([\w.-]+\.desktop)", hook))
+        self.assertEqual(listed, watched)
+        self.assertIn("Exec = /usr/lib/ozios/tidy-menu", hook)

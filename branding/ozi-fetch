@@ -4,13 +4,16 @@
 usage: ozi-fetch [--pin | --unpin | --loop | --static] [--ascii]
 
   (default)  spin until a key is pressed; the key is left for the shell
-  --pin      keep the tesseract spinning in a header above the prompt
+  --pin      keep the tesseract in a header above the prompt; it turns when
+             the terminal opens and after each command, then rests
   --unpin    remove the pinned header from this terminal
   --loop     spin until Ctrl+C
   --static   print one frame and exit
   --ascii    draw with plain ASCII instead of braille
 
-environment: OZI_FETCH_ASCII=1, OZI_FETCH_MAX=<seconds>, NO_COLOR
+environment: OZI_FETCH_ASCII=1, OZI_FETCH_MAX=<seconds>, NO_COLOR,
+             OZI_FETCH_SPIN=<seconds the pinned header turns, default 12>
+
 """
 import math
 import os
@@ -29,6 +32,16 @@ FULL = (40, 19)       # greeting size, in cells
 COMPACT = (26, 11)    # pinned header size
 INFO_W = 38
 MIN_SHELL_ROWS = 10   # rows that must stay free below a pinned header
+SPIN_SECONDS = 12.0   # how long a pinned header turns after the terminal opens or a command ends
+
+
+def spin_seconds():
+    """Seconds a pinned header turns before it rests (OZI_FETCH_SPIN; 0 never turns)."""
+    try:
+        value = float(os.environ.get("OZI_FETCH_SPIN", SPIN_SECONDS))
+    except ValueError:
+        return SPIN_SECONDS
+    return value if value >= 0 else SPIN_SECONDS
 
 VERTS = [(x, y, z, w) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1) for w in (-1, 1)]
 EDGES = [(a, b) for a in range(16) for b in range(a + 1, 16) if bin(a ^ b).count("1") == 1]
@@ -392,7 +405,12 @@ def pin(ascii_mode):
     except OSError:
         pass
 
+    # The figure turns for a while when the terminal opens and again after each
+    # command, then rests on its last frame: a header that never stopped kept every
+    # open terminal drawing 15 frames a second.
     start = time.monotonic()
+    awake_until = start + spin_seconds()
+    turned, last, dirty = 0.0, start, True
     info, info_age, paused = [], -60.0, False
     try:
         while True:
@@ -406,19 +424,27 @@ def pin(ascii_mode):
                     break
                 set_winsize(fd, rows - h, cols, xpixel, ypixel)
                 os.write(fd, region_on(h, rows))
+                dirty = True
+            now = time.monotonic()
+            dt, last = now - last, now
             if not foreground:
                 paused = True
                 time.sleep(0.2)
                 continue
             if paused:                                 # a program may have reset the region
                 os.write(fd, region_on(h, rows))
-                paused = False
-            now = time.monotonic()
+                paused, dirty, dt = False, True, 0.0
+                awake_until = now + spin_seconds()     # a command just ended: turn again
             if now - info_age > 5:
-                info, info_age = info_lines(color, swatch=False), now
-            side = cols >= w + 2 + INFO_W
-            os.write(fd, header_frame(compose(0.9 + now - start, COMPACT, info, color, ascii_mode, side)))
-            time.sleep(1 / 15)
+                info, info_age, dirty = info_lines(color, swatch=False), now, True
+            awake = now < awake_until
+            if awake:
+                turned += dt
+            if awake or dirty:
+                side = cols >= w + 2 + INFO_W
+                os.write(fd, header_frame(compose(0.9 + turned, COMPACT, info, color, ascii_mode, side)))
+                dirty = False
+            time.sleep(1 / 15 if awake else 0.25)
     except OSError:
         pass                                           # terminal closed
     finally:

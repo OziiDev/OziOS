@@ -7,6 +7,8 @@ import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.private.kicker as Kicker
 import org.kde.coreaddons as KCoreAddons
 import org.kde.kirigami as Kirigami
+// Avatar left Kirigami in KDE Frameworks 6; Kickoff takes it from Kirigami Addons too.
+import org.kde.kirigamiaddons.components as KirigamiComponents
 
 // The OziOS launcher: a greeting, a search field, the categories as chips and
 // every program in a grid that flows in when it opens. The Meta key opens it.
@@ -27,7 +29,7 @@ PlasmoidItem {
     preferredRepresentation: compactRepresentation
     switchWidth: Kirigami.Units.gridUnit * 30
     switchHeight: Kirigami.Units.gridUnit * 22
-    onExpandedChanged: if (!expanded) query = ""
+    onExpandedChanged: if (!launcher.expanded) launcher.query = ""
 
     // Set up like Kickoff's, so the rows mean the same: 0 favourites, 1 all programs, 2.. categories.
     readonly property Kicker.RootModel rootModel: Kicker.RootModel {
@@ -187,7 +189,7 @@ PlasmoidItem {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.largeSpacing
 
-                Kirigami.Avatar {
+                KirigamiComponents.Avatar {
                     Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                     Layout.preferredHeight: Kirigami.Units.iconSizes.medium
                     source: user.faceIconUrl
@@ -282,6 +284,8 @@ PlasmoidItem {
                     opacity: 0.14
                 }
                 onModelChanged: currentIndex = full.searching && count > 0 ? 0 : -1
+                // Search results arrive after the model is set: light the first one, which Enter opens.
+                onCountChanged: if (full.searching && count > 0 && currentIndex < 0) currentIndex = 0
                 Keys.onReturnPressed: event => full.launch(currentIndex)
                 Keys.onEnterPressed: event => full.launch(currentIndex)
                 Keys.onEscapePressed: event => launcher.expanded = false
