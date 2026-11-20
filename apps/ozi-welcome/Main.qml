@@ -88,7 +88,24 @@ ApplicationWindow {
                 Layout.preferredHeight: 72
 
                 property real angle: 0
-                NumberAnimation on angle { from: 0; to: Math.PI * 2; duration: 24000; loops: Animation.Infinite; running: window.visible && window.active }
+                // It turns for a few seconds when the window opens or comes to the front, and
+                // while the pointer rests on it. A canvas is painted by the processor and Qt
+                // Quick draws the whole window again for each new picture, so a mark that never
+                // stopped kept a processor core busy on a computer without 3D.
+                readonly property bool turning: window.visible && (settle.running || hover.hovered)
+                HoverHandler { id: hover }
+                Timer { id: settle; interval: 8000 }
+                Connections {
+                    target: window
+                    function onActiveChanged() { if (window.active) settle.restart() }
+                }
+                Component.onCompleted: settle.start()
+                Timer {
+                    interval: 33
+                    repeat: true
+                    running: mark.turning
+                    onTriggered: mark.angle = (mark.angle + Math.PI * 2 * 33 / 24000) % (Math.PI * 2)
+                }
                 onAngleChanged: canvas.requestPaint()
                 Connections {
                     target: Theme

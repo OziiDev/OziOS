@@ -581,8 +581,11 @@ def register():
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.plasma.components", 3, 0, name)
     for name in ("Theme", "Units"):
         qmlRegisterSingletonType(_url("kirigami", name + ".qml"), "org.kde.kirigami", 2, 0, name)
-    for name in ("Icon", "Avatar", "Separator"):
+    for name in ("Icon", "Separator"):
         qmlRegisterType(_url("kirigami", name + ".qml"), "org.kde.kirigami", 2, 0, name)
+    # Not Kirigami.Avatar: that left Kirigami in Frameworks 6, and a stand-in for a type the real
+    # module lacks hides the error a Plasma session shows.
+    qmlRegisterType(_url("kirigami", "Avatar.qml"), "org.kde.kirigamiaddons.components", 1, 0, "Avatar")
     qmlRegisterType(TasksModel, "org.kde.taskmanager", 0, 1, "TasksModel")
     # Only its enums are used; PyQt6 refuses qmlRegisterUncreatableType, so it is registered as creatable.
     qmlRegisterType(AbstractTasksModel, "org.kde.taskmanager", 0, 1, "AbstractTasksModel")

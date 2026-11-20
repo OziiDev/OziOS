@@ -1,0 +1,26 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Path
+Target = usr/share/applications/avahi-discover.desktop
+Target = usr/share/applications/bssh.desktop
+Target = usr/share/applications/bvnc.desktop
+Target = usr/share/applications/lstopo.desktop
+Target = usr/share/applications/qv4l2.desktop
+Target = usr/share/applications/qvidcap.desktop
+Target = usr/share/applications/assistant.desktop
+Target = usr/share/applications/designer.desktop
+Target = usr/share/applications/linguist.desktop
+Target = usr/share/applications/qdbusviewer.desktop
+Target = usr/share/applications/lftp.desktop
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = ozios-settings
+
+[Action]
+Description = Keeping developer tools out of the program menu...
+When = PostTransaction
+Exec = /usr/lib/ozios/tidy-menu

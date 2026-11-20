@@ -21,10 +21,14 @@ CENTER = 16          # size of the middle tile; it is stretched
 PIECES = ("topleft", "top", "topright", "left", "center", "right", "bottomleft", "bottom", "bottomright")
 
 # name: radius, rim class, rim opacity, content margin, fill opacity (normal, translucent)
+# The normal set is drawn when nothing blurs what is behind (KWin's blur is off, or the
+# machine renders in software, as a virtual machine without 3D does). A popup or a tool tip
+# that lets the window behind it show through is hard to read there, so those are solid;
+# measured in a Plasma session, even 0.97 left the text behind a menu readable.
 FRAMES = {
     "widgets/panel-background": (12, "ColorScheme-Highlight", 0.30, 4, (0.94, 0.74)),
-    "dialogs/background": (12, "ColorScheme-Highlight", 0.22, 8, (0.97, 0.82)),
-    "widgets/tooltip": (8, "ColorScheme-Text", 0.12, 6, (0.97, 0.86)),
+    "dialogs/background": (12, "ColorScheme-Highlight", 0.22, 8, (1.0, 0.82)),
+    "widgets/tooltip": (8, "ColorScheme-Text", 0.12, 6, (1.0, 0.86)),
     "widgets/background": (12, "ColorScheme-Text", 0.10, 8, (0.86, 0.66)),
 }
 SETS = {"": 0, "translucent/": 1, "opaque/": None}

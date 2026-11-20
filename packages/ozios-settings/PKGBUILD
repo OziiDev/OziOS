@@ -31,6 +31,8 @@ package() {
   install -d "$pkgdir/usr/lib/ozios/python"
   cp -r "$src/python/ozipkg" "$pkgdir/usr/lib/ozios/python/"
   find "$pkgdir/usr/lib/ozios/python" -name __pycache__ -prune -exec rm -rf {} +
+  # cp keeps the source's modes; from a VirtualBox shared folder those are rwxrwx---.
+  chmod -R u=rwX,go=rX "$pkgdir/usr/lib/ozios/python"
   install -Dm644 "$src/data/i18n/tr.json" "$share/data/i18n/tr.json"
   install -Dm755 "$src/branding/ozi-fetch"     "$pkgdir/usr/bin/ozi-fetch"
   install -Dm755 "$src/winbridge/ozi-winrun"   "$pkgdir/usr/bin/ozi-winrun"
@@ -54,6 +56,8 @@ package() {
     "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/metadata.json"
   install -Dm644 -t "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/contents/ui" \
     "$src/desktop/wallpaper/$wallpaper"/contents/ui/*.qml
+  install -Dm644 -t "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/contents/config" \
+    "$src/desktop/wallpaper/$wallpaper"/contents/config/main.xml
 
   local control=org.ozios.control
   install -Dm644 "$src/desktop/plasmoids/$control/metadata.json" "$pkgdir/usr/share/plasma/plasmoids/$control/metadata.json"
@@ -116,7 +120,11 @@ package() {
   install -Dm644 "$comp/_ozi"         "$pkgdir/usr/share/zsh/site-functions/_ozi"
   install -Dm644 "$comp/_ozi-pkg"     "$pkgdir/usr/share/zsh/site-functions/_ozi-pkg"
 
-  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper" "$here/first-login" "$here/start-installer"
+  install -Dm755 -t "$pkgdir/usr/lib/ozios" "$here/identity" "$here/patch-installer" "$here/install-to-target" "$here/ozi-pkg-helper" "$here/first-login" "$here/start-installer" "$here/tidy-menu"
+  # Developer and test tools stay installed but out of the program menu.
+  install -Dm644 "$here/zz-ozios-menu.hook" "$pkgdir/usr/share/libalpm/hooks/zz-ozios-menu.hook"
+  # Window animations also where KWin draws in software (a virtual machine without 3D).
+  install -Dm644 "$here/60-ozios-animations.conf" "$pkgdir/usr/lib/environment.d/60-ozios-animations.conf"
   install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
   # Graphical apps: Software and Welcome, sharing the OziUi components.
   local apps="$pkgdir/usr/lib/ozios/apps"

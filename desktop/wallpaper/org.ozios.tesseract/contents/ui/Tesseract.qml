@@ -121,15 +121,14 @@ Item {
         frame()
     }
     onSideChanged: frame()
+    // Whoever sets t (the timer below, or the wallpaper's own clock) gets a new frame.
+    onTChanged: frame()
 
     // 20 frames a second is plenty for a turn this slow.
     Timer {
         interval: 50
         repeat: true
         running: root.running && root.visible
-        onTriggered: {
-            root.t += root.speed
-            root.frame()
-        }
+        onTriggered: root.t += root.speed
     }
 }

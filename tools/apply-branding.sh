@@ -105,6 +105,14 @@ if [ -n "$qdbus" ]; then
 fi
 case "${OZI_EFFECTS:-}" in lite) lite=true ;; full) lite=false ;; esac
 
+# The rest talks to Plasma, which may still be starting on the first login.
+if [ -n "$qdbus" ]; then
+  for _ in $(seq 1 30); do
+    "$qdbus" org.kde.plasmashell /PlasmaShell >/dev/null 2>&1 && break
+    sleep 1
+  done
+fi
+
 # The global theme carries colours, splash screen, panel layout and wallpaper.
 say "Desktop theme"
 if installed look-and-feel "$theme" && command -v plasma-apply-lookandfeel >/dev/null; then
@@ -123,12 +131,18 @@ else
   echo skipped
 fi
 
+# The same wallpaper everywhere; in the light profile it holds still, because a
+# computer drawing in software spends a processor core on every moving frame.
 say "Wallpaper"
-if $lite || ! installed wallpapers "$wallpaper"; then
-  plasma-apply-wallpaperimage "$data/ozios/wallpaper.svg" >/dev/null 2>&1 && echo "still" || echo failed
+animated=true
+$lite && animated=false
+if ! installed wallpapers "$wallpaper"; then
+  plasma-apply-wallpaperimage "$data/ozios/wallpaper.svg" >/dev/null 2>&1 && echo "picture" || echo failed
 elif [ -n "$qdbus" ]; then
+  sleep 2   # a reset layout needs a moment to put its desktops on the screens
   "$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
-    "for (const d of desktops()) { d.wallpaperPlugin = '$wallpaper'; }" >/dev/null 2>&1 && echo animated || echo failed
+    "for (const d of desktops()) { d.wallpaperPlugin = '$wallpaper'; d.currentConfigGroup = ['Wallpaper', '$wallpaper', 'General']; d.writeConfig('Animated', $animated); }" \
+    >/dev/null 2>&1 && { $animated && echo animated || echo still; } || echo failed
 else
   echo skipped
 fi
@@ -178,6 +192,8 @@ if $lite; then
   kwin_effect wobblywindows false
   kwin_effect blur false
   kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.5
+  # Without blur a see-through terminal shows the text of the window behind it.
+  sed -i 's/^Opacity=.*/Opacity=1/' "$data"/konsole/OziOS*.colorscheme 2>/dev/null
 else
   kwin_effect wobblywindows true
   kwin_effect blur true
