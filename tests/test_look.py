@@ -169,7 +169,8 @@ class Command(unittest.TestCase):
 
 class Wiring(unittest.TestCase):
     def test_ozi_hands_look_to_python(self):
-        self.assertIn("doctor | report | clean | play | gaming | theme | look)", read("packages", "ozi-cli", "ozi"))
+        # The commands ozi hands to ozi-tools, look among them.
+        self.assertRegex(read("packages", "ozi-cli", "ozi"), r"\n  doctor \| report \|[a-z |]* \| look[a-z |]*\)\n")
         self.assertIn('"look": look.main', read("python", "ozipkg", "tools.py"))
 
     def test_the_app_and_the_card_of_keys_are_installed(self):
