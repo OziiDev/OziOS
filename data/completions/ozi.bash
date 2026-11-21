@@ -2,7 +2,7 @@
 _ozi() {
   local cur prev words cword
   _init_completion 2>/dev/null || { cur="${COMP_WORDS[COMP_CWORD]}"; prev="${COMP_WORDS[COMP_CWORD-1]}"; cword=$COMP_CWORD; words=("${COMP_WORDS[@]}"); }
-  local commands="update install remove search review box apps rollback layout theme effects mode status doctor report clean play gaming winsetup reboot-windows hw help"
+  local commands="update install remove search review box apps rollback layout theme look effects mode status doctor report clean play gaming winsetup reboot-windows hw help"
   if [ "$cword" -eq 1 ]; then
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
@@ -14,6 +14,15 @@ _ozi() {
       case "$cword" in
         2) COMPREPLY=($(compgen -W "cyan aurora ember mint rose frost auto --json" -- "$cur")) ;;
         *) [ "${words[2]}" = auto ] && COMPREPLY=($(compgen -W "off --day --night" -- "$cur")) ;;
+      esac ;;
+    look)
+      case "$cword" in
+        2) COMPREPLY=($(compgen -W "preset radius outline glow titlebar gaps tiling blur speed --json" -- "$cur")) ;;
+        3) case "${words[2]}" in
+             preset) COMPREPLY=($(compgen -W "fluid tiling light" -- "$cur")) ;;
+             glow | titlebar | tiling | blur) COMPREPLY=($(compgen -W "on off" -- "$cur")) ;;
+             speed) COMPREPLY=($(compgen -W "off fast normal relaxed" -- "$cur")) ;;
+           esac ;;
       esac ;;
     mode)
       case "$cword" in

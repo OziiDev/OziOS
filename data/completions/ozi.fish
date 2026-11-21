@@ -1,5 +1,5 @@
 # fish completion for ozi
-set -l commands update install remove search review box apps rollback layout theme effects mode status doctor report clean play gaming winsetup reboot-windows hw help
+set -l commands update install remove search review box apps rollback layout theme look effects mode status doctor report clean play gaming winsetup reboot-windows hw help
 complete -c ozi -f
 complete -c ozi -n "not __fish_seen_subcommand_from $commands" -a "$commands"
 complete -c ozi -n "__fish_seen_subcommand_from layout" -a "default deck classic board"
@@ -9,6 +9,11 @@ complete -c ozi -n "__fish_seen_subcommand_from auto" -a "off"
 complete -c ozi -n "__fish_seen_subcommand_from theme" -l day -x -a "cyan aurora ember mint rose frost" -d "with auto: by day"
 complete -c ozi -n "__fish_seen_subcommand_from theme" -l night -x -a "cyan aurora ember mint rose frost" -d "with auto: at night"
 complete -c ozi -n "__fish_seen_subcommand_from theme" -l json -d "machine-readable output"
+complete -c ozi -n "__fish_seen_subcommand_from look; and not __fish_seen_subcommand_from preset radius outline glow titlebar gaps tiling blur speed" -a "preset radius outline glow titlebar gaps tiling blur speed"
+complete -c ozi -n "__fish_seen_subcommand_from look; and __fish_seen_subcommand_from preset" -a "fluid tiling light"
+complete -c ozi -n "__fish_seen_subcommand_from look; and __fish_seen_subcommand_from glow titlebar tiling blur" -a "on off"
+complete -c ozi -n "__fish_seen_subcommand_from look; and __fish_seen_subcommand_from speed" -a "off fast normal relaxed"
+complete -c ozi -n "__fish_seen_subcommand_from look" -l json -d "machine-readable output"
 complete -c ozi -n "__fish_seen_subcommand_from mode" -a "game"
 complete -c ozi -n "__fish_seen_subcommand_from mode; and __fish_seen_subcommand_from game" -a "on off"
 complete -c ozi -n "__fish_seen_subcommand_from status" -l json -d "machine-readable output"

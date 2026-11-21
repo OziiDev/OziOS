@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Look
+Name[tr]=Görünüm
+GenericName=Window look and motion
+GenericName[tr]=Pencere görünümü ve hareketi
+Comment=Corners, glow, gaps, tiling and animation speed in one place
+Comment[tr]=Köşeler, parıltı, boşluklar, döşeme ve animasyon hızı tek yerde
+Exec=ozi-look
+Icon=preferences-desktop-theme-global
+Categories=Settings;DesktopSettings;
+Keywords=look;theme;tiling;gaps;animation;blur;görünüm;döşeme;animasyon;
+Terminal=false
+StartupWMClass=ozi-look
