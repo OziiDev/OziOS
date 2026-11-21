@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1224,11 +1225,71 @@ class LogoutScreen(unittest.TestCase):
         self.assertEqual(self.result["turkish"]["titles"], ["Kilitle", "Uyku", "Yeniden başlat", "Kapat", "Oturumu kapat"])
         self.assertTrue(self.result["turkish"]["fits"])
 
+    def test_the_greeter_of_plasma_6_8_which_sizes_the_screen_itself(self):
+        # No screenGeometry any more: the screen takes its window's size, without a warning.
+        newer = self.result["plasma68"]
+        self.assertEqual(newer["size"], [1280, 800])
+        self.assertEqual(newer["tiles"], ["lock", "sleep", "reboot", "halt", "logout"])
+        self.assertEqual((newer["current"], newer["heard"]), ("halt", [["logoutRequested"]]))
+
     def test_it_is_installed_with_the_look_and_feel_package(self):
         pkgbuild = read("packages", "ozios-settings", "PKGBUILD")
         self.assertIn('-t "$theme/contents/logout" "$theme_src"/contents/logout/*.qml "$theme_src/contents/logout/keys.js"', pkgbuild)
         folder = os.path.join(DESKTOP, "look-and-feel", "org.ozios.desktop", "contents", "logout")
         self.assertEqual(sorted(os.listdir(folder)), ["Glyph.qml", "Logout.qml", "PowerTile.qml", "keys.js"])
+
+
+class LogoutGreeter(unittest.TestCase):
+    """From Plasma 6.8 on the logout greeter takes the screen from a shell package, the one
+    PLASMA_DEFAULT_SHELL names; OziOS names its own to the greeter alone."""
+    SCREEN = "/usr/share/plasma/shells/org.ozios.desktop/contents/logout/Logout.qml"
+
+    def service(self):
+        text = read("tools", "apply-branding.sh")
+        body = re.search(r"cat > \"\$greeter_service\" <<'EOF'\n(.*?)\nEOF\n", text, re.S).group(1)
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.optionxform = str
+        parser.read_string(body)
+        return parser["D-BUS Service"]
+
+    def test_the_shell_package_holds_only_the_logout_screen(self):
+        meta = json.loads(read("desktop", "shell", "org.ozios.desktop", "metadata.json"))
+        self.assertEqual((meta["KPackageStructure"], meta["KPlugin"]["Id"]), ("Plasma/Shell", "org.ozios.desktop"))
+        self.assertEqual(os.listdir(os.path.join(DESKTOP, "shell", "org.ozios.desktop")), ["metadata.json"])
+        pkgbuild = read("packages", "ozios-settings", "PKGBUILD")
+        self.assertIn('local shell="$pkgdir/usr/share/plasma/shells/org.ozios.desktop"', pkgbuild)
+        self.assertIn('-t "$shell/contents/logout" "$theme_src"/contents/logout/*.qml "$theme_src/contents/logout/keys.js"', pkgbuild)
+        self.assertIn(self.SCREEN, read("tools", "check-image.sh"))
+        self.assertIn("shell=/usr/share/plasma/shells/org.ozios.desktop\n", read("tools", "sync-live.sh"))
+
+    def test_the_session_bus_starts_the_greeter_with_the_ozios_shell_named(self):
+        service = self.service()
+        self.assertEqual(service["Name"], "org.kde.LogoutPrompt")
+        argv = shlex.split(service["Exec"])
+        self.assertEqual(argv[:2], ["/bin/sh", "-c"])
+        self.assertTrue(argv[2].endswith("; exec /usr/lib/ksmserver-logout-greeter"))
+        self.assertIn(self.SCREEN, argv[2])
+        text = read("tools", "apply-branding.sh")
+        self.assertIn('greeter_service="$data/dbus-1/services/org.kde.LogoutPrompt.service"', text)
+        self.assertIn("org.freedesktop.DBus ReloadConfig", text)
+        undo = text.split('if [ "${1:-}" = "--undo" ]; then')[1].split("\nfi\n")[0]
+        self.assertIn('rm -f "$data/dbus-1/services/org.kde.LogoutPrompt.service"', undo)
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is not available here")
+    def test_without_the_package_the_greeter_starts_as_it_always_did(self):
+        script = shlex.split(self.service()["Exec"])[2]
+        with tempfile.TemporaryDirectory() as tmp:
+            screen = os.path.join(tmp, "Logout.qml").replace("\\", "/")
+            probe = script.replace(self.SCREEN, screen).replace(
+                "exec /usr/lib/ksmserver-logout-greeter", 'echo "shell=${PLASMA_DEFAULT_SHELL:-}"')
+            env = {k: v for k, v in os.environ.items() if k != "PLASMA_DEFAULT_SHELL"}
+            said = []
+            for present in (False, True):
+                if present:
+                    open(screen, "w").close()
+                done = subprocess.run([shutil.which("bash"), "-c", probe], capture_output=True, text=True, env=env, timeout=30)
+                said.append(done.stdout.strip())
+        self.assertEqual(said, ["shell=", "shell=org.ozios.desktop"])
 
 
 @unittest.skipUnless(HAVE_QT, "PyQt6 is not installed")
@@ -1287,6 +1348,33 @@ class Defaults(unittest.TestCase):
         parser.read_string(read("desktop", "defaults", "baloofilerc"))
         self.assertEqual(parser["General"]["only basic indexing"], "true")
         self.assertIn('"$src/desktop/defaults/baloofilerc" "$pkgdir/etc/xdg/baloofilerc"', read("packages", "ozios-settings", "PKGBUILD"))
+
+    def config(self, name):
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.optionxform = str
+        parser.read_string(read("desktop", "defaults", name))
+        self.assertIn('"$src/desktop/defaults/%s" "$pkgdir/etc/xdg/%s"' % (name, name),
+                      read("packages", "ozios-settings", "PKGBUILD"))
+        return parser
+
+    def test_the_first_splash_is_already_the_ozios_one(self):
+        # The look sets it per person at the first login, after that login's splash.
+        splash = self.config("ksplashrc")["KSplash"]
+        self.assertEqual(splash["Engine"], "KSplashQML")
+        theme = splash["Theme"]
+        self.assertEqual(theme, json.loads(read("desktop", "look-and-feel", theme, "metadata.json"))["KPlugin"]["Id"])
+        self.assertTrue(os.path.isfile(os.path.join(ROOT, "desktop", "look-and-feel", theme, "contents", "splash", "Splash.qml")))
+        self.assertIn("[ksplashrc][KSplash]\nTheme=%s\n" % theme,
+                      read("desktop", "look-and-feel", theme, "contents", "defaults"))
+
+    def test_the_lock_screen_shows_the_ozios_figure_standing_still(self):
+        locker = self.config("kscreenlockerrc")
+        plugin = locker["Greeter"]["WallpaperPlugin"]
+        self.assertTrue(os.path.isfile(os.path.join(ROOT, "desktop", "wallpaper", plugin, "metadata.json")))
+        self.assertEqual(locker["Greeter][Wallpaper][%s][General" % plugin]["Animated"], "false")
+        self.assertIn('name="Animated"', read("desktop", "wallpaper", plugin, "contents", "config", "main.xml"))
+        self.assertIn("ksplashrc", read("tools", "check-image.sh"))
+        self.assertIn('"$src/desktop/defaults/kscreenlockerrc" /etc/xdg/', read("tools", "sync-live.sh"))
 
 
 class BootSplash(unittest.TestCase):

@@ -60,11 +60,18 @@ if [ -d "$lnf" ]; then
   install -Dm644 -t "$lnf/contents/logout" "$src"/desktop/look-and-feel/org.ozios.desktop/contents/logout/*.qml \
     "$src/desktop/look-and-feel/org.ozios.desktop/contents/logout/keys.js"
 fi
+# The same screen for the logout greeter of Plasma 6.8 and later, in a shell package.
+shell=/usr/share/plasma/shells/org.ozios.desktop
+install -Dm644 "$src/desktop/shell/org.ozios.desktop/metadata.json" "$shell/metadata.json"
+install -Dm644 -t "$shell/contents/logout" "$src"/desktop/look-and-feel/org.ozios.desktop/contents/logout/*.qml \
+  "$src/desktop/look-and-feel/org.ozios.desktop/contents/logout/keys.js"
+chmod -R go+rX,go-w "$shell"
 mkdir -p /usr/share/calamares/branding/ozios /usr/share/grub/themes/ozios
 install -m644 "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml,OziSlide.qml} /usr/share/calamares/branding/ozios/
 install -m644 "$src"/branding/boot/theme.txt "$src"/branding/boot/background.png /usr/share/grub/themes/ozios/
 install -m644 "$src/data/i18n/tr.json" /usr/share/ozios/data/i18n/tr.json
 mkdir -p /etc/plasmalogin.conf.d && install -m644 "$src/branding/login/10-ozios.conf" /etc/plasmalogin.conf.d/10-ozios.conf
+install -m644 "$src/desktop/defaults/ksplashrc" "$src/desktop/defaults/kscreenlockerrc" /etc/xdg/
 version="$(tr -d '[:space:]' < "$src/VERSION")"
 sed "s/@VERSION@/$version/g" "$src/branding/calamares/ozios/branding.desc" > /usr/share/calamares/branding/ozios/branding.desc
 # A VirtualBox shared folder hands out its files as rwxrwx--- and cp keeps that, so

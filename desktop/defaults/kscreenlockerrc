@@ -1,0 +1,8 @@
+# OziOS: the lock screen shows the OziOS figure, as the desktop does, standing still:
+# no one watches a locked computer, and the figure turning would keep it awake.
+# System Settings > Screen Locking changes it for each person.
+[Greeter]
+WallpaperPlugin=org.ozios.tesseract
+
+[Greeter][Wallpaper][org.ozios.tesseract][General]
+Animated=false

@@ -63,6 +63,10 @@ if [ "${1:-}" = "--undo" ]; then
   command -v plasma-apply-lookandfeel >/dev/null &&
     plasma-apply-lookandfeel -a org.kde.breezedark.desktop --resetLayout >/dev/null 2>&1
   rm -f "$conf/autostart/cachyos-hello.desktop"
+  # The logout greeter back to Plasma's own screen.
+  rm -f "$data/dbus-1/services/org.kde.LogoutPrompt.service"
+  command -v busctl >/dev/null &&
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null 2>&1
   command -v plasma-apply-desktoptheme >/dev/null && plasma-apply-desktoptheme default >/dev/null 2>&1
   rm -f "$HOME/.local/bin/ozi-fetch" "$data"/color-schemes/OziOS*.colors \
         "$data"/konsole/OziOS*.colorscheme "$data/konsole/OziOS.profile"
@@ -163,6 +167,29 @@ else
 fi
 # The theme's own defaults do not always carry the colour scheme over.
 command -v plasma-apply-colorscheme >/dev/null && plasma-apply-colorscheme OziOS >/dev/null 2>&1
+
+# The screen to log out, restart or shut down. Up to Plasma 6.7 the logout greeter takes
+# it from the global theme above; from 6.8 on from a shell package, the one that
+# PLASMA_DEFAULT_SHELL names. D-Bus starts the greeter, and a service file of one's own
+# comes before the system's: this one names the OziOS shell package, which holds only that
+# screen, to the greeter alone, so the desktop itself stays Plasma's. Should Plasma reject
+# the screen, the greeter shows its own; without the package it starts as it always did.
+say "Logout screen"
+greeter_service="$data/dbus-1/services/org.kde.LogoutPrompt.service"
+if [ -x /usr/lib/ksmserver-logout-greeter ]; then
+  mkdir -p "$(dirname "$greeter_service")"
+  cat > "$greeter_service" <<'EOF'
+[D-BUS Service]
+Name=org.kde.LogoutPrompt
+Exec=/bin/sh -c "[ -f /usr/share/plasma/shells/org.ozios.desktop/contents/logout/Logout.qml ] && export PLASMA_DEFAULT_SHELL=org.ozios.desktop; exec /usr/lib/ksmserver-logout-greeter"
+EOF
+  # The session bus reads service files when it starts; this has it read them now.
+  command -v busctl >/dev/null &&
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null 2>&1
+  echo ok
+else
+  echo skipped
+fi
 
 # The frames of the bar, the dock and every popup; they take the colour scheme's colours.
 say "Plasma style"

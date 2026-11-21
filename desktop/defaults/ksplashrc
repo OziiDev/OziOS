@@ -1,0 +1,6 @@
+# OziOS: the splash while the desktop starts, for everyone. The OziOS look sets it
+# for each person at their first login, but that comes after the first splash, which
+# was Plasma's own; with this the very first one is OziOS's too.
+[KSplash]
+Engine=KSplashQML
+Theme=org.ozios.desktop

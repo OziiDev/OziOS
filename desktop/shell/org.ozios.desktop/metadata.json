@@ -1,0 +1,12 @@
+{
+    "KPackageStructure": "Plasma/Shell",
+    "KPlugin": {
+        "Id": "org.ozios.desktop",
+        "Name": "OziOS",
+        "Description": "The OziOS logout screen for the logout greeter of Plasma 6.8 and later; everything else comes from Plasma's own desktop shell",
+        "License": "MIT",
+        "Version": "0.3"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "X-Plasma-APIVersion": "2"
+}

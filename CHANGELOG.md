@@ -72,7 +72,15 @@ and is still as easy to use as Plasma. The plan is in `docs/PLAN-0.3.md`.
   thing, a restart say, that tile is offered alone and counts down 30 seconds;
   any key stops the count. Updates waiting to be installed get tiles of their
   own. It is Plasma's logout greeter with the OziOS look-and-feel's
-  `logout/Logout.qml`.
+  `logout/Logout.qml`. From Plasma 6.8 on the greeter takes that screen from
+  the desktop shell instead, so a shell package of ours that holds only this
+  screen is named to the greeter alone (the desktop stays Plasma's); should a
+  later Plasma reject the screen, the greeter shows its own.
+- The first login of a new installation shows the OziOS splash rather than
+  Plasma's (the look is set for each person during that login, after its
+  splash), and the lock screen shows the OziOS figure, standing still, rather
+  than Plasma's picture. Both are system-wide defaults in `/etc/xdg` that each
+  person can still change.
 - Welcome points to Look and to the keys card, next to getting software.
 - The installer no longer gives up when the network drops while it downloads
   the base system. A few seconds without a network (Wi-Fi that drops, a router

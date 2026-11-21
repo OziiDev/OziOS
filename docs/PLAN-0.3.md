@@ -60,4 +60,5 @@ pes etmeyen indirme (`retry-download`): iki kurulum, ağ birkaç saniye gidince
   Plasma 6.8.3 getirdi, ISO'daki paket 6.7.4 içindi: çerçeveler kurulan sistemde derlendi.
 - Üçlü üst panel Plasma'da mümkün ama yeni; VM'de denenir, olmazsa tek tam çubuğa dönülür.
 - Yazılımsal çizimde (VM) hafif profil kalır: ışıltı ve bulanıklık kapalı, animasyonlar açık.
-- Kilit ekranı değiştirilmiyor: bozulursa oturum açılamaz.
+- Kilit ekranının yalnız duvar kâğıdı değişiyor (duran OziOS figürü, `/etc/xdg/kscreenlockerrc`);
+  kilit arayüzü Plasma'nınki kalıyor: o bozulursa oturum açılamaz.

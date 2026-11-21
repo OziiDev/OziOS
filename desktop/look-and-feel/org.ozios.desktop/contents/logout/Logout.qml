@@ -8,8 +8,10 @@ import org.kde.plasma.private.sessions
 import "keys.js" as Shared
 
 // The screen to lock, sleep, restart, shut down or log out. Plasma's logout greeter
-// loads it from the look-and-feel package, sets the context it reads (sdtype, maysd,
-// canLogout, spdMethods, softwareUpdatePending, ...) and acts on the signals below.
+// loads it, sets the context it reads (sdtype, maysd, canLogout, spdMethods,
+// softwareUpdatePending, ...) and acts on the signals below. Up to Plasma 6.7 the
+// greeter takes it from the look-and-feel package; from 6.8 on from a shell package,
+// and the OziOS one (desktop/shell) holds only this screen.
 //
 // The desktop dims to ink with a soft glow of the theme's two colours, the time and a
 // goodbye come down from above, and the tiles rise in one after another. The arrows and
@@ -18,8 +20,10 @@ import "keys.js" as Shared
 // stops the count.
 Item {
     id: root
-    width: screenGeometry.width
-    height: screenGeometry.height
+    // Plasma up to 6.7 tells the screen's size; from 6.8 on the greeter sizes this item
+    // to its window and no longer sets screenGeometry.
+    width: typeof screenGeometry !== "undefined" ? screenGeometry.width : 0
+    height: typeof screenGeometry !== "undefined" ? screenGeometry.height : 0
 
     signal logoutRequested()
     signal haltRequested()

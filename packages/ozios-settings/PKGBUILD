@@ -102,6 +102,12 @@ package() {
   install -Dm644 "$theme_src/contents/defaults" "$theme/contents/defaults"
   install -Dm644 -t "$theme/contents/layouts" "$theme_src"/contents/layouts/*.js
   install -Dm644 -t "$theme/contents/logout" "$theme_src"/contents/logout/*.qml "$theme_src/contents/logout/keys.js"
+  # From Plasma 6.8 on the logout greeter takes that screen from a shell package: this one
+  # holds only it, and everything else falls back to Plasma's own shell. apply-branding.sh
+  # points the greeter, and only the greeter, at it.
+  local shell="$pkgdir/usr/share/plasma/shells/org.ozios.desktop"
+  install -Dm644 "$src/desktop/shell/org.ozios.desktop/metadata.json" "$shell/metadata.json"
+  install -Dm644 -t "$shell/contents/logout" "$theme_src"/contents/logout/*.qml "$theme_src/contents/logout/keys.js"
   install -Dm644 -t "$theme/contents/splash" "$theme_src/contents/splash/Splash.qml" \
     "$src/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml"
 
@@ -118,8 +124,12 @@ package() {
   install -Dm644 -t "$pkgdir/usr/share/plymouth/themes/ozios" "$src"/branding/plymouth/ozios/*
 
   install -Dm644 "$src/branding/login/10-ozios.conf" "$pkgdir/etc/plasmalogin.conf.d/10-ozios.conf"
-  # Defaults for every user, which each person can still change: file search without content indexing.
+  # Defaults for every user, which each person can still change: file search without content
+  # indexing, the OziOS splash already before the first login has set the OziOS look, and the
+  # OziOS figure on the lock screen.
   install -Dm644 "$src/desktop/defaults/baloofilerc" "$pkgdir/etc/xdg/baloofilerc"
+  install -Dm644 "$src/desktop/defaults/ksplashrc" "$pkgdir/etc/xdg/ksplashrc"
+  install -Dm644 "$src/desktop/defaults/kscreenlockerrc" "$pkgdir/etc/xdg/kscreenlockerrc"
 
   install -Dm644 "$src/docs/man/ozi.1"     "$pkgdir/usr/share/man/man1/ozi.1"
   install -Dm644 "$src/docs/man/ozi-pkg.1" "$pkgdir/usr/share/man/man1/ozi-pkg.1"

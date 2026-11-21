@@ -76,7 +76,7 @@ class Screen:
     """One logout screen, as the greeter would show it."""
 
     def __init__(self, folder, sdtype=DEFAULT, update=False, maysd=True, can_logout=True, suspend=True,
-                 hibernate=False, others=0, locale="en_US", size=(1280, 800), first=None, entry=""):
+                 hibernate=False, others=0, locale="en_US", size=(1280, 800), first=None, entry="", plasma="6.7"):
         QLocale.setDefault(QLocale(locale))
         plasma_stubs.SESSIONS["others"] = others
         self.recorder = Recorder()
@@ -91,6 +91,8 @@ class Screen:
                   "rebootToBootLoaderMenu": False, "rebootToBootLoaderEntry": entry,
                   "screenUrl": QUrl.fromLocalFile(LOGOUT).toString(), "firstValues": first or {},
                   "signalNames": list(SIGNALS)}
+        if plasma != "6.7":
+            del values["screenGeometry"]             # the greeter of Plasma 6.8 and later sizes the screen itself
         for name, value in values.items():
             ctx.setContextProperty(name, value)
         ctx.setContextProperty("recorder", self.recorder)
@@ -206,6 +208,14 @@ def main():
 
     s = Screen(folder, maysd=False, can_logout=False, suspend=False)
     out["guest"] = {"tiles": s.names()}
+    s.close()
+
+    # Plasma 6.8's greeter: no screenGeometry, the item takes the window's size.
+    s = Screen(folder, plasma="6.8")
+    out["plasma68"] = {"tiles": s.names(), "size": [s.root.width(), s.root.height()], "current": s.current()}
+    s.key(Qt.Key.Key_Right)
+    s.key(Qt.Key.Key_Return)
+    out["plasma68"]["heard"] = s.heard[:]
     s.close()
 
     s = Screen(folder, locale="tr_TR", size=(1024, 640))
