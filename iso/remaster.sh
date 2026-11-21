@@ -168,7 +168,18 @@ CONF
 fi
 if [ -n "$add" ]; then
   # shellcheck disable=SC2086
-  "${pm[@]}" -Sy --needed $add
+  if ! "${pm[@]}" -Sy --needed $add; then
+    # The archive did not answer. A build from the same snapshot before this one
+    # left its packages in the cache: install those, if every one asked for is there.
+    [ -n "$archive" ] || die "could not install $add"
+    cached=("$work"/pkgcache/*.pkg.tar.zst)
+    [ -e "${cached[0]}" ] || die "the archive does not answer and no packages are cached"
+    "${pm[@]}" -U --needed "${cached[@]}" || die "the cached packages did not install"
+    for name in $add; do
+      pacman --root "$root" -Q "$name" >/dev/null 2>&1 || die "the archive does not answer and $name is not cached"
+    done
+    echo "the archive did not answer; installed the packages an earlier build left in the cache"
+  fi
   rm -rf "$root"/var/lib/pacman/sync/*
 fi
 "${pm[@]}" -U "$package" "$decoration_package" ${edu_package:+"$edu_package"}

@@ -4,17 +4,29 @@
 # newer library gets mixed into an older system.
 #
 #   archive-install.sh <YYYY/MM/DD> <package>...
+#   archive-install.sh current <package>...
 #
 # The date is the day of the ISO build (see /usr/lib/os-release BUILD_ID or
 # the ISO's volume id). Sync databases go to a scratch directory; the live
 # system's own sync databases are not touched, and what gets installed is
 # recorded in its package database. Run as root.
+#
+# With `current` the packages come from the mirrors the live system lists, in
+# today's versions: for tools that only run during a build (xorriso, cmake)
+# while the archive does not answer. Nothing the live system has may change
+# then: if a package would need a newer version of something installed,
+# nothing is installed at all.
 set -eu
 
-date="${1:?usage: archive-install.sh YYYY/MM/DD package...}"
+date="${1:?usage: archive-install.sh YYYY/MM/DD|current package...}"
 shift
 [ "$#" -gt 0 ] || { echo "no packages given" >&2; exit 2; }
 
+if [ "$date" = current ]; then
+  server="Include = /etc/pacman.d/mirrorlist"
+else
+  server="Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch"
+fi
 work=/tmp/arch-archive
 local_db="$work/db/local"
 mkdir -p "$work/db" "$work/cache"
@@ -26,13 +38,13 @@ LocalFileSigLevel = Optional
 ParallelDownloads = 3
 
 [core]
-Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch
+$server
 
 [extra]
-Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch
+$server
 
 [multilib]
-Server = https://archive.archlinux.org/repos/$date/\$repo/os/\$arch
+$server
 EOF
 
 # The live package database is mounted into the scratch one below. Never remove
@@ -54,5 +66,15 @@ rm -rf "$local_db"
 mkdir "$local_db"
 mount --bind /var/lib/pacman/local "$local_db"
 trap release EXIT
+if [ "$date" = current ]; then
+  # What would be installed; anything among it that the live system already has
+  # would be replaced by today's version.
+  replaced="$(pacman --config "$work/pacman.conf" --dbpath "$work/db" -S --needed --print --print-format '%n' "$@" |
+    while read -r name; do pacman -Q "$name" >/dev/null 2>&1 && echo "$name"; done)"
+  if [ -n "$replaced" ]; then
+    echo "archive-install: today's packages would replace what the live system has:" $replaced >&2
+    exit 1
+  fi
+fi
 pacman --config "$work/pacman.conf" --dbpath "$work/db" --cachedir "$work/cache" \
   --noconfirm --needed -S "$@"

@@ -34,7 +34,12 @@ It works as far as the package list but was not finished.
   `tools/vmexec.sh` (on the host) run scripts in a VirtualBox VM through the
   shared folder, so a VM can be driven without a network login.
   `tools/archive-install.sh` installs extra packages into a live session from
-  the Arch Linux Archive snapshot the ISO was built from.
+  the Arch Linux Archive snapshot the ISO was built from. While the archive does
+  not answer, `archive-install.sh current` takes today's packages from the live
+  system's mirrors, but only if nothing installed would change; the VM build
+  uses it for its own tools (xorriso, cmake), and `iso/remaster.sh` installs the
+  image's additions from what an earlier build of the same snapshot left in
+  `/mnt/build/remaster/pkgcache`.
 - On a live ISO the root file system is an overlay, which rootless Podman
   cannot use; `ozipkg.box.storage_driver()` falls back to `vfs` there.
 - In a live session of the test VM (as root, with the checkout at `/mnt/ozios`):

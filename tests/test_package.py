@@ -134,6 +134,23 @@ class WindowFramesPackage(unittest.TestCase):
         self.assertIn('install -Dm644 "$decoration_package" "$root/opt/ozios/', remaster)
         self.assertIn("extra-cmake-modules", read("tools", "build-iso-in-vm.sh"))
         self.assertIn('"$src"/ozios-decoration-*.pkg.tar.*', read("packages", "ozios-settings", "install-to-target"))
+
+    def test_a_build_goes_on_while_the_archive_does_not_answer(self):
+        # The build's tools: the snapshot first, then today's mirrors, and only what is missing,
+        # since today's version of something installed (the compiler) would be refused.
+        build = read("tools", "build-iso-in-vm.sh")
+        self.assertIn("for source in 2026/08/09 2026/08/09 2026/08/09 current; do", build)
+        self.assertIn('command -v g++ >/dev/null || tools="$tools gcc"', build)
+        self.assertNotIn("archive-install.sh 2026/08/09 cmake extra-cmake-modules gcc", build)
+        archive = read("tools", "archive-install.sh")
+        self.assertIn('server="Include = /etc/pacman.d/mirrorlist"', archive)
+        self.assertIn("--needed --print --print-format '%n'", archive)
+        self.assertIn("today's packages would replace what the live system has", archive)
+        # The image's own additions: the snapshot's files an earlier build left in the cache.
+        remaster = read("iso", "remaster.sh")
+        self.assertIn('if ! "${pm[@]}" -Sy --needed $add; then', remaster)
+        self.assertIn('"${pm[@]}" -U --needed "${cached[@]}"', remaster)
+        self.assertIn('die "the archive does not answer and $name is not cached"', remaster)
         self.assertIn("org.ozios.decoration.so", read("tools", "check-image.sh"))
 
 

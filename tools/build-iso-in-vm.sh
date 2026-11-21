@@ -24,23 +24,29 @@ source_arg=""
 [ -n "${OZI_SOURCE_ISO:-}" ] && source_arg="--iso $OZI_SOURCE_ISO"
 [ -d "$kernel" ] || { echo "build: no kernel packages in $kernel"; exit 1; }
 
-# xorriso: not in every live image, and the first attempt after boot can fail
-# while the network comes up.
-if ! command -v xorriso >/dev/null; then
-  for _ in 1 2 3; do
-    bash "$repo/tools/archive-install.sh" 2026/08/09 libisoburn >/dev/null 2>&1 && break
+# The build's own tools, where the live image lacks them: xorriso writes the ISO,
+# and the window frames are compiled (packages/ozios-decoration). They come from
+# the snapshot the image was made from; the first try after boot can fail while
+# the network comes up. When the Arch Linux Archive does not answer at all, they
+# come from today's mirrors, as long as that changes nothing the live system has:
+# the frames are still compiled by its own compiler, against its own KWin.
+tools=""
+command -v xorriso >/dev/null || tools="$tools libisoburn"
+command -v cmake >/dev/null || tools="$tools cmake"
+[ -d /usr/share/ECM ] || tools="$tools extra-cmake-modules"
+command -v g++ >/dev/null || tools="$tools gcc"
+command -v make >/dev/null || tools="$tools make"
+command -v pkgconf >/dev/null || tools="$tools pkgconf"
+if [ -n "$tools" ]; then
+  for source in 2026/08/09 2026/08/09 2026/08/09 current; do
+    # shellcheck disable=SC2086
+    bash "$repo/tools/archive-install.sh" "$source" $tools >/dev/null 2>&1 && break
     sleep 10
   done
 fi
 command -v xorriso >/dev/null || { echo "build: no xorriso"; exit 1; }
-# The window frames are compiled (packages/ozios-decoration); a live image has no compiler.
-if ! command -v cmake >/dev/null || ! command -v g++ >/dev/null || [ ! -d /usr/share/ECM ]; then
-  for _ in 1 2 3; do
-    bash "$repo/tools/archive-install.sh" 2026/08/09 cmake extra-cmake-modules gcc make pkgconf >/dev/null 2>&1 && break
-    sleep 10
-  done
-fi
-command -v cmake >/dev/null && command -v g++ >/dev/null || { echo "build: no compiler for the window frames"; exit 1; }
+command -v cmake >/dev/null && command -v g++ >/dev/null && [ -d /usr/share/ECM ] ||
+  { echo "build: no compiler for the window frames"; exit 1; }
 
 # A run that stopped early can leave the source ISO mounted inside the work folder.
 findmnt -rno TARGET | grep '^/mnt/build/remaster/' | sort -r | while read -r target; do umount -l "$target"; done
