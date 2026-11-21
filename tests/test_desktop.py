@@ -753,7 +753,12 @@ class Scripts(unittest.TestCase):
     def test_layout_scripts_parse_as_javascript(self):
         scripts = glob.glob(os.path.join(DESKTOP, "**", "*.js"), recursive=True) + glob.glob(os.path.join(ROOT, "edu", "layouts", "*.js"))
         for path in scripts:
-            done = subprocess.run([NODE, "--check", path], capture_output=True, text=True, timeout=60)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            # A script that QML imports may start with QML's own directives (.pragma library, .import);
+            # they are not JavaScript, so they are left out of the check, keeping the line numbers.
+            text = re.sub(r"(?m)^\.(pragma|import)\b.*$", "", text)
+            done = subprocess.run([NODE, "--check", "-"], input=text, capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 0, path + "\n" + done.stderr)
 
 
@@ -781,6 +786,9 @@ class AccentPartner(unittest.TestCase):
             qml = read("desktop", "plasmoids", applet, "contents", "ui", "main.qml")
             self.assertIn("((270 - hue + 540) % 360) - 180", qml, applet)
             self.assertIn("Math.abs(d) < 20 ? 40 : Math.sign(d) * Math.min(Math.abs(d), 70)", qml, applet)
+        logout = read("desktop", "look-and-feel", "org.ozios.desktop", "contents", "logout", "Logout.qml")
+        self.assertIn("((270 - hue + 540) % 360) - 180", logout)
+        self.assertIn("Math.abs(d) < 20 ? 40 : Math.sign(d) * Math.min(Math.abs(d), 70)", logout)
 
 
 # --- the tiling script, in a stand-in for KWin's scripting world ---------------------------
@@ -1158,6 +1166,69 @@ class ShellInQt(unittest.TestCase):
         self.assertTrue(wallpaper["turning"])
         self.assertFalse(wallpaper["turning_in_light_profile"])
         self.assertFalse(wallpaper["turning_when_covered"])
+
+
+@unittest.skipUnless(HAVE_QT, "PyQt6 is not installed")
+class LogoutScreen(unittest.TestCase):
+    """The screen to lock, sleep, restart, shut down or log out, loaded the way Plasma's
+    logout greeter loads it and driven with keys and clicks (tools/logout-drive.py)."""
+
+    @classmethod
+    def setUpClass(cls):
+        done = subprocess.run([sys.executable, "-B", os.path.join(ROOT, "tools", "logout-drive.py")],
+                              capture_output=True, text=True, env=qt_env(), timeout=300, cwd=ROOT)
+        if done.returncode != 0:
+            raise AssertionError(done.stdout + done.stderr)
+        cls.result = json.loads(done.stdout)
+
+    def test_it_loads_without_a_single_warning(self):
+        self.assertEqual(self.result["warnings"], [])
+
+    def test_everything_is_offered_and_the_keyboard_starts_on_shutting_down(self):
+        everything = self.result["all"]
+        self.assertEqual(everything["tiles"], ["lock", "sleep", "reboot", "halt", "logout"])
+        self.assertEqual(everything["titles"], ["Lock", "Sleep", "Restart", "Shut down", "Log out"])
+        self.assertEqual(everything["current"], "halt")
+        self.assertEqual(everything["after_right"], "logout")
+        self.assertEqual(everything["enter"], [["logoutRequested"]])
+
+    def test_each_tile_sends_what_the_greeter_listens_to(self):
+        self.assertEqual(self.result["all"]["clicks"], [["lockScreenRequested"], ["suspendRequested", 2],
+                                                        ["rebootRequested"], ["haltRequested"]])
+        self.assertEqual(self.result["updates"]["heard"], [["rebootUpdateRequested"], ["suspendRequested", 4]])
+
+    def test_escape_a_click_beside_the_tiles_and_cancel_go_back(self):
+        self.assertEqual(self.result["all"]["cancel"], [["cancelRequested"]] * 3)
+
+    def test_a_restart_asked_for_counts_down_and_a_key_stops_it(self):
+        reboot = self.result["reboot"]
+        self.assertEqual(reboot["tiles"], ["reboot"])
+        self.assertRegex(reboot["notes"][0], r"^Restarting in \d+ s$")
+        self.assertEqual(reboot["heard"], [["rebootRequested"]])
+        self.assertEqual(self.result["reboot_stopped"]["heard"], [])
+        self.assertEqual(self.result["logout"]["tiles"], ["logout"])
+        self.assertRegex(self.result["logout"]["notes"][0], r"^Logging out in \d+ s$")
+
+    def test_updates_come_first_and_others_are_mentioned(self):
+        updates = self.result["updates"]
+        self.assertEqual(updates["tiles"], ["lock", "sleep", "hibernate", "reboot-update", "reboot", "halt-update",
+                                            "halt", "logout"])
+        self.assertEqual(updates["badges"], ["reboot-update", "halt-update"])
+        self.assertEqual(updates["current"], "halt-update")
+        self.assertIn("2 other people are logged in", updates["notes"][0])
+
+    def test_someone_who_may_not_shut_down_can_still_lock(self):
+        self.assertEqual(self.result["guest"]["tiles"], ["lock"])
+
+    def test_turkish_and_a_small_screen(self):
+        self.assertEqual(self.result["turkish"]["titles"], ["Kilitle", "Uyku", "Yeniden başlat", "Kapat", "Oturumu kapat"])
+        self.assertTrue(self.result["turkish"]["fits"])
+
+    def test_it_is_installed_with_the_look_and_feel_package(self):
+        pkgbuild = read("packages", "ozios-settings", "PKGBUILD")
+        self.assertIn('-t "$theme/contents/logout" "$theme_src"/contents/logout/*.qml "$theme_src/contents/logout/keys.js"', pkgbuild)
+        folder = os.path.join(DESKTOP, "look-and-feel", "org.ozios.desktop", "contents", "logout")
+        self.assertEqual(sorted(os.listdir(folder)), ["Glyph.qml", "Logout.qml", "PowerTile.qml", "keys.js"])
 
 
 @unittest.skipUnless(HAVE_QT, "PyQt6 is not installed")

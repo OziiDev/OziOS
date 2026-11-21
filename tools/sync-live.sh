@@ -57,6 +57,8 @@ lnf=/usr/share/plasma/look-and-feel/org.ozios.desktop
 if [ -d "$lnf" ]; then
   install -m644 "$src/desktop/look-and-feel/org.ozios.desktop/contents/defaults" "$lnf/contents/defaults"
   install -m644 "$src"/desktop/look-and-feel/org.ozios.desktop/contents/layouts/*.js "$lnf/contents/layouts/"
+  install -Dm644 -t "$lnf/contents/logout" "$src"/desktop/look-and-feel/org.ozios.desktop/contents/logout/*.qml \
+    "$src/desktop/look-and-feel/org.ozios.desktop/contents/logout/keys.js"
 fi
 mkdir -p /usr/share/calamares/branding/ozios /usr/share/grub/themes/ozios
 install -m644 "$src"/branding/calamares/ozios/{logo.png,icon.png,welcome.png,show.qml,OziSlide.qml} /usr/share/calamares/branding/ozios/

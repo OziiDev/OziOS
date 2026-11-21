@@ -58,6 +58,17 @@ and is still as easy to use as Plasma. The plan is in `docs/PLAN-0.3.md`.
   Meta+Shift+T.
 - Each theme's second colour, used by the glow, the desktop pill and today in
   the calendar, leans toward violet: cyan goes blue, ember pink, mint blue.
+- Logging out, restarting and shutting down have a screen of their own: the
+  desktop dims to ink with a soft glow of the theme's two colours, the time and
+  a goodbye come down from above, and large tiles rise in one after another
+  (lock, sleep, hibernate, restart, shut down, log out), drawn in lines of our
+  own rather than taken from the icon theme. The tile under the pointer or the
+  keyboard fills with the accent colours and glows; the arrows and Enter
+  choose, Esc or a click beside the tiles goes back. When a program asks for one
+  thing, a restart say, that tile is offered alone and counts down 30 seconds;
+  any key stops the count. Updates waiting to be installed get tiles of their
+  own. It is Plasma's logout greeter with the OziOS look-and-feel's
+  `logout/Logout.qml`.
 - Welcome points to Look and to the keys card, next to getting software.
 - The installer no longer gives up when the network drops while it downloads
   the base system. A few seconds without a network (Wi-Fi that drops, a router

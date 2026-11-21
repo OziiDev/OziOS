@@ -37,8 +37,15 @@ ekran, ağ, ses gibi kolaylıkları yoktur. Onun yerine Hyprland'ı güzel yapan
 1–5 bitti ve gerçek KWin 6.7.4'te (VirtualBox, yazılımsal çizim) denendi: çerçeve, akış ve
 küçültme efektleri, üç ada, dört masaüstü ve kısayolları, kaymada duran duvar kâğıdı, döşeme
 (aç/kapa, yeni pencere, serbest bırakma, sürükleyip yer değiştirme, kenardan boyutlandırma),
-Görünüm uygulaması Türkçe ve Döşeme stili. 6'da paket, remaster, check-image, testler ve
-belgeler hazır; 0.3.0 ISO'su VM'de derlenip denenecek.
+Görünüm uygulaması Türkçe ve Döşeme stili. 6 da bitti: 0.3.0 ISO'su VM'de derlendi,
+check-image temiz, canlı oturumda KWin OziOS çerçevesini kullanıyor, kurulum Türkçe
+pencerelerden sonuna kadar gitti ("Her şey tamam").
+
+Plana sonradan eklenenler: saatin adasında çalan şarkı (MPRIS), kontrol merkezinin
+başında hızlı ayarlar (`ozi quick`), kendi kapatma ekranımız (look-and-feel
+`logout/Logout.qml`), Karşılama'da Görünüm ve Kısayollar, ve kurulumda ağ kopunca
+pes etmeyen indirme (`retry-download`): iki kurulum, ağ birkaç saniye gidince
+"Failed to run pacstrap" ile bitmişti.
 
 ## Riskler ve önlemler
 

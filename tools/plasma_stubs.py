@@ -608,6 +608,37 @@ class Mpris2Model(QObject):
     currentPlayer = pyqtProperty(QObject, lambda self: MEDIA, notify=currentPlayerChanged)
 
 
+# --- what the logout greeter's screen imports (org.kde.plasma.private.sessions) ---------------------
+
+SESSIONS = {"others": 0}          # other people logged in, as the test says
+
+
+class SessionsModel(QObject):
+    """Plasma's list of sessions; the logout screen only counts the other people in it."""
+    changed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._unused = False
+        self._own = True
+
+    def _set_unused(self, value):
+        self._unused = value
+
+    def _set_own(self, value):
+        self._own = value
+
+    count = pyqtProperty(int, lambda self: SESSIONS["others"], notify=changed)
+    includeUnusedSessions = pyqtProperty(bool, lambda self: self._unused, _set_unused, notify=changed)
+    includeOwnSession = pyqtProperty(bool, lambda self: self._own, _set_own, notify=changed)
+
+
+class ShutdownType(QObject):
+    """KWorkSpace::ShutdownType, as the greeter's context property `sdtype` holds it."""
+    Type = pyqtEnum(enum.Enum("Type", {"ShutdownTypeDefault": -1, "ShutdownTypeNone": 0, "ShutdownTypeReboot": 1,
+                                       "ShutdownTypeHalt": 2, "ShutdownTypeLogout": 3}))
+
+
 # --- putting it together ---------------------------------------------------------------------------
 
 def _url(*parts):
@@ -654,6 +685,8 @@ def register():
         qmlRegisterType(kind, "org.kde.plasma.private.kicker", 0, 1, name)
     qmlRegisterType(_url("plasma", "KUser.qml"), "org.kde.coreaddons", 1, 0, "KUser")
     qmlRegisterType(_url("plasma", "DataSource.qml"), "org.kde.plasma.plasma5support", 2, 0, "DataSource")
+    qmlRegisterType(SessionsModel, "org.kde.plasma.private.sessions", 2, 0, "SessionsModel")
+    qmlRegisterType(ShutdownType, "org.kde.plasma.private.sessions", 2, 0, "ShutdownType")
 
 
 def theme_colors(theme_id):

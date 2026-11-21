@@ -93,13 +93,15 @@ package() {
   install -Dm644 "$src/desktop/kwin/tabbox/org.ozios.switcher/metadata.json" "$switcher/metadata.json"
   install -Dm644 -t "$switcher/contents/ui" "$src"/desktop/kwin/tabbox/org.ozios.switcher/contents/ui/*.qml
 
-  # Global theme: colours, panel layout, splash. The splash reuses the
-  # wallpaper's figure, so that one file is installed into both.
+  # Global theme: colours, panel layout, splash, and the screen to lock, sleep,
+  # restart, shut down or log out. The splash reuses the wallpaper's figure,
+  # so that one file is installed into both.
   local theme="$pkgdir/usr/share/plasma/look-and-feel/org.ozios.desktop"
   local theme_src="$src/desktop/look-and-feel/org.ozios.desktop"
   install -Dm644 "$theme_src/metadata.json" "$theme/metadata.json"
   install -Dm644 "$theme_src/contents/defaults" "$theme/contents/defaults"
   install -Dm644 -t "$theme/contents/layouts" "$theme_src"/contents/layouts/*.js
+  install -Dm644 -t "$theme/contents/logout" "$theme_src"/contents/logout/*.qml "$theme_src/contents/logout/keys.js"
   install -Dm644 -t "$theme/contents/splash" "$theme_src/contents/splash/Splash.qml" \
     "$src/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml"
 

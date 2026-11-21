@@ -32,6 +32,7 @@ check "installer's base system adds no CachyOS kernel or theme" '! grep -qE "\"(
 check "installer tries the base system download again when the network drops" 'grep -q "/usr/lib/ozios/retry-download" /usr/lib/calamares/modules/pacstrap/main.py && test -x /usr/lib/ozios/retry-download'
 check "installer does not offer ZFS as a root file system" '! grep -q "^ *availableFileSystemTypes:.*zfs" /etc/calamares/modules/partition.conf'
 check "installer branding files are installed" 'test -f /usr/share/calamares/branding/ozios/branding.desc && test -f /usr/share/calamares/branding/ozios/logo.png'
+check "the OziOS logout screen is installed" 'test -f /usr/share/plasma/look-and-feel/org.ozios.desktop/contents/logout/Logout.qml && test -f /usr/share/plasma/look-and-feel/org.ozios.desktop/contents/logout/keys.js'
 check "GRUB theme and boot splash are installed" 'test -f /usr/share/grub/themes/ozios/theme.txt && test -f /usr/share/ozios/branding/limine-splash.png'
 check "boot loader entry is named ozios" 'grep -q "efiBootloaderId: \"ozios\"" /etc/calamares/modules/bootloader.conf'
 check "host name template is ozios" 'grep -q "ozios-" /etc/calamares/modules/users.conf'
