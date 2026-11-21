@@ -17,8 +17,14 @@ PlasmoidItem {
 
     readonly property bool animate: Kirigami.Units.longDuration > 1
     readonly property color accent: Kirigami.Theme.highlightColor
-    // The accent's neighbour on the colour wheel, as in the window frames' glow.
-    readonly property color accent2: Qt.hsva((accent.hsvHue + 0.194) % 1, accent.hsvSaturation, accent.hsvValue, 1)
+    // The accent's partner, as in the window frames' glow: up to 70° toward violet, the
+    // short way round (cyan turns blue, orange pink, green blue; a violet turns magenta).
+    readonly property color accent2: {
+        const hue = Math.max(0, accent.hsvHue) * 360
+        const d = ((270 - hue + 540) % 360) - 180
+        const shift = Math.abs(d) < 20 ? 40 : Math.sign(d) * Math.min(Math.abs(d), 70)
+        return Qt.hsva((((hue + shift) % 360) + 360) % 360 / 360, accent.hsvSaturation, accent.hsvValue, 1)
+    }
     readonly property color ink: Kirigami.Theme.textColor
     readonly property real dot: Math.max(7, Math.round(Kirigami.Units.gridUnit * 0.42))
 

@@ -757,6 +757,32 @@ class Scripts(unittest.TestCase):
             self.assertEqual(done.returncode, 0, path + "\n" + done.stderr)
 
 
+class AccentPartner(unittest.TestCase):
+    """The second colour of the glow, the desktop pill and today in the calendar."""
+
+    @staticmethod
+    def partner(hue):
+        d = ((270 - hue + 540) % 360) - 180
+        shift = 40 if abs(d) < 20 else (1 if d > 0 else -1) * min(abs(d), 70)
+        return ((hue + shift) % 360 + 360) % 360
+
+    def test_each_theme_gets_a_cool_partner(self):
+        import colorsys
+        expected = {"cyan": 256, "aurora": 299, "ember": 314, "mint": 225, "rose": 273, "frost": 259}
+        for theme in themes.THEMES:
+            hue = round(colorsys.rgb_to_hsv(*[x / 255 for x in theme.accent])[0] * 360)
+            self.assertEqual(self.partner(hue), expected[theme.id], theme.id)
+
+    def test_frames_and_widgets_use_the_same_rule(self):
+        cpp = read("desktop", "decoration", "ozidecoration.cpp")
+        self.assertIn("((270 - hue + 540) % 360) - 180", cpp)
+        self.assertIn("std::abs(d) < 20 ? 40 : (d > 0 ? 1 : -1) * std::min(std::abs(d), 70)", cpp)
+        for applet in ("org.ozios.workspaces", "org.ozios.clock"):
+            qml = read("desktop", "plasmoids", applet, "contents", "ui", "main.qml")
+            self.assertIn("((270 - hue + 540) % 360) - 180", qml, applet)
+            self.assertIn("Math.abs(d) < 20 ? 40 : Math.sign(d) * Math.min(Math.abs(d), 70)", qml, applet)
+
+
 # --- the tiling script, in a stand-in for KWin's scripting world ---------------------------
 
 TILING_HARNESS = r"""

@@ -13,7 +13,13 @@ PlasmoidItem {
 
     property date now: new Date()
     readonly property color accent: Kirigami.Theme.highlightColor
-    readonly property color accent2: Qt.hsva((accent.hsvHue + 0.194) % 1, accent.hsvSaturation, accent.hsvValue, 1)
+    // The accent's partner, as in the window frames' glow and the desktop lights.
+    readonly property color accent2: {
+        const hue = Math.max(0, accent.hsvHue) * 360
+        const d = ((270 - hue + 540) % 360) - 180
+        const shift = Math.abs(d) < 20 ? 40 : Math.sign(d) * Math.min(Math.abs(d), 70)
+        return Qt.hsva((((hue + shift) % 360) + 360) % 360 / 360, accent.hsvSaturation, accent.hsvValue, 1)
+    }
 
     function untilNextMinute() {
         const d = new Date()
