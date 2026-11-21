@@ -426,7 +426,9 @@ class Packages(unittest.TestCase):
         text = read("packages", "ozios-settings", "PKGBUILD")
         for needle in ("org.ozios.dock org.ozios.launcher", "/usr/share/plasma/desktoptheme/ozios/",
                        "/usr/share/kwin-wayland/tabbox/org.ozios.switcher",
-                       "/usr/share/kwin-wayland/effects/ozios_motion/contents/code/main.js", "branding/themes/*.colors"):
+                       "for effect in ozios_motion ozios_morph ozios_minimize",
+                       "/usr/share/kwin-wayland/effects/$effect/contents/code/main.js",
+                       "for applet in org.ozios.control org.ozios.workspaces org.ozios.clock", "branding/themes/*.colors"):
             self.assertIn(needle, text)
 
     def test_layouts_use_widgets_that_exist(self):
@@ -445,6 +447,15 @@ class Packages(unittest.TestCase):
             self.assertIn('addWidget("org.ozios.launcher")', text)
             self.assertIn('addWidget("org.ozios.dock")', text)
             self.assertNotIn("kickoff", text)
+            # Three floating islands at the top, each as long as what it holds.
+            self.assertIn('island("left")', text)
+            self.assertIn('island("center")', text)
+            self.assertIn('island("right")', text)
+            self.assertIn('p.lengthMode = "fit"', text)
+            self.assertIn('p.floating = true', text)
+            for widget in ("org.ozios.workspaces", "org.ozios.clock", "org.kde.plasma.systemtray", "org.ozios.control"):
+                self.assertIn('addWidget("%s")' % widget, text)
+            self.assertNotIn("digitalclock", text)
         self.assertIn("[plasmarc][Theme]\nname=ozios", read("desktop", "look-and-feel", "org.ozios.desktop", "contents", "defaults"))
 
 
@@ -592,6 +603,151 @@ class Motion(unittest.TestCase):
         self.assertEqual(len(result["calls"]), 3)
 
 
+WINDOW_HARNESS = r"""
+const fs = require("fs");
+const calls = [];
+const signal = () => { const s = []; return { connect: f => s.push(f), emit: (...a) => s.forEach(f => f(...a)) }; };
+global.effect = { configChanged: signal(), animationEnded: signal(), readConfig: (k, d) => d };
+global.effects = { windowAdded: signal(), stackingOrder: [], hasActiveFullScreenEffect: false };
+global.Effect = { Size: "size", Translation: "translation", Opacity: "opacity", CrossFadePrevious: "crossfade",
+                  WindowForceBlurRole: 3, Backward: "backward", Forward: "forward" };
+global.QEasingCurve = { OutQuint: "OutQuint", OutCubic: "OutCubic", InCubic: "InCubic", InQuad: "InQuad" };
+global.animationTime = ms => ms;
+let next = 1;
+global.animate = settings => { calls.push(settings); return next++; };
+global.cancel = () => true;
+global.retarget = () => true;
+global.redirect = () => false;
+// The scripts below start the effect themselves, after setting up what it should find.
+const load = () => eval(fs.readFileSync(process.argv[2], "utf8"));
+
+const win = extra => Object.assign({
+    windowClass: "dolphin org.kde.dolphin", visible: true, managed: true, normalWindow: true, dialog: false,
+    minimized: false, fullScreen: false, deleted: false, popupWindow: false, move: false, resize: false,
+    geometry: { x: 100, y: 100, width: 800, height: 600 }, iconGeometry: { x: 600, y: 740, width: 48, height: 48 },
+    windowFrameGeometryChanged: signal(), windowMaximizedStateAboutToChange: signal(),
+    windowFinishUserMovedResized: signal(), minimizedChanged: signal(),
+    data: {}, setData(role, v) { this.data[role] = v; } }, extra);
+"""
+
+MORPH_SCRIPT = r"""
+const old = win({});
+effects.stackingOrder.push(old);
+load();
+// an existing window snapped to the left half: it flows there
+const before = { x: 100, y: 100, width: 800, height: 600 };
+old.geometry = { x: 0, y: 30, width: 640, height: 770 };
+old.windowFrameGeometryChanged.emit(old, before);
+// dragged by hand: no animation
+old.move = true;
+old.windowFrameGeometryChanged.emit(old, { x: 0, y: 30, width: 640, height: 770 });
+old.move = false;
+// a dialog growing a little where it is: no animation
+const grow = { x: 0, y: 30, width: 620, height: 770 };
+old.windowFrameGeometryChanged.emit(old, grow);
+// maximising fades the old picture out
+old.windowMaximizedStateAboutToChange.emit(old);
+// the shell's own windows are never moved about
+const panel = win({ windowClass: "plasmashell org.kde.plasmashell", normalWindow: false });
+effects.stackingOrder.push(panel);
+process.stdout.write(JSON.stringify({ calls }));
+"""
+
+MINIMIZE_SCRIPT = r"""
+load();
+const w = win({});
+effects.windowAdded.emit(w);
+w.minimized = true; w.minimizedChanged.emit();
+w.minimized = false; w.minimizedChanged.emit();
+const lonely = win({ iconGeometry: { x: 0, y: 0, width: 0, height: 0 } });
+effects.windowAdded.emit(lonely);
+lonely.minimized = true; lonely.minimizedChanged.emit();
+process.stdout.write(JSON.stringify({ calls }));
+"""
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class MorphAndMinimize(unittest.TestCase):
+    def run_with(self, effect_id, script):
+        with tempfile.TemporaryDirectory() as folder:
+            harness = os.path.join(folder, "harness.js")
+            with open(harness, "w", encoding="utf-8") as fh:
+                fh.write(WINDOW_HARNESS + script)
+            effect = os.path.join(DESKTOP, "kwin", "effects", effect_id, "contents", "code", "main.js")
+            done = subprocess.run([NODE, harness, effect], capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return json.loads(done.stdout)["calls"]
+
+    def test_morph_flows_from_the_old_frame_and_leaves_dragging_alone(self):
+        calls = self.run_with("ozios_morph", MORPH_SCRIPT)
+        self.assertEqual(len(calls), 2, calls)          # the snap and the maximise fade; not the drag, not the small growth
+        snap, fade = calls
+        size, move = snap["animations"]
+        self.assertEqual((size["type"], move["type"]), ("size", "translation"))
+        self.assertEqual(size["from"], {"value1": 800, "value2": 600})
+        self.assertEqual(size["to"], {"value1": 640, "value2": 770})
+        # Size scales around the new frame's centre; the translation puts the old frame back where it was.
+        self.assertEqual(move["from"], {"value1": 100 - 0 - (320 - 400), "value2": 100 - 30 - (385 - 300)})
+        self.assertEqual(move["to"], {"value1": 0, "value2": 0})
+        self.assertEqual(fade["animations"][0]["type"], "crossfade")
+
+    def test_minimize_goes_into_the_dock_icon_and_comes_back_out(self):
+        calls = self.run_with("ozios_minimize", MINIMIZE_SCRIPT)
+        self.assertEqual(len(calls), 3, calls)
+        away, back, lonely = calls
+        size, move, fade = away["animations"]
+        self.assertEqual(size["to"], {"value1": 48, "value2": 48})
+        self.assertEqual(move["to"], {"value1": 600 - 100 - (800 - 48) / 2, "value2": 740 - 100 - (600 - 48) / 2})
+        self.assertEqual((fade["from"], fade["to"]), (1, 0))
+        self.assertEqual(back["animations"][0]["from"], {"value1": 48, "value2": 48})
+        self.assertEqual(back["animations"][0]["to"], {"value1": 800, "value2": 600})
+        self.assertNotEqual(back["animations"][0]["curve"], "OutBack")   # no big overshoot out of a small icon
+        # Without a dock icon the window sinks towards the bottom of the screen.
+        self.assertGreater(lonely["animations"][1]["to"]["value2"], 0)
+
+    def test_four_desktops_on_meta_and_a_number(self):
+        text = read("tools", "apply-branding.sh")
+        applets = re.search(r'^applets="([^"]*)"', text, re.M).group(1).split()
+        self.assertIn("org.ozios.workspaces", applets)
+        self.assertIn("org.ozios.clock", applets)
+        self.assertIn("createDesktop", text)
+        self.assertIn('shortcut plasmashell "activate task manager entry $n"\n', text)
+        # Meta+1..4, then the keys KWin already had (Ctrl+F1.., Meta+F1..).
+        self.assertIn('shortcut kwin "Switch to Desktop $n" $((0x10000030 + n)) $((0x0500002F + n)) $((0x1100002F + n))', text)
+        self.assertIn('shortcut kwin "Window to Desktop $n" $((0x14000030 + n))', text)
+        # Qt's numbers for those keys.
+        meta, ctrl, f1 = 0x10000000, 0x04000000, 0x01000030
+        self.assertEqual(0x10000030 + 1, meta | ord("1"))
+        self.assertEqual(0x0500002F + 1, ctrl | f1)
+        self.assertEqual(0x1100002F + 1, meta | f1)
+        self.assertEqual(0x14000030 + 4, meta | ctrl | ord("4"))
+        # The task manager gets them back on --undo.
+        undo = text.split('if [ "${1:-}" = "--undo" ]; then')[1].split("\nfi\n")[0]
+        self.assertIn('shortcut plasmashell "activate task manager entry $n" $((0x10000030 + n))', undo)
+
+    def test_the_running_slide_effect_rereads_its_gap(self):
+        text = read("tools", "apply-branding.sh")
+        gap = text.index("--key SlideBackground false")
+        self.assertIn("reconfigureEffect slide", text[gap:gap + 400])
+
+    def test_the_shortcut_helper_speaks_kglobalaccels_dbus(self):
+        text = read("tools", "apply-branding.sh")
+        helper = text.split("shortcut() {")[1].split("\n}\n")[0]
+        self.assertIn('setForeignShortcutKeys', helper)
+        self.assertIn('"asa(ai)" 4 "$component" "$action" "$component" "$action" $# $spec', helper)
+        self.assertIn('spec="$spec 4 $key 0 0 0"', helper)       # one key, padded to four as kglobalaccel reads it
+
+    def test_the_new_effects_take_the_place_of_kwins_own(self):
+        morph = json.loads(read("desktop", "kwin", "effects", "ozios_morph", "metadata.json"))
+        self.assertEqual(morph["X-Plasma-API"], "javascript")
+        minimize = json.loads(read("desktop", "kwin", "effects", "ozios_minimize", "metadata.json"))
+        self.assertEqual(minimize["X-KWin-Exclusive-Category"], "minimize")
+        text = read("tools", "apply-branding.sh")
+        for needle in ("kwin_effect maximize false", "kwin_effect ozios_morph", "kwin_effect ozios_minimize",
+                       "kwin_effect magiclamp false", "kwin_effect squash false"):
+            self.assertIn(needle, text)
+
+
 @unittest.skipUnless(NODE, "node is not installed")
 class Scripts(unittest.TestCase):
     def test_layout_scripts_parse_as_javascript(self):
@@ -669,6 +825,24 @@ class ShellInQt(unittest.TestCase):
         control = result["control"]
         self.assertEqual(control["swatches"], [t.id for t in themes.THEMES])
         self.assertEqual(control["commands"], ["ozi theme aurora", "ozi effects off", "ozi mode game on"])
+
+        bar = result["bar"]
+        self.assertEqual(bar["lights"], 4)
+        self.assertEqual(bar["occupied"], [True, False, True, False])     # Firefox and Files on 1, Discord on 3
+        self.assertEqual(bar["start"]["current"], [True, False, False, False])
+        self.assertGreater(bar["start"]["widths"][0], 2.5 * bar["start"]["widths"][1])   # the pill is wide
+        self.assertEqual(bar["after_click"]["current"], [False, False, True, False])
+        self.assertEqual(bar["after_click"]["widths"][2], bar["start"]["widths"][0])     # and moved over whole
+        self.assertEqual(bar["after_wheel_down"], [False, False, False, True])
+        self.assertEqual(bar["after_three_up"], [True, False, False, False])
+        self.assertTrue(any(":" in text for text in bar["clock"]))       # the time
+
+        calendar = result["calendar"]
+        self.assertEqual(calendar["cells"], 42)
+        self.assertEqual(len(calendar["today"]), 1)
+        self.assertIn(calendar["in_month"], (28, 29, 30, 31))
+        self.assertNotEqual(calendar["two_months_on"], calendar["month"])
+        self.assertEqual(calendar["today_after"], [])                    # today is not in that month
 
         switcher = result["switcher"]
         self.assertTrue(switcher["popup"])

@@ -47,7 +47,7 @@ import plasma_style  # noqa: E402
 from ozipkg import themes  # noqa: E402
 
 DESKTOP = os.path.join(ROOT, "desktop")
-SCENES = ("dock", "launcher", "search", "control", "switcher", "wallpaper")
+SCENES = ("dock", "launcher", "search", "control", "bar", "calendar", "switcher", "wallpaper")
 
 messages = []
 
@@ -117,6 +117,54 @@ Item {
     }
 }
 """, (380, 330)),
+    # The islands at the top: desktops on the left, the clock in the middle.
+    "bar": ("""
+import QtQuick
+import QtQuick.Layouts
+Item {
+    width: 900; height: 56
+    Item {
+        objectName: "island"
+        x: 12; y: 8; height: 40
+        width: (desktops.item && desktops.item.fullRepresentationItem ? desktops.item.fullRepresentationItem.Layout.preferredWidth : 80) + 16
+        Loader {
+            id: desktops
+            objectName: "applet"
+            anchors.fill: parent
+            anchors.margins: 4
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            source: "%(workspaces)s"
+        }
+    }
+    Item {
+        objectName: "island"
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 8; height: 40
+        width: (clock.item && clock.item.compactRepresentationItem ? clock.item.compactRepresentationItem.Layout.preferredWidth : 120) + 8
+        Loader {
+            id: clock
+            objectName: "applet"
+            anchors.fill: parent
+            anchors.margins: 4
+            source: "%(clock)s"
+        }
+    }
+}
+""", (900, 56)),
+    "calendar": ("""
+import QtQuick
+Item {
+    width: 330; height: 420
+    Loader {
+        objectName: "applet"
+        anchors.fill: parent
+        anchors.margins: 12
+        source: "%(clock)s"
+        onLoaded: item.expanded = true
+    }
+}
+""", (330, 420)),
     "wallpaper": ("""
 import QtQuick
 Item {
@@ -150,6 +198,8 @@ PACKAGES = {
     "dock": ("plasmoids", "org.ozios.dock"),
     "launcher": ("plasmoids", "org.ozios.launcher"),
     "control": ("plasmoids", "org.ozios.control"),
+    "workspaces": ("plasmoids", "org.ozios.workspaces"),
+    "clock": ("plasmoids", "org.ozios.clock"),
     "wallpaper": ("wallpaper", "org.ozios.tesseract"),
     "switcher": ("kwin/tabbox", "org.ozios.switcher"),
 }
@@ -163,7 +213,8 @@ def sources(folder):
         out[name] = QUrl.fromLocalFile(os.path.join(copy, "main.qml")).toString()
     return out
 # How long each scene runs before its picture is taken, in milliseconds.
-SETTLE = {"dock": 1400, "launcher": 1500, "search": 1200, "control": 700, "switcher": 900, "wallpaper": 5200}
+SETTLE = {"dock": 1400, "launcher": 1500, "search": 1200, "control": 700, "bar": 900, "calendar": 600,
+          "switcher": 900, "wallpaper": 5200}
 CONFIG = {"launchers": ["applications:org.kde.konsole.desktop", "applications:ozi-store.desktop",
                         "applications:systemsettings.desktop"], "magnify": True, "icon": "ozios",
           "favoritesPortedToKAstats": True}
@@ -256,8 +307,12 @@ def run_scene(engine, scene, theme_id, folder, still, quick=False):
         panel = view.rootObject().findChild(QQuickItem, "panel")
         corner = panel.mapToScene(QPointF(0, 0))
         frames.append(("widgets/panel-background", QRectF(corner.x(), corner.y(), panel.width(), panel.height())))
-    elif scene in ("launcher", "search", "control"):
+    elif scene in ("launcher", "search", "control", "calendar"):
         frames.append(("dialogs/background", QRectF(0, 0, image.width(), image.height())))
+    elif scene == "bar":
+        for island in view.rootObject().findChildren(QQuickItem, "island"):
+            corner = island.mapToScene(QPointF(0, 0))
+            frames.append(("widgets/panel-background", QRectF(corner.x(), corner.y(), island.width(), island.height())))
     view.close()
     view.deleteLater()
     return image, frames

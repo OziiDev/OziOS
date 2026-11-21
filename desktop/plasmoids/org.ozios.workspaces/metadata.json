@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.ozios.workspaces",
+        "Name": "OziOS Workspaces",
+        "Name[tr]": "OziOS Çalışma Alanları",
+        "Description": "The desktops as lights: the one in use is a pill in the accent colours, desktops with windows are filled dots",
+        "Description[tr]": "Masaüstleri ışık olarak: kullanılan vurgu renklerinde bir hap, penceresi olanlar dolu nokta",
+        "Icon": "virtual-desktops",
+        "Category": "Windows and Tasks",
+        "License": "MIT",
+        "Version": "0.3"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

@@ -19,8 +19,10 @@ theme=org.ozios.desktop
 wallpaper=org.ozios.tesseract
 style=ozios                                  # the Plasma style: bar, dock and popup frames
 motion=ozios_motion                          # the window open and close animation
+effects_ours="ozios_motion ozios_morph ozios_minimize"   # opening and closing, flowing to a new place, minimising
+decoration=org.ozios.decoration              # the window frames (a compiled KWin plugin)
 switcher=org.ozios.switcher                  # the Alt+Tab window switcher
-applets="org.ozios.control org.ozios.dock org.ozios.launcher"
+applets="org.ozios.clock org.ozios.control org.ozios.dock org.ozios.launcher org.ozios.workspaces"
 qdbus="$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus || true)"
 
 say() { printf '%-28s' "$1"; }
@@ -35,6 +37,18 @@ kwin_effect() {  # kwin_effect <name> <true|false>
   local method=unloadEffect
   [ "$2" = true ] && method=loadEffect
   "$qdbus" org.kde.KWin /Effects "org.kde.kwin.Effects.$method" "$1" >/dev/null 2>&1
+}
+
+# shortcut <component> <action> [key...]: give a global shortcut its keys now and for
+# good; no key clears it. Keys are Qt's numbers: Meta 0x10000000, Ctrl 0x04000000,
+# a digit its ASCII code, F1 0x01000030. A key another action holds is not taken.
+shortcut() {
+  local component="$1" action="$2" spec="" key
+  shift 2
+  for key in "$@"; do spec="$spec 4 $key 0 0 0"; done
+  command -v busctl >/dev/null || return 0
+  # shellcheck disable=SC2086
+  busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setForeignShortcutKeys     "asa(ai)" 4 "$component" "$action" "$component" "$action" $# $spec >/dev/null 2>&1
 }
 
 installed() {  # installed <kind> <id>: is this Plasma package available?
@@ -56,11 +70,20 @@ if [ "${1:-}" = "--undo" ]; then
          "$data/plasma/desktoptheme/$style" "$data/kwin-wayland/effects/$motion" "$data/kwin-wayland/tabbox/$switcher"
   for applet in $applets; do rm -rf "$data/plasma/plasmoids/$applet"; done
   kwriteconfig6 --file konsolerc --group "Desktop Entry" --key DefaultProfile --delete
-  for name in wobblywindows magiclamp squash blur scale glide fade "$motion"; do
+  for name in wobblywindows magiclamp squash maximize blur scale glide fade $effects_ours; do
     kwriteconfig6 --file kwinrc --group Plugins --key "${name}Enabled" --delete
+  done
+  for key in library theme BorderSize BorderSizeAuto ButtonsOnLeft ButtonsOnRight; do
+    kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key "$key" --delete
   done
   kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor --delete
   kwriteconfig6 --file kwinrc --group TabBox --key LayoutName --delete
+  # Meta and a number back to the task manager; the desktops keep Ctrl+F1 and Meta+F1.
+  for n in 1 2 3 4; do
+    shortcut kwin "Window to Desktop $n"
+    shortcut kwin "Switch to Desktop $n" $((0x0500002F + n)) $((0x1100002F + n))
+    shortcut plasmashell "activate task manager entry $n" $((0x10000030 + n))
+  done
   [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /KWin reconfigure >/dev/null 2>&1
   echo "OziOS desktop removed."
   exit 0
@@ -83,9 +106,12 @@ if [ -d "$root/desktop/look-and-feel/$theme" ]; then   # source checkout
     rm -rf "$data/plasma/plasmoids/$applet"
     cp -r "$root/desktop/plasmoids/$applet" "$data/plasma/plasmoids/"
   done
-  rm -rf "$data/plasma/desktoptheme/$style" "$data/kwin-wayland/effects/$motion"
+  rm -rf "$data/plasma/desktoptheme/$style"
   cp -r "$root/desktop/plasma-style/$style" "$data/plasma/desktoptheme/"
-  cp -r "$root/desktop/kwin/effects/$motion" "$data/kwin-wayland/effects/"
+  for name in $effects_ours; do
+    rm -rf "$data/kwin-wayland/effects/$name"
+    cp -r "$root/desktop/kwin/effects/$name" "$data/kwin-wayland/effects/"
+  done
   mkdir -p "$data/kwin-wayland/tabbox" && rm -rf "$data/kwin-wayland/tabbox/$switcher"
   cp -r "$root/desktop/kwin/tabbox/$switcher" "$data/kwin-wayland/tabbox/"
   install -m644 "$src"/themes/*.colors "$data/color-schemes/"
@@ -180,30 +206,78 @@ mkdir -p "$conf/autostart"
 printf '[Desktop Entry]\nType=Application\nName=CachyOS Hello\nHidden=true\n' > "$conf/autostart/cachyos-hello.desktop"
 echo ok
 
+# Rounded windows with an outline in the accent colour; KWin falls back to Breeze
+# by itself if the plugin can not be loaded.
+say "Window frames"
+if [ -f "/usr/lib/qt6/plugins/org.kde.kdecoration3/$decoration.so" ]; then
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library "$decoration"
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme ""
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key BorderSize None
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key BorderSizeAuto false
+  # No program menu on the left; minimise, maximise and close on the right.
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnLeft ""
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight IAX
+  echo ok
+else
+  echo "Breeze (OziOS frames not installed)"
+fi
+
 say "Window effects"
-kwin_effect squash false   # replaced by magic lamp; the two conflict
-kwin_effect magiclamp true
-# Windows open and close with the OziOS motion; KWin's own animations of that kind step aside.
+# OziOS's own motion: windows open and close, minimise into the dock and flow to a
+# new place or size; KWin's animations of the same kinds step aside.
 for name in scale glide fade; do kwin_effect "$name" false; done
+kwin_effect squash false      # one minimise animation at a time
+kwin_effect magiclamp false
+kwin_effect maximize false    # ozios_morph also covers maximising
 kwin_effect "$motion" true
+kwin_effect ozios_morph true
+kwin_effect ozios_minimize true
+# Wobbling would bend a window while it flows into place.
+kwin_effect wobblywindows false
+# Desktops slide past each other with a gap between them.
+kwriteconfig6 --file kwinrc --group Effect-slide --key HorizontalGap 48
+kwriteconfig6 --file kwinrc --group Effect-slide --key VerticalGap 48
+kwriteconfig6 --file kwinrc --group Effect-slide --key SlideBackground false
+# KWin's reconfigure only loads and unloads effects; a running one rereads its
+# settings when asked by name.
+[ -n "$qdbus" ] && "$qdbus" org.kde.KWin /Effects org.kde.kwin.Effects.reconfigureEffect slide >/dev/null 2>&1
 # Alt+Tab shows the OziOS switcher.
 kwriteconfig6 --file kwinrc --group TabBox --key LayoutName "$switcher"
-# A window wobbles a little while it is dragged (KWin's gentlest setting), but not
-# while it is resized, where the edges would swim away from the pointer.
-kwriteconfig6 --file kwinrc --group Effect-wobblywindows --key ResizeWobble false
 if $lite; then
-  kwin_effect wobblywindows false
   kwin_effect blur false
   kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.5
   # Without blur a see-through terminal shows the text of the window behind it.
   sed -i 's/^Opacity=.*/Opacity=1/' "$data"/konsole/OziOS*.colorscheme 2>/dev/null
 else
-  kwin_effect wobblywindows true
   kwin_effect blur true
   kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.7
 fi
 [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /KWin reconfigure >/dev/null 2>&1
 $lite && echo "ok (light)" || echo ok
+
+# Four desktops in a row, as the lights in the bar show them. Meta and a number go
+# to a desktop, Meta+Ctrl and a number take the active window along; the dock does
+# not use Meta and a number, so the shell lets go of them first.
+say "Desktops"
+kwriteconfig6 --file kwinrc --group Desktops --key Rows 1
+count="$(kreadconfig6 --file kwinrc --group Desktops --key Number --default 1 2>/dev/null)"
+if [ -n "$qdbus" ] && "$qdbus" org.kde.KWin /VirtualDesktopManager >/dev/null 2>&1; then
+  count="$("$qdbus" org.kde.KWin /VirtualDesktopManager org.kde.KWin.VirtualDesktopManager.count 2>/dev/null || echo 4)"
+  while [ "${count:-4}" -lt 4 ] &&
+        "$qdbus" org.kde.KWin /VirtualDesktopManager org.kde.KWin.VirtualDesktopManager.createDesktop "$count" "" >/dev/null 2>&1; do
+    count=$((count + 1))
+  done
+  command -v busctl >/dev/null &&
+    busctl --user set-property org.kde.KWin /VirtualDesktopManager org.kde.KWin.VirtualDesktopManager rows u 1 >/dev/null 2>&1
+elif [ "${count:-1}" -lt 4 ]; then
+  kwriteconfig6 --file kwinrc --group Desktops --key Number 4
+fi
+for n in 1 2 3 4; do
+  shortcut plasmashell "activate task manager entry $n"
+  shortcut kwin "Switch to Desktop $n" $((0x10000030 + n)) $((0x0500002F + n)) $((0x1100002F + n))
+  shortcut kwin "Window to Desktop $n" $((0x14000030 + n))
+done
+echo ok
 
 # The Education edition adds its own desktop on top: board layout, school defaults.
 if [ "$(cat /usr/share/ozios/edition 2>/dev/null)" = edu ] && [ -f /usr/share/ozios/edu/apply-edu.sh ]; then

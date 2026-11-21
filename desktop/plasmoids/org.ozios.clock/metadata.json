@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.ozios.clock",
+        "Name": "OziOS Clock",
+        "Name[tr]": "OziOS Saat",
+        "Description": "The time and the date in the middle of the bar; a calendar when clicked",
+        "Description[tr]": "Çubuğun ortasında saat ve tarih; tıklayınca takvim",
+        "Icon": "clock",
+        "Category": "Date and Time",
+        "License": "MIT",
+        "Version": "0.3"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

@@ -25,4 +25,4 @@ tasks.writeConfig("launchers", [
 bar.addWidget("org.kde.plasma.panelspacer")
 bar.addWidget("org.ozios.control")
 bar.addWidget("org.kde.plasma.systemtray")
-bar.addWidget("org.kde.plasma.digitalclock")
+bar.addWidget("org.ozios.clock")

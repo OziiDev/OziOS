@@ -53,9 +53,11 @@ kwin_effect() {  # kwin_effect <name> <true|false>
   "$qdbus" org.kde.KWin /Effects "org.kde.kwin.Effects.$method" "$1" >/dev/null 2>&1 || true
 }
 
-motion() {  # motion <true|false>: the OziOS open and close animation instead of KWin's own
+motion() {  # motion <true|false>: the OziOS window animations instead of KWin's own
+  # Opening and closing, minimising into the dock, flowing to a new place or size.
   kwin_effect scale false; kwin_effect glide false; kwin_effect fade false
-  kwin_effect ozios_motion "$1"
+  kwin_effect squash false; kwin_effect magiclamp false; kwin_effect maximize false
+  kwin_effect ozios_motion "$1"; kwin_effect ozios_minimize "$1"; kwin_effect ozios_morph "$1"
 }
 
 wallpaper_motion() {  # wallpaper_motion <true|false>: the OziOS wallpaper turns, or holds still
@@ -68,15 +70,15 @@ wallpaper_motion() {  # wallpaper_motion <true|false>: the OziOS wallpaper turns
 set_effects() {  # set_effects full|light|off
   case "$1" in
     full)
-      motion true; kwin_effect magiclamp true; kwin_effect wobblywindows true; kwin_effect blur true
+      motion true; kwin_effect wobblywindows false; kwin_effect blur true
       wallpaper_motion true
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.7 ;;
     light)
-      motion true; kwin_effect magiclamp true; kwin_effect wobblywindows false; kwin_effect blur false
+      motion true; kwin_effect wobblywindows false; kwin_effect blur false
       wallpaper_motion false
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0.5 ;;
     off)
-      motion false; kwin_effect magiclamp false; kwin_effect wobblywindows false; kwin_effect blur false
+      motion false; kwin_effect wobblywindows false; kwin_effect blur false
       wallpaper_motion false
       kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0 ;;
     *) echo "ozi: effects takes full, light or off" >&2; exit 2 ;;
