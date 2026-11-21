@@ -298,6 +298,8 @@ ApplicationWindow {
                     ] : [
                         { key: "gaming", title: backend.tr("Games"), text: backend.tr("Install Steam, game mode and the graphics libraries that fit this computer.") }
                     ]).concat([
+                        { key: "look", title: backend.tr("Look"), text: backend.tr("Corners, glow, gaps, tiling and animation speed, with a preview. Meta+T tiles a desktop.") },
+                        { key: "keys", title: backend.tr("Keys"), text: backend.tr("The keys worth knowing. Meta+K shows them any time.") },
                         { key: "store", title: backend.tr("Get software"), text: backend.tr("Install programs, check a package before it goes on your system, and keep everything updated.") },
                         { key: "windows", title: backend.tr("Windows programs"), text: backend.tr("Set up the Windows layer so .exe files open from your file manager.") },
                         { key: "windowsnet", title: backend.tr("Windows computers"), text: backend.tr("Open the shared folders of Windows computers on your network.") },

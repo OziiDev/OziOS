@@ -89,6 +89,10 @@ class Welcome(unittest.TestCase):
         welcome.set_show_at_login(True)
         self.assertTrue(welcome.show_at_login())
 
+    def test_the_look_and_the_keys_open_the_look_app(self):
+        self.assertEqual(welcome.ACTIONS["look"], ["ozi-look"])
+        self.assertEqual(welcome.ACTIONS["keys"], ["ozi-look", "--keys"])
+
     def test_actions_are_commands_not_strings(self):
         for name, cmd in welcome.ACTIONS.items():
             self.assertIsInstance(cmd, list, name)
