@@ -1,7 +1,7 @@
-"""The commands `ozi` hands to Python: doctor, report, clean, play, gaming, theme and look."""
+"""The commands `ozi` hands to Python: doctor, report, clean, play, gaming, theme, look and quick."""
 import sys
 
-from . import clean, doctor, gaming, look, play, report, themes
+from . import clean, doctor, gaming, look, play, quick, report, themes
 
 COMMANDS = {
     "doctor": doctor.main,
@@ -11,6 +11,7 @@ COMMANDS = {
     "gaming": gaming.main,
     "theme": themes.main,
     "look": look.main,
+    "quick": quick.main,
 }
 
 USAGE = """usage: ozi-tools <command> [options]
@@ -22,6 +23,7 @@ USAGE = """usage: ozi-tools <command> [options]
   gaming    install what games need for this graphics card
   theme     choose the colours of the desktop
   look      how the desktop looks and moves: corners, glow, gaps, tiling, speed
+  quick     quick settings: sound, Wi-Fi, Bluetooth, night light, do not disturb
 """
 
 

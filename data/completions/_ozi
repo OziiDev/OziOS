@@ -13,6 +13,7 @@ commands=(
   'layout:panel layout'
   'theme:colours of the desktop'
   'look:how windows look and move'
+  'quick:sound, Wi-Fi, Bluetooth, night light, do not disturb'
   'effects:window effects'
   'mode:game mode'
   'status:version, kernel, effects and updates'
@@ -34,6 +35,14 @@ case $words[2] in
   layout)  _values 'layout' default deck classic board ;;
   effects) _values 'level' full light off ;;
   theme)   _arguments '1:theme:(cyan aurora ember mint rose frost auto)' '2:state:(off)' '--day[with auto: by day]:theme:(cyan aurora ember mint rose frost)' '--night[with auto: at night]:theme:(cyan aurora ember mint rose frost)' '--json[machine-readable output]' ;;
+  quick)
+    case $CURRENT in
+      3) _values 'setting' volume mute wifi bluetooth night dnd ;;
+      4) case $words[3] in
+           mute) _values 'state' on off toggle ;;
+           wifi|bluetooth|night|dnd) _values 'state' on off ;;
+         esac ;;
+    esac ;;
   look)
     case $CURRENT in
       3) _values 'setting' preset radius outline glow titlebar gaps tiling blur speed ;;

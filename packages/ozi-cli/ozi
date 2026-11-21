@@ -33,6 +33,7 @@ usage: ozi <command>
   theme [name]         colours: cyan, aurora, ember, mint, rose, frost (light)
   look [preset <name>] how windows look and move: fluid, tiling or light, or one
                        setting: radius, outline, glow, titlebar, gaps, tiling, blur, speed
+  quick [name value]   quick settings: volume, mute, wifi, bluetooth, night, dnd
   effects <level>      window effects: full, light or off
   mode game on|off     game mode: performance profile, no compositing effects
   status [--json]      version, kernel, effects, game mode, Windows guest, updates
@@ -235,7 +236,7 @@ case "$cmd" in
   status)
     status "${1:-}"
     ;;
-  doctor | report | clean | play | gaming | theme | look)
+  doctor | report | clean | play | gaming | theme | look | quick)
     exec ozi-tools "$cmd" "$@"
     ;;
   winsetup)

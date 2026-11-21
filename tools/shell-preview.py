@@ -107,7 +107,7 @@ Item {
 import QtQuick
 import org.kde.kirigami as K
 Item {
-    width: 380; height: 330
+    width: 400; height: 520
     Loader {
         objectName: "applet"
         anchors.fill: parent
@@ -116,7 +116,7 @@ Item {
         onLoaded: item.expanded = true
     }
 }
-""", (380, 330)),
+""", (400, 520)),
     # The islands at the top: desktops on the left, the clock in the middle.
     "bar": ("""
 import QtQuick
