@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Id": "ozios-tiling",
+        "Name": "OziOS Tiling",
+        "Name[tr]": "OziOS Döşeme",
+        "Description": "Meta+T tiles the windows of a desktop in a spiral of halves with gaps; Meta+F lets one float",
+        "Description[tr]": "Meta+T bir masaüstünün pencerelerini boşluklu bir yarımlar sarmalına döşer; Meta+F birini serbest bırakır",
+        "Icon": "view-grid",
+        "License": "MIT",
+        "Version": "0.3"
+    },
+    "X-Plasma-API": "javascript"
+}

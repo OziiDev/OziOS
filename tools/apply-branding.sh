@@ -67,7 +67,8 @@ if [ "${1:-}" = "--undo" ]; then
   rm -f "$HOME/.local/bin/ozi-fetch" "$data"/color-schemes/OziOS*.colors \
         "$data"/konsole/OziOS*.colorscheme "$data/konsole/OziOS.profile"
   rm -rf "$data/ozios" "$data/plasma/look-and-feel/$theme" "$data/plasma/wallpapers/$wallpaper" \
-         "$data/plasma/desktoptheme/$style" "$data/kwin-wayland/effects/$motion" "$data/kwin-wayland/tabbox/$switcher"
+         "$data/plasma/desktoptheme/$style" "$data/kwin-wayland/effects/$motion" "$data/kwin-wayland/tabbox/$switcher" \
+         "$data/kwin-wayland/scripts/ozios-tiling"
   for applet in $applets; do rm -rf "$data/plasma/plasmoids/$applet"; done
   kwriteconfig6 --file konsolerc --group "Desktop Entry" --key DefaultProfile --delete
   for name in wobblywindows magiclamp squash maximize blur scale glide fade $effects_ours; do
@@ -78,6 +79,14 @@ if [ "${1:-}" = "--undo" ]; then
   done
   kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor --delete
   kwriteconfig6 --file kwinrc --group TabBox --key LayoutName --delete
+  # Tiling off, and Meta+T back to KWin's tile editor.
+  kwriteconfig6 --file kwinrc --group Plugins --key ozios-tilingEnabled --delete
+  for key in TextOn TextOff TileByDefault Gap OuterGap; do
+    kwriteconfig6 --file kwinrc --group Script-ozios-tiling --key "$key" --delete
+  done
+  shortcut kwin "OziOS Tiling Toggle"
+  shortcut kwin "OziOS Tiling Float"
+  shortcut kwin "Edit Tiles" $((0x10000054))
   # Meta and a number back to the task manager; the desktops keep Ctrl+F1 and Meta+F1.
   for n in 1 2 3 4; do
     shortcut kwin "Window to Desktop $n"
@@ -114,6 +123,8 @@ if [ -d "$root/desktop/look-and-feel/$theme" ]; then   # source checkout
   done
   mkdir -p "$data/kwin-wayland/tabbox" && rm -rf "$data/kwin-wayland/tabbox/$switcher"
   cp -r "$root/desktop/kwin/tabbox/$switcher" "$data/kwin-wayland/tabbox/"
+  mkdir -p "$data/kwin-wayland/scripts" && rm -rf "$data/kwin-wayland/scripts/ozios-tiling"
+  cp -r "$root/desktop/kwin/scripts/ozios-tiling" "$data/kwin-wayland/scripts/"
   install -m644 "$src"/themes/*.colors "$data/color-schemes/"
   # The splash screen reuses the wallpaper's figure.
   cp "$root/desktop/wallpaper/$wallpaper/contents/ui/Tesseract.qml" \
@@ -277,6 +288,30 @@ for n in 1 2 3 4; do
   shortcut kwin "Switch to Desktop $n" $((0x10000030 + n)) $((0x0500002F + n)) $((0x1100002F + n))
   shortcut kwin "Window to Desktop $n" $((0x14000030 + n))
 done
+echo ok
+
+# Tiling as on a tiling desktop, a desktop at a time: Meta+T tiles, Meta+F lets a
+# window float (ozios-tiling). KWin's tile editor makes way, to Meta+Shift+T, before
+# the script asks for Meta+T. The script says on and off in the session's language.
+say "Tiling"
+shortcut kwin "Edit Tiles" $((0x12000054))
+case "${LANG:-}" in
+  tr*) tiling_on="Döşeme açık"; tiling_off="Döşeme kapalı" ;;
+  *) tiling_on="Tiling on"; tiling_off="Tiling off" ;;
+esac
+kwriteconfig6 --file kwinrc --group Script-ozios-tiling --key TextOn "$tiling_on"
+kwriteconfig6 --file kwinrc --group Script-ozios-tiling --key TextOff "$tiling_off"
+kwriteconfig6 --file kwinrc --group Plugins --key ozios-tilingEnabled true
+if [ -n "$qdbus" ]; then
+  "$qdbus" org.kde.KWin /KWin reconfigure >/dev/null 2>&1      # starts the scripts turned on
+  for _ in $(seq 1 10); do
+    [ "$("$qdbus" org.kde.KWin /Scripting org.kde.kwin.Scripting.isScriptLoaded ozios-tiling 2>/dev/null)" = true ] && break
+    sleep 0.5
+  done
+  # Also when the script met its keys taken once and kglobalaccel remembers it without them.
+  shortcut kwin "OziOS Tiling Toggle" $((0x10000054))
+  shortcut kwin "OziOS Tiling Float" $((0x10000046))
+fi
 echo ok
 
 # The Education edition adds its own desktop on top: board layout, school defaults.
