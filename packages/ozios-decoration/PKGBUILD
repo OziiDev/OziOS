@@ -26,7 +26,7 @@ build() {
   CFLAGS="$(baseline "$CFLAGS")"
   CXXFLAGS="$(baseline "$CXXFLAGS")"
   export CFLAGS CXXFLAGS
-  cmake -B build -S "$src/desktop/decoration" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -Wno-dev
+  cmake -B build -S "$src/desktop/decoration" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
   cmake --build build
 }
 
