@@ -139,11 +139,11 @@ def task(name, icon, **flags):
 
 
 DEMO_TASKS = [
-    task("Firefox", "firefox", IsWindow=True, IsActive=True),
-    task("Dosyalar", "org.kde.dolphin", IsWindow=True, IsGroupParent=True, ChildCount=2),
+    task("Firefox", "firefox", IsWindow=True, IsActive=True, VirtualDesktops=["desktop-1"]),
+    task("Dosyalar", "org.kde.dolphin", IsWindow=True, IsGroupParent=True, ChildCount=2, VirtualDesktops=["desktop-1"]),
     task("Konsole", "org.kde.konsole", IsLauncher=True),
     task("Steam", "steam", IsStartup=True),
-    task("Discord", "discord", IsWindow=True, IsDemandingAttention=True),
+    task("Discord", "discord", IsWindow=True, IsDemandingAttention=True, VirtualDesktops=["desktop-3"]),
     task("Yazılım", "ozi-store", IsLauncher=True),
     task("Sistem Ayarları", "systemsettings", IsLauncher=True),
 ]

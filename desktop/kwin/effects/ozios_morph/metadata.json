@@ -1,0 +1,21 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OziOS"
+            }
+        ],
+        "Category": "Appearance",
+        "Description": "A window that changes place or size without being dragged flows from where it was to where it goes: maximising, restoring, snapping to a side, the tiling layout making room",
+        "Description[tr]": "Sürüklenmeden yeri ya da boyutu değişen pencere eski yerinden yenisine akar: büyütme, eski boyuta dönme, kenara yaslama, döşemenin yer açması",
+        "EnabledByDefault": false,
+        "Icon": "preferences-system-windows-effect-maximize",
+        "Id": "ozios_morph",
+        "License": "MIT",
+        "Name": "OziOS Morph",
+        "Name[tr]": "OziOS Akış"
+    },
+    "X-KDE-Ordering": 60,
+    "X-Plasma-API": "javascript"
+}

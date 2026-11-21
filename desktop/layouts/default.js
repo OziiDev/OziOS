@@ -1,21 +1,30 @@
-// OziOS layout "default": a thin bar across the top for the launcher, clock
-// and tray, and a floating dock at the bottom for windows and pinned programs.
+// OziOS layout "default": three floating islands along the top, as on a tiling
+// desktop's bar (the launcher and the desktops on the left, the clock in the
+// middle, the tray and the control centre on the right), and a floating dock at
+// the bottom for windows and pinned programs.
 panels().forEach(function (p) { p.remove() })
 
-var bar = new Panel
-bar.location = "top"
-bar.height = Math.round(gridUnit * 1.7)
-bar.lengthMode = "fill"
-bar.hiding = "none"
-bar.floating = false
+function island(alignment) {
+    var p = new Panel
+    p.location = "top"
+    p.height = Math.round(gridUnit * 1.8)
+    p.lengthMode = "fit"
+    p.alignment = alignment
+    p.floating = true
+    p.hiding = "none"
+    return p
+}
 
-bar.addWidget("org.ozios.launcher")
-bar.addWidget("org.kde.plasma.pager")
-bar.addWidget("org.kde.plasma.panelspacer")
-bar.addWidget("org.kde.plasma.digitalclock")
-bar.addWidget("org.kde.plasma.panelspacer")
-bar.addWidget("org.ozios.control")
-bar.addWidget("org.kde.plasma.systemtray")
+var left = island("left")
+left.addWidget("org.ozios.launcher")
+left.addWidget("org.ozios.workspaces")
+
+var middle = island("center")
+middle.addWidget("org.ozios.clock")
+
+var right = island("right")
+right.addWidget("org.kde.plasma.systemtray")
+right.addWidget("org.ozios.control")
 
 var dock = new Panel
 dock.location = "bottom"

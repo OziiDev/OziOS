@@ -1,0 +1,22 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OziOS"
+            }
+        ],
+        "Category": "Appearance",
+        "Description": "A minimised window glides into its icon in the dock and comes back out of it",
+        "Description[tr]": "Küçültülen pencere dock'taki simgesine süzülür, geri gelirken oradan çıkar",
+        "EnabledByDefault": false,
+        "Icon": "preferences-system-windows-effect-squash",
+        "Id": "ozios_minimize",
+        "License": "MIT",
+        "Name": "OziOS Minimize",
+        "Name[tr]": "OziOS Küçültme"
+    },
+    "X-KDE-Ordering": 60,
+    "X-KWin-Exclusive-Category": "minimize",
+    "X-Plasma-API": "javascript"
+}

@@ -2,7 +2,8 @@
 
     python3 tools/shell-drive.py        prints one JSON object
 
-It loads the dock, the launcher, the control widget and the wallpaper the same
+It loads the dock, the launcher, the control widget, the islands at the top
+(desktops and clock) and the wallpaper the same
 way tools/shell-preview.py does (the real QML on top of the stand-ins in
 tools/plasma_stubs.py), clicks, hovers and types into them, and records what
 each one asked Plasma or the shell to do. tests/test_desktop.py checks the
@@ -21,7 +22,7 @@ preview = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(preview)
 
 from PyQt6.QtCore import QLocale, QMetaObject, QModelIndex, QObject, QPoint, QPointF, Qt, qInstallMessageHandler  # noqa: E402
-from PyQt6.QtGui import QGuiApplication  # noqa: E402
+from PyQt6.QtGui import QGuiApplication, QWheelEvent  # noqa: E402
 from PyQt6.QtQml import QJSValue, QQmlEngine  # noqa: E402
 from PyQt6.QtQuick import QQuickItem  # noqa: E402
 from PyQt6.QtTest import QTest  # noqa: E402
@@ -218,6 +219,70 @@ def drive_switcher(engine, folder):
     return out
 
 
+def wheel(view, item, steps):
+    """Turn the mouse wheel over `item`: positive steps scroll down."""
+    point = QPointF(centre(view, item))
+    for _ in range(abs(steps)):
+        event = QWheelEvent(point, QPointF(view.mapToGlobal(point)), QPoint(0, 0), QPoint(0, -120 if steps > 0 else 120),
+                            Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False)
+        QGuiApplication.sendEvent(view, event)
+        QTest.qWait(80)
+
+
+def drive_bar(engine, folder):
+    view = preview.open_scene(engine, "bar", "cyan", folder)
+    QTest.qWait(600)
+    lights = [o for o in visual_tree(view.rootObject()) if o.property("occupied") is not None]
+    lights.sort(key=lambda o: o.mapToScene(QPointF(0, 0)).x())
+
+    def state():
+        return {"current": [bool(o.property("current")) for o in lights],
+                "widths": [round(o.width()) for o in lights]}
+
+    out = {"lights": len(lights), "occupied": [bool(o.property("occupied")) for o in lights], "start": state()}
+    if len(lights) > 2:
+        click(view, lights[2])
+        QTest.qWait(1200)                         # the pill springs over and settles
+        out["after_click"] = state()
+        wheel(view, lights[2], 1)
+        QTest.qWait(300)
+        out["after_wheel_down"] = state()["current"]
+        wheel(view, lights[2], -3)
+        QTest.qWait(300)
+        out["after_three_up"] = state()["current"]
+
+    # The clock in the middle: time, dot and date; a click opens the calendar.
+    labels = [o for o in visual_tree(view.rootObject()) if "Label" in o.metaObject().className()
+              or o.metaObject().className().startswith("QQuickText")]
+    out["clock"] = [o.property("text") for o in labels if o.property("text")]
+    view.close()
+    return out
+
+
+def drive_calendar(engine, folder):
+    view = preview.open_scene(engine, "calendar", "cyan", folder)
+    QTest.qWait(500)
+    tree = visual_tree(view.rootObject())
+    cells = [o for o in tree if o.property("inMonth") is not None]
+    out = {"cells": len(cells),
+           "today": [o.property("index") for o in cells if o.property("today")],
+           "in_month": sum(1 for o in cells if o.property("inMonth"))}
+    popup = [o for o in tree if o.property("shown") is not None]
+    if popup:
+        out["month"] = popup[0].property("shown").toString("yyyy-MM") if hasattr(popup[0].property("shown"), "toString") else str(popup[0].property("shown"))
+    buttons = [o for o in tree if "ToolButton" in o.metaObject().className()]
+    buttons.sort(key=lambda o: o.mapToScene(QPointF(0, 0)).x())
+    if len(buttons) >= 2 and popup:
+        click(view, buttons[1])                  # next month
+        click(view, buttons[1])
+        shown = popup[0].property("shown")
+        out["two_months_on"] = shown.toString("yyyy-MM") if hasattr(shown, "toString") else str(shown)
+        tree = visual_tree(view.rootObject())
+        out["today_after"] = [o.property("index") for o in tree if o.property("today")]
+    view.close()
+    return out
+
+
 def turning(figure, wait=300):
     """Whether the figure moved on during the wait."""
     before = figure.property("t")
@@ -255,6 +320,7 @@ def main():
     engine = QQmlEngine()
     result = {}
     for name, drive in (("dock", drive_dock), ("launcher", drive_launcher), ("control", drive_control),
+                        ("bar", drive_bar), ("calendar", drive_calendar),
                         ("switcher", drive_switcher), ("wallpaper", drive_wallpaper)):
         try:
             result[name] = drive(engine, folder)

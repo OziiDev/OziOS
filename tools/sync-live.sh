@@ -30,16 +30,17 @@ install -m644 "$src"/branding/boot/limine-splash.png "$src"/branding/boot/deskto
 install -m644 "$src"/desktop/layouts/*.js /usr/share/ozios/layouts/
 [ ! -d "$src/edu/layouts" ] || install -m644 "$src"/edu/layouts/*.js /usr/share/ozios/layouts/
 
-# The OziOS shell: dock, launcher, control widget, wallpaper, Plasma style, window motion, colour themes.
-for applet in org.ozios.control org.ozios.dock org.ozios.launcher; do
+# The OziOS shell: dock, launcher, control widget, desktops, clock, wallpaper, Plasma style,
+# window motion, colour themes.
+for applet in org.ozios.clock org.ozios.control org.ozios.dock org.ozios.launcher org.ozios.workspaces; do
   rm -rf "/usr/share/plasma/plasmoids/$applet"
   cp -r "$src/desktop/plasmoids/$applet" /usr/share/plasma/plasmoids/
 done
-rm -rf /usr/share/plasma/wallpapers/org.ozios.tesseract /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_motion
+rm -rf /usr/share/plasma/wallpapers/org.ozios.tesseract /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_*
 cp -r "$src/desktop/wallpaper/org.ozios.tesseract" /usr/share/plasma/wallpapers/
 mkdir -p /usr/share/plasma/desktoptheme /usr/share/kwin-wayland/effects
 cp -r "$src/desktop/plasma-style/ozios" /usr/share/plasma/desktoptheme/
-cp -r "$src/desktop/kwin/effects/ozios_motion" /usr/share/kwin-wayland/effects/
+cp -r "$src"/desktop/kwin/effects/ozios_* /usr/share/kwin-wayland/effects/
 rm -rf /usr/share/kwin-wayland/tabbox/org.ozios.switcher && mkdir -p /usr/share/kwin-wayland/tabbox
 cp -r "$src/desktop/kwin/tabbox/org.ozios.switcher" /usr/share/kwin-wayland/tabbox/
 install -m644 "$src"/branding/konsole/*.colorscheme /usr/share/konsole/
@@ -60,7 +61,7 @@ sed "s/@VERSION@/$version/g" "$src/branding/calamares/ozios/branding.desc" > /us
 # new files would be readable by root only: the desktop could not load them.
 chmod -R go+rX,go-w /usr/lib/ozios/python/ozipkg /usr/lib/ozios/apps \
   /usr/share/plasma/plasmoids/org.ozios.* /usr/share/plasma/wallpapers/org.ozios.tesseract \
-  /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_motion \
+  /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_* \
   /usr/share/kwin-wayland/tabbox/org.ozios.switcher
 /usr/lib/ozios/patch-installer
 echo "live session now runs the checkout ($version)"

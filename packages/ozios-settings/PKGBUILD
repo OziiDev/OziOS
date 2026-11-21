@@ -59,13 +59,16 @@ package() {
   install -Dm644 -t "$pkgdir/usr/share/plasma/wallpapers/$wallpaper/contents/config" \
     "$src/desktop/wallpaper/$wallpaper"/contents/config/main.xml
 
-  local control=org.ozios.control
-  install -Dm644 "$src/desktop/plasmoids/$control/metadata.json" "$pkgdir/usr/share/plasma/plasmoids/$control/metadata.json"
-  install -Dm644 "$src/desktop/plasmoids/$control/contents/ui/main.qml" "$pkgdir/usr/share/plasma/plasmoids/$control/contents/ui/main.qml"
+  # The widgets with no settings of their own: the control centre, and the desktops
+  # and the clock in the islands at the top.
+  local applet file
+  for applet in org.ozios.control org.ozios.workspaces org.ozios.clock; do
+    install -Dm644 "$src/desktop/plasmoids/$applet/metadata.json" "$pkgdir/usr/share/plasma/plasmoids/$applet/metadata.json"
+    install -Dm644 "$src/desktop/plasmoids/$applet/contents/ui/main.qml" "$pkgdir/usr/share/plasma/plasmoids/$applet/contents/ui/main.qml"
+  done
 
   # The OziOS shell: the dock and the launcher, the Plasma style their frames are
   # drawn with, the window motion, and the colour themes all of it follows.
-  local applet file
   for applet in org.ozios.dock org.ozios.launcher; do
     install -Dm644 "$src/desktop/plasmoids/$applet/metadata.json" "$pkgdir/usr/share/plasma/plasmoids/$applet/metadata.json"
     install -Dm644 -t "$pkgdir/usr/share/plasma/plasmoids/$applet/contents/config" "$src/desktop/plasmoids/$applet"/contents/config/main.xml
@@ -74,9 +77,13 @@ package() {
   while IFS= read -r file; do
     install -Dm644 "$src/desktop/plasma-style/ozios/$file" "$pkgdir/usr/share/plasma/desktoptheme/ozios/$file"
   done < <(cd "$src/desktop/plasma-style/ozios" && find . -type f -printf '%P\n')
-  install -Dm644 "$src/desktop/kwin/effects/ozios_motion/metadata.json" "$pkgdir/usr/share/kwin-wayland/effects/ozios_motion/metadata.json"
-  install -Dm644 "$src/desktop/kwin/effects/ozios_motion/contents/code/main.js" \
-    "$pkgdir/usr/share/kwin-wayland/effects/ozios_motion/contents/code/main.js"
+  # Windows opening and closing, flowing to a new place or size, and minimising into the dock.
+  local effect
+  for effect in ozios_motion ozios_morph ozios_minimize; do
+    install -Dm644 "$src/desktop/kwin/effects/$effect/metadata.json" "$pkgdir/usr/share/kwin-wayland/effects/$effect/metadata.json"
+    install -Dm644 "$src/desktop/kwin/effects/$effect/contents/code/main.js" \
+      "$pkgdir/usr/share/kwin-wayland/effects/$effect/contents/code/main.js"
+  done
   install -Dm644 -t "$pkgdir/usr/share/color-schemes" "$src"/branding/themes/*.colors
   local switcher="$pkgdir/usr/share/kwin-wayland/tabbox/org.ozios.switcher"
   install -Dm644 "$src/desktop/kwin/tabbox/org.ozios.switcher/metadata.json" "$switcher/metadata.json"
