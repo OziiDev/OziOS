@@ -285,7 +285,7 @@ class Themes(unittest.TestCase):
 
     def test_ozi_hands_the_command_to_python(self):
         self.assertIn("theme", tools.COMMANDS)
-        self.assertRegex(read("packages", "ozi-cli", "ozi"), r"gaming \| theme\)")
+        self.assertRegex(read("packages", "ozi-cli", "ozi"), r"gaming \| theme \| look\)")
 
 
 # --- the Plasma style ---------------------------------------------------------------
@@ -891,6 +891,22 @@ out.spiral = [g(w3), g(w2), g(w1)];
 console.log(JSON.stringify(out));
 """
 
+TILING_EVERYWHERE = r"""
+// Look's "Tile every desktop": switched on, the open windows tile at once; off, they go back.
+load();
+const w1 = open(), w2 = open({ desktops: [desktops[2]] });
+out.before = [g(w1), g(w2)];
+settings.TileByDefault = true;
+options.configChanged.emit();
+out.on = [g(w1), g(w2)];
+const w3 = open();
+out.new_window = [g(w1), g(w3)];
+settings.TileByDefault = false;
+options.configChanged.emit();
+out.off = [g(w1), g(w2), g(w3)];
+console.log(JSON.stringify(out));
+"""
+
 TILING_PANELS = r"""
 // Floating islands at the top: KWin reserves 40 pixels, their windows reach down to 48.
 // The dock at the bottom hides from windows and reserves nothing; it does not count.
@@ -970,6 +986,14 @@ class Tiling(unittest.TestCase):
         out = self.run_with(TILING_SCRIPT, {"TextOn": "Döşeme açık", "TextOff": "Döşeme kapalı"})
         self.assertEqual(out["osd"], [["showText", "view-grid", "Döşeme açık"]])
         self.assertEqual(out["off"]["osd"], ["showText", "view-grid", "Döşeme kapalı"])
+
+    def test_tiling_every_desktop_follows_the_setting_at_once(self):
+        out = self.run_with(TILING_EVERYWHERE)
+        self.assertEqual(out["before"], [[120, 120, 700, 500], [140, 140, 700, 500]])
+        # Each window alone on its desktop fills it.
+        self.assertEqual(out["on"], [[12, 52, 1256, 736], [12, 52, 1256, 736]])
+        self.assertEqual(out["new_window"], [[12, 52, 623, 736], [645, 52, 623, 736]])
+        self.assertEqual(out["off"][:2], [[120, 120, 700, 500], [140, 140, 700, 500]])
 
     def test_the_gap_is_kept_from_a_floating_island_not_from_its_strip(self):
         out = self.run_with(TILING_PANELS)

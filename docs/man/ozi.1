@@ -50,6 +50,14 @@ Follow the time of day: the day theme (\fBfrost\fR unless told otherwise) from 0
 theme the rest of the time, checked every ten minutes by a timer of the user's session.
 Picking a theme by hand, or \fBoff\fR, ends it.
 .TP
+.B look \fR[\fBpreset\fR \fIname\fR | \fIsetting\fR [\fIvalue\fR]] [\fB\-\-json\fR]
+How windows look and move. The presets set everything at once: \fBfluid\fR (floating windows with a
+glow and blur), \fBtiling\fR (every desktop tiled, no title bars) and \fBlight\fR (no glow or blur, for
+older computers). One setting at a time: \fBradius\fR (0 to 24) and \fBoutline\fR (0 to 4) of the window
+frames, \fBglow\fR and \fBtitlebar\fR (on or off), \fBgaps\fR between tiles (0 to 40), \fBtiling\fR of
+every desktop from the start, \fBblur\fR, and the animation \fBspeed\fR (off, fast, normal, relaxed).
+Without arguments it shows them all. The Look app does the same with a preview; Meta+K shows the keys.
+.TP
 .BI effects " level"
 Window effects: \fBfull\fR, \fBlight\fR or \fBoff\fR.
 .TP

@@ -24,6 +24,12 @@ for f in ozi ozi-pkg ozi-box ozi-tools; do
   install -m755 "$src/packages/ozi-cli/$f" "/usr/bin/$f"
 done
 install -m755 "$src/tools/apply-branding.sh" /usr/share/ozios/tools/apply-branding.sh
+# The OziOS apps' commands and menu entries; Meta+K comes from ozi-keys.desktop.
+for app in ozi-store ozi-welcome ozi-look; do
+  ln -sf "/usr/lib/ozios/apps/$app/$app" "/usr/bin/$app"
+  install -m644 "$src/apps/$app.desktop" /usr/share/applications/
+done
+install -m644 "$src/apps/ozi-keys.desktop" /usr/share/applications/
 cp -r "$src/apps/." /usr/lib/ozios/apps/
 mkdir -p /usr/share/ozios/branding /usr/share/ozios/layouts
 install -m644 "$src"/branding/boot/limine-splash.png "$src"/branding/boot/desktop.png /usr/share/ozios/branding/

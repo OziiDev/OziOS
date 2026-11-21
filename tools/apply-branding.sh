@@ -87,6 +87,10 @@ if [ "${1:-}" = "--undo" ]; then
   shortcut kwin "OziOS Tiling Toggle"
   shortcut kwin "OziOS Tiling Float"
   shortcut kwin "Edit Tiles" $((0x10000054))
+  # Meta+Q back to the activity switcher, Meta+Enter off the terminal.
+  shortcut kwin "Window Close" $((0x09000033))
+  shortcut plasmashell "manage activities" $((0x10000051))
+  shortcut org.kde.konsole.desktop _launch $((0x0C000054))
   # Meta and a number back to the task manager; the desktops keep Ctrl+F1 and Meta+F1.
   for n in 1 2 3 4; do
     shortcut kwin "Window to Desktop $n"
@@ -312,6 +316,15 @@ if [ -n "$qdbus" ]; then
   shortcut kwin "OziOS Tiling Toggle" $((0x10000054))
   shortcut kwin "OziOS Tiling Float" $((0x10000046))
 fi
+echo ok
+
+# Keys from tiling desktops on top of Plasma's own: Meta+Q closes the window (Alt+F4
+# still does), Meta+Enter opens a terminal (and Ctrl+Alt+T). The activity switcher
+# moves to Meta+Shift+Q first. Meta+K shows them all (ozi-keys.desktop).
+say "Keys"
+shortcut plasmashell "manage activities" $((0x12000051))
+shortcut kwin "Window Close" $((0x09000033)) $((0x10000051))
+shortcut org.kde.konsole.desktop _launch $((0x0C000054)) $((0x11000004))
 echo ok
 
 # The Education edition adds its own desktop on top: board layout, school defaults.

@@ -137,7 +137,7 @@ package() {
   # Window animations also where KWin draws in software (a virtual machine without 3D).
   install -Dm644 "$here/60-ozios-animations.conf" "$pkgdir/usr/lib/environment.d/60-ozios-animations.conf"
   install -Dm644 "$here/org.ozios.pkg.manage.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.pkg.manage.policy"
-  # Graphical apps: Software and Welcome, sharing the OziUi components.
+  # Graphical apps: Software, Welcome and Look, sharing the OziUi components.
   local apps="$pkgdir/usr/lib/ozios/apps"
   install -Dm644 "$src/apps/ozi_qt.py" "$apps/ozi_qt.py"
   install -Dm644 -t "$apps/OziUi" "$src"/apps/OziUi/*
@@ -145,11 +145,17 @@ package() {
   install -Dm644 "$src/apps/ozi-store/Main.qml" "$apps/ozi-store/Main.qml"
   install -Dm755 "$src/apps/ozi-welcome/ozi-welcome" "$apps/ozi-welcome/ozi-welcome"
   install -Dm644 "$src/apps/ozi-welcome/Main.qml" "$apps/ozi-welcome/Main.qml"
+  install -Dm755 "$src/apps/ozi-look/ozi-look" "$apps/ozi-look/ozi-look"
+  install -Dm644 "$src/apps/ozi-look/Main.qml" "$apps/ozi-look/Main.qml"
   install -d "$pkgdir/usr/bin"
   ln -s /usr/lib/ozios/apps/ozi-store/ozi-store "$pkgdir/usr/bin/ozi-store"
   ln -s /usr/lib/ozios/apps/ozi-welcome/ozi-welcome "$pkgdir/usr/bin/ozi-welcome"
+  ln -s /usr/lib/ozios/apps/ozi-look/ozi-look "$pkgdir/usr/bin/ozi-look"
   install -Dm644 "$src/apps/ozi-store.desktop" "$pkgdir/usr/share/applications/ozi-store.desktop"
   install -Dm644 "$src/apps/ozi-welcome.desktop" "$pkgdir/usr/share/applications/ozi-welcome.desktop"
+  # Look, and the card of keys that Meta+K opens.
+  install -Dm644 "$src/apps/ozi-look.desktop" "$pkgdir/usr/share/applications/ozi-look.desktop"
+  install -Dm644 "$src/apps/ozi-keys.desktop" "$pkgdir/usr/share/applications/ozi-keys.desktop"
   install -Dm644 "$src/apps/ozi-welcome-autostart.desktop" "$pkgdir/etc/xdg/autostart/ozi-welcome.desktop"
   # Named to sort after the CachyOS hook that writes os-release, so ours has the last word.
   install -Dm644 "$here/zz-ozios.hook" "$pkgdir/usr/share/libalpm/hooks/zz-ozios.hook"

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Shortcuts
+Name[tr]=Kısayollar
+Comment=The keys worth knowing on OziOS
+Comment[tr]=OziOS'ta bilmeye değer tuşlar
+Exec=ozi-look --keys
+Icon=input-keyboard
+Categories=Settings;DesktopSettings;
+Terminal=false
+StartupWMClass=ozi-keys
+X-KDE-Shortcuts=Meta+K

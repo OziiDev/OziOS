@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+"""Look: how the desktop looks and moves, in one window. With --keys it shows only
+the keys worth knowing, as a card (Meta+K opens it, through ozi-keys.desktop)."""
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+sys.path.insert(0, "/usr/lib/ozios/apps")
+
+import ozi_qt  # noqa: E402
+from PyQt6.QtCore import pyqtSlot  # noqa: E402
+from ozipkg import look  # noqa: E402
+
+
+class LookBackend(ozi_qt.Backend):
+    allowed = {
+        "state": (look.state, False),
+        "set": (look.set_value, False),
+        "preset": (look.apply_preset, False),
+    }
+
+    @pyqtSlot(result=str)
+    def page(self):
+        return "keys" if "--keys" in sys.argv else ""
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    keys = "--keys" in sys.argv
+    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), LookBackend(), "Shortcuts" if keys else "Look",
+                        "ozi-keys" if keys else "ozi-look"))

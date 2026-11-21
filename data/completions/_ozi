@@ -12,6 +12,7 @@ commands=(
   'rollback:list snapshots'
   'layout:panel layout'
   'theme:colours of the desktop'
+  'look:how windows look and move'
   'effects:window effects'
   'mode:game mode'
   'status:version, kernel, effects and updates'
@@ -33,6 +34,15 @@ case $words[2] in
   layout)  _values 'layout' default deck classic board ;;
   effects) _values 'level' full light off ;;
   theme)   _arguments '1:theme:(cyan aurora ember mint rose frost auto)' '2:state:(off)' '--day[with auto: by day]:theme:(cyan aurora ember mint rose frost)' '--night[with auto: at night]:theme:(cyan aurora ember mint rose frost)' '--json[machine-readable output]' ;;
+  look)
+    case $CURRENT in
+      3) _values 'setting' preset radius outline glow titlebar gaps tiling blur speed ;;
+      4) case $words[3] in
+           preset) _values 'preset' fluid tiling light ;;
+           glow|titlebar|tiling|blur) _values 'state' on off ;;
+           speed) _values 'speed' off fast normal relaxed ;;
+         esac ;;
+    esac ;;
   mode)    (( CURRENT == 3 )) && _values 'mode' game || _values 'state' on off ;;
   status)  _arguments '--json[machine-readable output]' ;;
   doctor)  _arguments '--json[machine-readable output]' '--quiet[only warnings and problems]' ;;

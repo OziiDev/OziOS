@@ -290,8 +290,15 @@ function toggle() {
     const space = currentSpace();
     if (!space)
         return;
-    space.on = !space.on;
-    if (space.on) {
+    setTiling(space, !space.on);
+    osd(space.on ? config.textOn : config.textOff);
+}
+
+function setTiling(space, on) {
+    if (space.on === on)
+        return;
+    space.on = on;
+    if (on) {
         takeAll(space);
     } else {
         for (const leaf of leaves(space.root)) {
@@ -313,7 +320,6 @@ function toggle() {
                 window.keepAbove = false;
         });
     }
-    osd(space.on ? config.textOn : config.textOff);
 }
 
 // Tile the open windows: the one in use first, the others spiralling in after it.
@@ -466,8 +472,16 @@ for (const signal of ["screensChanged", "virtualScreenGeometryChanged"]) {
     if (workspace[signal])
         workspace[signal].connect(retileAll);
 }
+// "Tile every desktop" switched in Look (or `ozi look tiling`): every desktop follows
+// at once, the ones already seen and the ones that have windows but were never tiled.
 options.configChanged.connect(() => {
+    const was = config.byDefault;
     readSettings();
+    if (config.byDefault !== was) {
+        spaces.forEach(space => setTiling(space, config.byDefault));
+        if (config.byDefault)
+            takeAll(null);
+    }
     retileAll();
 });
 
