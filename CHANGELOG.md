@@ -27,6 +27,12 @@ and is still as easy to use as Plasma. The plan is in `docs/PLAN-0.3.md`.
   The desktops are lights (`org.ozios.workspaces`): the one in use is a pill in
   the accent colours, desktops with windows are filled dots, and a click or the
   wheel switches. The clock (`org.ozios.clock`) opens a calendar.
+- While music plays in any player (MPRIS: browsers, music and video players),
+  the clock's island grows to show the track after three bars in the accent
+  colours; the bars dance for a few seconds when a track starts, then rest. A
+  click on the track pauses it, and the calendar shows the cover with buttons
+  to go back, pause and skip. In the C locale of the live session the calendar
+  named the weekdays 1 to 7; it now shows Mo, Tu, We.
 - Four desktops: Meta+1…4 switches, Meta+Ctrl+1…4 takes the window along.
 - Tiling (`ozios-tiling`, a KWin script): Meta+T tiles the windows of a desktop
   in a spiral of halves with gaps between them, and each new window takes half

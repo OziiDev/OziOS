@@ -27,6 +27,9 @@ from ozipkg import themes  # noqa: E402
 USER_ROLE = Qt.ItemDataRole.UserRole.value
 STATE = None          # what every `Plasmoid` attached object shows
 CALLS = []            # what the stand-ins were asked to do, for tests: (who, what, detail)
+MEDIA = None          # the media player Plasma's MPRIS model offers, or None
+# A track playing in the previews of the bar and the calendar.
+DEMO_TRACK = {"track": "Akış", "artist": "Ozi", "identity": "Elisa", "status": 2}
 
 
 def _settable(namespace, spec):
@@ -551,6 +554,57 @@ class Shell(QObject):
         return {"exit code": 0, "exit status": 0, "stdout": out, "stderr": ""}
 
 
+# --- org.kde.plasma.private.mpris ------------------------------------------------------------------
+
+class PlaybackStatus(QObject):
+    Status = pyqtEnum(enum.Enum("Status", {"Unknown": 0, "Stopped": 1, "Playing": 2, "Paused": 3}))
+
+
+class MprisPlayer(QObject):
+    """A media player as Plasma's MPRIS model shows it (PlayerContainer), as far as OziOS asks."""
+    changed = pyqtSignal()
+
+    def __init__(self, track="", artist="", art="", identity="", status=0, parent=None):
+        super().__init__(parent)
+        self._text = {"track": track, "artist": artist, "artUrl": art, "identity": identity}
+        self._status = status
+
+    track = pyqtProperty(str, lambda self: self._text["track"], notify=changed)
+    artist = pyqtProperty(str, lambda self: self._text["artist"], notify=changed)
+    artUrl = pyqtProperty(str, lambda self: self._text["artUrl"], notify=changed)
+    identity = pyqtProperty(str, lambda self: self._text["identity"], notify=changed)
+    playbackStatus = pyqtProperty(int, lambda self: self._status, notify=changed)
+    canControl = pyqtProperty(bool, lambda self: True, constant=True)
+    canGoNext = pyqtProperty(bool, lambda self: True, constant=True)
+    canGoPrevious = pyqtProperty(bool, lambda self: True, constant=True)
+
+    def play(self, track):
+        """Another track starts, as when a player moves on by itself."""
+        self._text["track"] = track
+        self._status = 2
+        self.changed.emit()
+
+    @pyqtSlot()
+    def PlayPause(self):
+        CALLS.append(("mpris", "play-pause", self._text["track"]))
+        self._status = 3 if self._status == 2 else 2
+        self.changed.emit()
+
+    @pyqtSlot()
+    def Next(self):
+        CALLS.append(("mpris", "next", self._text["track"]))
+
+    @pyqtSlot()
+    def Previous(self):
+        CALLS.append(("mpris", "previous", self._text["track"]))
+
+
+class Mpris2Model(QObject):
+    """Plasma's model of the session's media players; OziOS uses only its current player."""
+    currentPlayerChanged = pyqtSignal()
+    currentPlayer = pyqtProperty(QObject, lambda self: MEDIA, notify=currentPlayerChanged)
+
+
 # --- putting it together ---------------------------------------------------------------------------
 
 def _url(*parts):
@@ -581,8 +635,10 @@ def register():
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.plasma.components", 3, 0, name)
     for name in ("Theme", "Units"):
         qmlRegisterSingletonType(_url("kirigami", name + ".qml"), "org.kde.kirigami", 2, 0, name)
-    for name in ("Icon", "Separator"):
+    for name in ("Icon", "Separator", "ShadowedImage"):
         qmlRegisterType(_url("kirigami", name + ".qml"), "org.kde.kirigami", 2, 0, name)
+    qmlRegisterType(Mpris2Model, "org.kde.plasma.private.mpris", 1, 0, "Mpris2Model")
+    qmlRegisterType(PlaybackStatus, "org.kde.plasma.private.mpris", 1, 0, "PlaybackStatus")
     # Not Kirigami.Avatar: that left Kirigami in Frameworks 6, and a stand-in for a type the real
     # module lacks hides the error a Plasma session shows.
     qmlRegisterType(_url("kirigami", "Avatar.qml"), "org.kde.kirigamiaddons.components", 1, 0, "Avatar")
@@ -608,9 +664,12 @@ def theme_colors(theme_id):
 class Session:
     """One preview or test: the shared plasmoid state, the fake shell, and the theme applied to an engine."""
 
-    def __init__(self, theme_id="cyan", config=None, form_factor=2, location=4, animations=True):
+    def __init__(self, theme_id="cyan", config=None, form_factor=2, location=4, animations=True, media=None):
+        global MEDIA
         register()
         CALLS.clear()
+        MEDIA = MprisPlayer(**media) if media else None
+        self.media = MEDIA
         STATE.reset(config or {}, form_factor, location)
         self.state = STATE
         self.theme_id = theme_id

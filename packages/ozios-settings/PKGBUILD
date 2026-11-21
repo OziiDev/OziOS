@@ -64,7 +64,7 @@ package() {
   local applet file
   for applet in org.ozios.control org.ozios.workspaces org.ozios.clock; do
     install -Dm644 "$src/desktop/plasmoids/$applet/metadata.json" "$pkgdir/usr/share/plasma/plasmoids/$applet/metadata.json"
-    install -Dm644 "$src/desktop/plasmoids/$applet/contents/ui/main.qml" "$pkgdir/usr/share/plasma/plasmoids/$applet/contents/ui/main.qml"
+    install -Dm644 -t "$pkgdir/usr/share/plasma/plasmoids/$applet/contents/ui" "$src/desktop/plasmoids/$applet"/contents/ui/*.qml
   done
 
   # The OziOS shell: the dock and the launcher, the Plasma style their frames are

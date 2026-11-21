@@ -1123,6 +1123,12 @@ class ShellInQt(unittest.TestCase):
         self.assertEqual(bar["after_wheel_down"], [False, False, False, True])
         self.assertEqual(bar["after_three_up"], [True, False, False, False])
         self.assertTrue(any(":" in text for text in bar["clock"]))       # the time
+        self.assertTrue(bar["music_visible"])                            # a track plays in the preview
+        self.assertTrue(bar["dancing_at_start"])
+        self.assertEqual(bar["music_click"], [["mpris", "play-pause", "Akış"]])
+        self.assertFalse(bar["dancing_when_paused"])
+        self.assertTrue(bar["dancing_on_new_track"])
+        self.assertIn("Gece", bar["track_shown"])
 
         calendar = result["calendar"]
         self.assertEqual(calendar["cells"], 42)
@@ -1130,6 +1136,13 @@ class ShellInQt(unittest.TestCase):
         self.assertIn(calendar["in_month"], (28, 29, 30, 31))
         self.assertNotEqual(calendar["two_months_on"], calendar["month"])
         self.assertEqual(calendar["today_after"], [])                    # today is not in that month
+        self.assertEqual(calendar["day_names"]["en_US"], ["S", "M", "T", "W", "T", "F", "S"])
+        self.assertEqual(calendar["day_names"]["tr_TR"], ["P", "S", "Ç", "P", "C", "C", "P"])
+        self.assertEqual(calendar["day_names"]["C"], ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"])   # not 1..7
+        self.assertTrue(calendar["now_playing"])
+        self.assertEqual(calendar["now_playing_text"][:2], ["Akış", "Ozi"])
+        self.assertEqual(calendar["media_buttons"], [["mpris", "previous", "Akış"], ["mpris", "play-pause", "Akış"],
+                                                     ["mpris", "next", "Akış"]])
 
         switcher = result["switcher"]
         self.assertTrue(switcher["popup"])

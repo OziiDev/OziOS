@@ -250,7 +250,8 @@ def open_scene(engine, scene, theme_id, folder, still=False):
     """Load a scene's harness with the real package in it; returns the shown view, or None."""
     # One engine for every scene: the `Plasmoid` stand-in is a singleton object, and Qt
     # lets such an object belong to one engine only.
-    session = plasma_stubs.Session(theme_id, config=CONFIG, animations=not still)
+    session = plasma_stubs.Session(theme_id, config=CONFIG, animations=not still,
+                                   media=plasma_stubs.DEMO_TRACK if scene in ("bar", "calendar") else None)
     QGuiApplication.setPalette(palette(theme_id))      # the stand-in controls draw with it
     engine.clearComponentCache()
     view = QQuickView(engine, None)

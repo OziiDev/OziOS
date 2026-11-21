@@ -24,7 +24,7 @@ ister, sürücü, çoklu monitör, HDR ve erişilebilirlik işi yıllar sürer. 
 | Küçültme `ozios_minimize` | `kwin/effects/ozios_minimize` | Pencere dock'taki simgesine süzülür, oradan geri çıkar. |
 | Döşeme `ozios-tiling` | `kwin/scripts/ozios-tiling` | Meta+T masaüstünü yarımlar sarmalında döşer (kenarda 12, arada 10 piksel); her yeni pencere kullanılanın yarısını alır. Sürükleyince yer değişir, kenardan çekince çizgi kayar; Meta+F pencereyi serbest bırakır. |
 | Masaüstleri `org.ozios.workspaces` | `plasmoids/org.ozios.workspaces` | Soldaki adada dört masaüstü ışık olarak: kullanılan vurgu renklerinde hap, pencereli olanlar dolu nokta. Tık veya tekerlek değiştirir; Meta+1…4. |
-| Saat `org.ozios.clock` | `plasmoids/org.ozios.clock` | Ortadaki adada saat ve tarih; tıklayınca takvim. |
+| Saat `org.ozios.clock` | `plasmoids/org.ozios.clock` | Ortadaki adada saat ve tarih; tıklayınca takvim. Bir çalarda müzik çalarken (MPRIS) ada büyür: vurgu renginde üç çubuk ve şarkının adı; tıklayınca durur. Takvimin altında kapak, geri, durdur, ileri. Müzik kısmı ayrı yüklenir (`NowPlaying.qml`): Plasma'nın özel modülü değişirse saat yerinde kalır. |
 | Görünüm `ozi-look` | `apps/ozi-look` | Hazır stiller (Akıcı, Döşeme, Hafif) ve tek tek ayarlar: köşe, kenar, ışıltı, başlık çubuğu, boşluk, döşeme, hız, bulanıklık; her değişiklik hemen görünür. `ozi-look --keys` Meta+K kısayol kartıdır. |
 
 ## Optimizasyon kuralları
@@ -45,6 +45,8 @@ ister, sürücü, çoklu monitör, HDR ve erişilebilirlik işi yıllar sürer. 
   çerçeveler `tools/plasma_style.py` ile Plasma'nın çizdiği gibi SVG'den çizilir.
 - `python3 tools/shell-drive.py`: uygulamacıklara gerçek fare ve klavye olaylarıyla tıklar,
   yazar, üstüne gelir ve Plasma'dan ne istediklerini JSON olarak yazar.
+- `python3 tools/fake-mpris.py`: bir Plasma oturumunda müzik çalıyormuş gibi yapan sahte bir
+  çalar (MPRIS); saatin müzik kısmını gerçek bir çalar olmadan denemek için.
 - Uygulamalar: `OZIOS_THEME=frost python3 tools/qml-shot.py apps/ozi-welcome shot:x.png`.
 
 ## Durum

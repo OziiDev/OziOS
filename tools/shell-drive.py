@@ -255,30 +255,74 @@ def drive_bar(engine, folder):
     labels = [o for o in visual_tree(view.rootObject()) if "Label" in o.metaObject().className()
               or o.metaObject().className().startswith("QQuickText")]
     out["clock"] = [o.property("text") for o in labels if o.property("text")]
+
+    # A track plays: its bars and title follow the date, and a click on them pauses.
+    tree = visual_tree(view.rootObject())
+    music = [o for o in tree if o.objectName() == "music"]
+    bars = [o for o in tree if o.objectName() == "bars"]
+    out["music_visible"] = bool(music) and music[0].isVisible()
+    if music and bars:
+        out["dancing_at_start"] = bool(bars[0].property("dancing"))
+        plasma_stubs.CALLS.clear()
+        click(view, music[0])
+        QTest.qWait(100)
+        out["music_click"] = calls()
+        out["dancing_when_paused"] = bool(bars[0].property("dancing"))
+        view.session.media.play("Gece")              # the player moves on to another track
+        QTest.qWait(100)
+        out["dancing_on_new_track"] = bool(bars[0].property("dancing"))
+        out["track_shown"] = [o.property("text") for o in visual_tree(music[0]) if o.property("text")]
     view.close()
     return out
 
 
+def day_names(engine, folder, locale):
+    """The calendar's weekday row in a locale."""
+    saved = QLocale()
+    QLocale.setDefault(locale)
+    try:
+        view = preview.open_scene(engine, "calendar", "cyan", folder)
+        QTest.qWait(200)
+        names = [o.property("text") for o in visual_tree(view.rootObject()) if o.objectName() == "dayName"]
+        view.close()
+    finally:
+        QLocale.setDefault(saved)
+    return names
+
+
 def drive_calendar(engine, folder):
+    out_names = {"en_US": day_names(engine, folder, QLocale("en_US")), "tr_TR": day_names(engine, folder, QLocale("tr_TR")),
+                 "C": day_names(engine, folder, QLocale.c())}
     view = preview.open_scene(engine, "calendar", "cyan", folder)
     QTest.qWait(500)
     tree = visual_tree(view.rootObject())
     cells = [o for o in tree if o.property("inMonth") is not None]
     out = {"cells": len(cells),
            "today": [o.property("index") for o in cells if o.property("today")],
-           "in_month": sum(1 for o in cells if o.property("inMonth"))}
+           "in_month": sum(1 for o in cells if o.property("inMonth")),
+           "day_names": out_names}
     popup = [o for o in tree if o.property("shown") is not None]
     if popup:
         out["month"] = popup[0].property("shown").toString("yyyy-MM") if hasattr(popup[0].property("shown"), "toString") else str(popup[0].property("shown"))
-    buttons = [o for o in tree if "ToolButton" in o.metaObject().className()]
-    buttons.sort(key=lambda o: o.mapToScene(QPointF(0, 0)).x())
-    if len(buttons) >= 2 and popup:
-        click(view, buttons[1])                  # next month
-        click(view, buttons[1])
+    named = {o.objectName(): o for o in tree if o.objectName()}
+    if "nextMonth" in named and popup:
+        click(view, named["nextMonth"])
+        click(view, named["nextMonth"])
         shown = popup[0].property("shown")
         out["two_months_on"] = shown.toString("yyyy-MM") if hasattr(shown, "toString") else str(shown)
         tree = visual_tree(view.rootObject())
         out["today_after"] = [o.property("index") for o in tree if o.property("today")]
+
+    # The player under the calendar: back, pause and skip reach the player.
+    card = named.get("nowPlaying")
+    out["now_playing"] = bool(card) and card.isVisible()
+    if card:
+        out["now_playing_text"] = [o.property("text") for o in visual_tree(card)
+                                   if "Label" in o.metaObject().className() and o.property("text")]
+        plasma_stubs.CALLS.clear()
+        for name in ("mediaPrevious", "mediaToggle", "mediaNext"):
+            click(view, named[name])
+        out["media_buttons"] = calls()
     view.close()
     return out
 
