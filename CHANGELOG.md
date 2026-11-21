@@ -58,6 +58,14 @@ and is still as easy to use as Plasma. The plan is in `docs/PLAN-0.3.md`.
   Meta+Shift+T.
 - Each theme's second colour, used by the glow, the desktop pill and today in
   the calendar, leans toward violet: cyan goes blue, ember pink, mint blue.
+- Welcome points to Look and to the keys card, next to getting software.
+- The installer no longer gives up when the network drops while it downloads
+  the base system. A few seconds without a network (Wi-Fi that drops, a router
+  that restarts) failed every mirror at once and ended the installation with
+  "Failed to run pacstrap". pacstrap now runs through `retry-download`, which
+  waits until a mirror answers again and carries on where the download stopped,
+  up to four tries; the files already downloaded are kept. Any other failure
+  still stops the installation at once.
 - Tested in KWin 6.7.4 in VirtualBox: the islands, the desktop keys and the
   slide; tiling on and off, new windows, floating, dragging and resizing; and
   Look in Turkish with its Tiling preset.

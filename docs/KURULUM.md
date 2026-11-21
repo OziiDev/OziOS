@@ -10,6 +10,8 @@ gerçek donanımda henüz denenmedi. Bilgisayardaki önemli dosyalarının yede�
 - 8 GB ya da daha büyük bir USB bellek.
 - Kurulum sırasında internet. Kurucu sistemi çalışırken indirir (yaklaşık 2 GB);
   kablo ya da canlı masaüstünden bağlanabileceğin bir Wi-Fi ağı gerekir.
+  İndirme sırasında bağlantı bir süre koparsa kurucu onu bekler ve kaldığı
+  yerden devam eder.
 
 ## 1. ISO'yu USB belleğe koy
 

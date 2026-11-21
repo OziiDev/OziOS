@@ -1,0 +1,27 @@
+#!/usr/bin/python3 -I
+"""Run a download command, and run it again when the network drops out under it.
+
+    retry-download COMMAND [ARGUMENT...]
+
+The installer runs pacstrap through this. The rules live in ozipkg/retry.py.
+If they cannot be loaded, the command runs once, as it would without this.
+"""
+import os
+import sys
+
+sys.path.insert(0, "/usr/lib/ozios/python")
+
+
+def main():
+    try:
+        from ozipkg import retry
+    except Exception as err:               # never stand between the installer and its download
+        print("retry-download: %s" % err, file=sys.stderr)
+        if len(sys.argv) < 2:
+            return 2
+        os.execvp(sys.argv[1], sys.argv[1:])
+    return retry.main(sys.argv[1:])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

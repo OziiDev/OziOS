@@ -323,10 +323,66 @@ class BaseSystem(unittest.TestCase):
             os.makedirs(os.path.join(base, "modules", "pacstrap"))
             path = os.path.join(base, "modules", "pacstrap", "main.py")
             with open(path, "w", encoding="utf-8") as fh:
-                fh.write(PACSTRAP_MODULE)
+                fh.write(PACSTRAP_MODULE + PACSTRAP_RUN_MODULE)
             self.assertIn(path, installer.apply(bases=(base,), etc=base))
             with open(path, encoding="utf-8") as fh:
-                self.assertNotIn("linux-cachyos", fh.read())
+                text = fh.read()
+            self.assertNotIn("linux-cachyos", text)
+            self.assertIn(installer.RETRY, text)
+
+
+# How the stock module runs pacstrap (CachyOS's pacstrap/main.py, shortened).
+PACSTRAP_RUN_MODULE = '''\
+import os
+import subprocess
+
+
+def install(root_mount_point, base_packages, run_in_host):
+    # run the pacstrap
+    pacstrap_command = ["/etc/calamares/scripts/pacstrap_calamares", "-c", root_mount_point] + base_packages
+
+    try:
+        run_in_host(pacstrap_command, None)
+    except subprocess.CalledProcessError as cpe:
+        return "Failed to run pacstrap", "Pacstrap failed with error {!s}".format(cpe.stderr)
+    return None
+'''
+
+
+class BaseSystemDownload(unittest.TestCase):
+    """A network that drops during the base system download no longer stops the installation."""
+
+    def command(self, text, wrapper_there=True):
+        from unittest import mock
+        names = {}
+        exec(compile(text, "main.py", "exec"), names)
+        ran = []
+        real = os.path.exists
+        with mock.patch("os.path.exists", lambda p: wrapper_there if p == installer.RETRY else real(p)):
+            names["install"]("/tmp/calamares-root", ["base", "linux-firmware"], lambda cmd, cb: ran.append(cmd))
+        return ran[0]
+
+    STOCK = ["/etc/calamares/scripts/pacstrap_calamares", "-c", "/tmp/calamares-root", "base", "linux-firmware"]
+
+    def test_the_stock_module_runs_pacstrap_once(self):
+        self.assertEqual(self.command(PACSTRAP_RUN_MODULE), self.STOCK)
+
+    def test_the_rewritten_module_runs_it_through_the_wrapper(self):
+        out = installer.patch_pacstrap_module(PACSTRAP_RUN_MODULE)
+        self.assertEqual(self.command(out), [installer.RETRY] + self.STOCK)
+
+    def test_without_the_wrapper_it_runs_pacstrap_as_before(self):
+        out = installer.patch_pacstrap_module(PACSTRAP_RUN_MODULE)
+        self.assertEqual(self.command(out, wrapper_there=False), self.STOCK)
+
+    def test_idempotent(self):
+        once = installer.patch_pacstrap_module(PACSTRAP_RUN_MODULE)
+        self.assertEqual(once.count(installer.RETRY), 1)
+        self.assertEqual(installer.patch_pacstrap_module(once), once)
+
+    def test_a_module_of_another_shape_is_left_alone(self):
+        other = 'pacstrap_command = ["pacstrap", "-c", root]\n'
+        self.assertEqual(installer.patch_pacstrap_module(other), other)
 
 
 LIMINE_MODULE = '''\

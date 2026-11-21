@@ -11,7 +11,8 @@ anything on the computer you care about.
 - A USB stick of 8 GB or more.
 - An internet connection during the installation. The installer downloads the
   system while it works (about 2 GB), so a cable or a Wi-Fi network you can
-  join from the live desktop is required.
+  join from the live desktop is required. If the connection drops for a while
+  during the download, the installer waits for it and carries on.
 
 ## 1. Put the ISO on a USB stick
 
