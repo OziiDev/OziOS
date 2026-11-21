@@ -111,6 +111,10 @@ UNWANTED = re.compile(
 
 # Packages the installer's own pacstrap module adds in code, whatever the package list says.
 PACSTRAP_ADDS = re.compile(r'"(?:linux-cachyos[\w.+-]*|cachyos-grub-theme)"\s*,?\s*')
+# The command that downloads and installs the base system, and what runs it again when the network
+# drops (ozipkg/retry.py). The module only uses the wrapper when it is there.
+PACSTRAP_RUN = re.compile(r'(pacstrap_command\s*=\s*)\[(\s*"/etc/calamares/scripts/pacstrap_calamares")')
+RETRY = "/usr/lib/ozios/retry-download"
 # The empty group the boot loader module writes first into limine.conf.
 LIMINE_STUB = re.compile(r'config_file\.write\(f?"/\+CachyOS\\n"\)')
 
@@ -278,8 +282,14 @@ def patch_packagechooser_bootloader(text):
 
 def patch_pacstrap_module(text):
     """The module that installs the base system names the CachyOS kernels, their headers and, for GRUB,
-    a CachyOS theme in its code. Take them out: the OziOS kernel is put in by our own early step."""
-    return PACSTRAP_ADDS.sub("", text)
+    a CachyOS theme in its code. Take them out: the OziOS kernel is put in by our own early step.
+
+    It also gave up the whole installation when the network dropped for a moment in the middle of the
+    download. It now runs pacstrap through retry-download, which waits for the network and goes on."""
+    text = PACSTRAP_ADDS.sub("", text)
+    if RETRY not in text:
+        text = PACSTRAP_RUN.sub(r'\1[p for p in ["%s"] if os.path.exists(p)] + [\2' % RETRY, text)
+    return text
 
 
 def patch_bootloader_module(text):

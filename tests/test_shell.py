@@ -45,7 +45,7 @@ class Scripts(unittest.TestCase):
             self.assertEqual(done.returncode, 0, "%s: %s" % (path, done.stderr))
 
     def test_scripts_that_are_installed_start_with_a_shebang(self):
-        for name in ("first-login", "identity", "install-to-target", "start-installer", "patch-installer"):
+        for name in ("first-login", "identity", "install-to-target", "start-installer", "patch-installer", "retry-download"):
             with open(os.path.join(ROOT, "packages", "ozios-settings", name), "rb") as fh:
                 self.assertTrue(fh.read(2) == b"#!", name)
 

@@ -13,7 +13,7 @@ src="${1:-/mnt/ozios}"
 
 cp -r "$src/python/ozipkg/." /usr/lib/ozios/python/ozipkg/
 find /usr/lib/ozios/python -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
-for f in identity patch-installer install-to-target first-login start-installer ozi-pkg-helper tidy-menu; do
+for f in identity patch-installer install-to-target first-login start-installer ozi-pkg-helper tidy-menu retry-download; do
   install -m755 "$src/packages/ozios-settings/$f" "/usr/lib/ozios/$f"
 done
 install -Dm644 "$src/packages/ozios-settings/zz-ozios-menu.hook" /usr/share/libalpm/hooks/zz-ozios-menu.hook

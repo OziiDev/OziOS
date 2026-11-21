@@ -29,6 +29,7 @@ check "installer's driver step does not stop the installation" 'grep -q "ozios_c
 check "installer package list has no CachyOS kernels" '! grep -q "linux-cachyos" /etc/calamares/modules/netinstall.yaml'
 check "installer uses only the local package list" '! grep -q "https://" /etc/calamares/modules/netinstall.conf'
 check "installer's base system adds no CachyOS kernel or theme" '! grep -qE "\"(linux-cachyos|cachyos-grub-theme)" /usr/lib/calamares/modules/pacstrap/main.py'
+check "installer tries the base system download again when the network drops" 'grep -q "/usr/lib/ozios/retry-download" /usr/lib/calamares/modules/pacstrap/main.py && test -x /usr/lib/ozios/retry-download'
 check "installer does not offer ZFS as a root file system" '! grep -q "^ *availableFileSystemTypes:.*zfs" /etc/calamares/modules/partition.conf'
 check "installer branding files are installed" 'test -f /usr/share/calamares/branding/ozios/branding.desc && test -f /usr/share/calamares/branding/ozios/logo.png'
 check "GRUB theme and boot splash are installed" 'test -f /usr/share/grub/themes/ozios/theme.txt && test -f /usr/share/ozios/branding/limine-splash.png'
