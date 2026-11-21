@@ -757,6 +757,243 @@ class Scripts(unittest.TestCase):
             self.assertEqual(done.returncode, 0, path + "\n" + done.stderr)
 
 
+# --- the tiling script, in a stand-in for KWin's scripting world ---------------------------
+
+TILING_HARNESS = r"""
+// Stand-in for KWin's scripting world, enough for ozios-tiling: a screen, four desktops,
+// windows with the properties and signals the script reads, and a record of what it did.
+const fs = require("fs");
+const signal = () => { const s = []; return { connect: f => s.push(f), emit: (...a) => s.forEach(f => f(...a)) }; };
+const settings = JSON.parse(process.argv[3] || "{}");
+const log = { osd: [], shortcuts: {} };
+const screen = { name: "Virtual-1" };
+const desktops = [1, 2, 3, 4].map(n => ({ id: "desktop-" + n, name: String(n) }));
+const area = { x: 0, y: 40, width: 1280, height: 760 };
+global.KWin = { MaximizeArea: 2, FullArea: 4 };
+global.readConfig = (key, fallback) => (key in settings ? settings[key] : fallback);
+global.registerShortcut = (name, text, keys, fn) => { log.shortcuts[name] = { keys: keys, fn: fn }; };
+global.callDBus = (...args) => log.osd.push(args);
+global.options = { configChanged: signal() };
+const windows = [];
+global.workspace = {
+    activeScreen: screen, currentDesktop: desktops[0], activeWindow: null, cursorPos: { x: 0, y: 0 },
+    currentDesktopForScreen: () => workspace.currentDesktop,
+    get stackingOrder() { return windows.slice(); },
+    windowList: () => windows.slice(),
+    clientArea: () => Object.assign({}, area),
+    windowAdded: signal(), windowRemoved: signal(), screensChanged: signal(), virtualScreenGeometryChanged: signal(),
+};
+let serial = 0;
+const win = extra => {
+    const w = Object.assign({
+        internalId: "{w" + (++serial) + "}", caption: "Window " + serial, resourceClass: "app" + serial,
+        normalWindow: true, transient: false, dialog: false, specialWindow: false, skipTaskbar: false, deleted: false,
+        onAllDesktops: false, resizeable: true, moveable: true, minimized: false, fullScreen: false, maximizeMode: 0,
+        move: false, resize: false, keepAbove: false, output: screen, desktops: [desktops[0]],
+        frameGeometry: { x: 100 + 20 * serial, y: 100 + 20 * serial, width: 700, height: 500 },
+        minimizedChanged: signal(), desktopsChanged: signal(), outputChanged: signal(), maximizedChanged: signal(),
+        fullScreenChanged: signal(), interactiveMoveResizeStarted: signal(), interactiveMoveResizeFinished: signal(),
+        frameGeometryChanged: signal(),
+        setMaximize(v, h) { this.maximizeMode = (v ? 1 : 0) | (h ? 2 : 0); this.maximizedChanged.emit(); },
+    }, extra || {});
+    return w;
+};
+// Open a window the way KWin does: it is added, then it becomes the active one on top.
+const open = extra => {
+    const w = win(extra);
+    windows.push(w);
+    workspace.windowAdded.emit(w);
+    workspace.activeWindow = w;
+    return w;
+};
+const close = w => {
+    windows.splice(windows.indexOf(w), 1);
+    w.deleted = true;
+    workspace.windowRemoved.emit(w);
+    if (workspace.activeWindow === w)
+        workspace.activeWindow = windows[windows.length - 1] || null;
+};
+const g = w => { const f = w.frameGeometry; return [f.x, f.y, f.width, f.height]; };
+const press = name => log.shortcuts[name].fn();
+const load = () => eval(fs.readFileSync(process.argv[2], "utf8"));
+const out = {};
+"""
+
+TILING_SCRIPT = r"""
+load();
+out.shortcuts = Object.fromEntries(Object.entries(log.shortcuts).map(([k, v]) => [k, v.keys]));
+const w1 = open(), w2 = open();
+out.untouched = [g(w1), g(w2)];
+press("OziOS Tiling Toggle");
+out.on = [g(w1), g(w2)];
+out.osd = log.osd.map(c => c.slice(3));
+const w3 = open();
+out.third = [g(w1), g(w2), g(w3)];
+const dialog = open({ dialog: true, frameGeometry: { x: 300, y: 300, width: 400, height: 200 } });
+const elsewhere = open({ desktops: [desktops[1]], frameGeometry: { x: 50, y: 60, width: 500, height: 400 } });
+const everywhere = open({ onAllDesktops: true, desktops: [], frameGeometry: { x: 70, y: 80, width: 300, height: 300 } });
+out.left_alone = [g(dialog), g(elsewhere), g(everywhere)];
+out.after_extra = [g(w1), g(w2), g(w3)];
+close(dialog); close(elsewhere); close(everywhere);
+workspace.activeWindow = w3;
+close(w2);
+out.closed = [g(w1), g(w3)];
+// Drag w3 (left) onto w1 (right): they swap.
+w3.move = true; w3.interactiveMoveResizeStarted.emit();
+w3.frameGeometry = { x: 700, y: 200, width: 623, height: 736 };
+workspace.cursorPos = { x: 900, y: 300 };
+w3.move = false; w3.interactiveMoveResizeFinished.emit();
+out.swapped = [g(w1), g(w3)];
+// Drag w1 (now left) wider by its right edge: the line between them moves.
+w1.resize = true; w1.interactiveMoveResizeStarted.emit();
+w1.frameGeometry = { x: 12, y: 52, width: 823, height: 736 };
+w1.resize = false; w1.interactiveMoveResizeFinished.emit();
+out.resized = [g(w1), g(w3)];
+// Meta+F: w3 floats above, at its old size in the middle; again, and it is tiled once more.
+workspace.activeWindow = w3;
+press("OziOS Tiling Float");
+out.floated = { w1: g(w1), w3: g(w3), above: w3.keepAbove };
+press("OziOS Tiling Float");
+out.unfloated = { w1: g(w1), w3: g(w3), above: w3.keepAbove };
+// Minimised windows leave their tile and come back to one.
+w1.minimized = true; w1.minimizedChanged.emit();
+out.minimized = g(w3);
+w1.minimized = false; w1.minimizedChanged.emit();
+out.restored = [g(w1), g(w3)];
+// A maximised window keeps its place while the others are tiled, and returns to its tile after.
+w3.maximizeMode = 3; w3.frameGeometry = { x: 0, y: 40, width: 1280, height: 760 };
+const w4 = open();
+out.while_maximized = { w3: g(w3), w4: g(w4) };
+w3.maximizeMode = 0; w3.maximizedChanged.emit();
+out.after_maximized = [g(w1), g(w3), g(w4)];
+// A program that resizes itself is put back, until it insists.
+const tiled = g(w4);
+let puts = 0;
+for (let i = 0; i < 7; i++) {
+    w4.frameGeometry = { x: 10, y: 10, width: 300, height: 200 };
+    w4.frameGeometryChanged.emit();
+    if (g(w4).join() === tiled.join()) puts++;
+}
+out.corrections = puts;
+// Meta+T again: the windows go back to where they were before tiling.
+press("OziOS Tiling Toggle");
+out.off = { w1: g(w1), w3: g(w3), osd: log.osd[log.osd.length - 1].slice(3) };
+out.calls = log.osd.map(c => c.slice(0, 4));
+console.log(JSON.stringify(out));
+"""
+
+TILING_BY_DEFAULT = r"""
+const w1 = win(), w2 = win(), w3 = win();
+windows.push(w1, w2, w3);
+workspace.activeWindow = w3;
+load();
+out.spiral = [g(w3), g(w2), g(w1)];
+console.log(JSON.stringify(out));
+"""
+
+TILING_PANELS = r"""
+// Floating islands at the top: KWin reserves 40 pixels, their windows reach down to 48.
+// The dock at the bottom hides from windows and reserves nothing; it does not count.
+windows.push(win({ dock: true, normalWindow: false, frameGeometry: { x: 0, y: 0, width: 127, height: 48 } }),
+             win({ dock: true, normalWindow: false, frameGeometry: { x: 1076, y: 0, width: 204, height: 48 } }),
+             win({ dock: true, normalWindow: false, frameGeometry: { x: 466, y: 719, width: 348, height: 81 } }));
+load();
+const w1 = open();
+press("OziOS Tiling Toggle");
+out.alone = g(w1);
+console.log(JSON.stringify(out));
+"""
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class Tiling(unittest.TestCase):
+    script = os.path.join(DESKTOP, "kwin", "scripts", "ozios-tiling", "contents", "code", "main.js")
+
+    def run_with(self, scenario, settings=None):
+        with tempfile.TemporaryDirectory() as folder:
+            harness = os.path.join(folder, "harness.js")
+            with open(harness, "w", encoding="utf-8") as fh:
+                fh.write(TILING_HARNESS + scenario)
+            done = subprocess.run([NODE, harness, self.script, json.dumps(settings or {})],
+                                  capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return json.loads(done.stdout)
+
+    def test_windows_spiral_into_halves_with_gaps(self):
+        out = self.run_with(TILING_SCRIPT)
+        self.assertEqual(out["shortcuts"], {"OziOS Tiling Toggle": "Meta+T", "OziOS Tiling Float": "Meta+F"})
+        self.assertEqual(out["untouched"], [[120, 120, 700, 500], [140, 140, 700, 500]])   # off until Meta+T
+        # The screen's usable part is 0,40 1280x760: 12 at the edges, 10 between windows,
+        # the window in use on the left.
+        self.assertEqual(out["on"], [[645, 52, 623, 736], [12, 52, 623, 736]])
+        self.assertEqual(out["osd"], [["showText", "view-grid", "Tiling on"]])
+        # A new window takes half of the one in use: the left one, split top and bottom.
+        self.assertEqual(out["third"], [[645, 52, 623, 736], [12, 52, 623, 363], [12, 425, 623, 363]])
+        self.assertEqual(out["closed"], [[645, 52, 623, 736], [12, 52, 623, 736]])
+
+    def test_dialogs_and_other_desktops_are_left_alone(self):
+        out = self.run_with(TILING_SCRIPT)
+        self.assertEqual(out["left_alone"], [[300, 300, 400, 200], [50, 60, 500, 400], [70, 80, 300, 300]])
+        self.assertEqual(out["after_extra"], out["third"])
+
+    def test_dragging_swaps_and_resizing_moves_the_line(self):
+        out = self.run_with(TILING_SCRIPT)
+        self.assertEqual(out["swapped"], [[12, 52, 623, 736], [645, 52, 623, 736]])
+        self.assertEqual(out["resized"], [[12, 52, 823, 736], [845, 52, 423, 736]])
+
+    def test_a_window_can_float_and_come_back(self):
+        out = self.run_with(TILING_SCRIPT)
+        self.assertEqual(out["floated"], {"w1": [12, 52, 1256, 736], "w3": [290, 170, 700, 500], "above": True})
+        self.assertEqual(out["unfloated"], {"w1": [12, 52, 623, 736], "w3": [645, 52, 623, 736], "above": False})
+
+    def test_minimised_and_maximised_windows(self):
+        out = self.run_with(TILING_SCRIPT)
+        self.assertEqual(out["minimized"], [12, 52, 1256, 736])
+        self.assertEqual(out["restored"], [[645, 52, 623, 736], [12, 52, 623, 736]])
+        self.assertEqual(out["while_maximized"], {"w3": [0, 40, 1280, 760], "w4": [12, 425, 623, 363]})
+        self.assertEqual(out["after_maximized"], [[645, 52, 623, 736], [12, 52, 623, 363], [12, 425, 623, 363]])
+
+    def test_a_program_resizing_itself_is_put_back_a_few_times(self):
+        self.assertEqual(self.run_with(TILING_SCRIPT)["corrections"], 4)
+
+    def test_off_again_puts_the_windows_back(self):
+        out = self.run_with(TILING_SCRIPT)
+        self.assertEqual(out["off"], {"w1": [120, 120, 700, 500], "w3": [290, 170, 700, 500],
+                                      "osd": ["showText", "view-grid", "Tiling off"]})
+        self.assertEqual({tuple(c) for c in out["calls"]},
+                         {("org.kde.plasmashell", "/org/kde/osdService", "org.kde.osdService", "showText")})
+
+    def test_settings_gaps_text_and_tiling_from_the_start(self):
+        out = self.run_with(TILING_BY_DEFAULT, {"TileByDefault": True, "Gap": 0, "OuterGap": 0})
+        # No gaps: the window in use takes the left half, the others spiral after it.
+        self.assertEqual(out["spiral"], [[0, 40, 640, 760], [640, 40, 640, 380], [640, 420, 640, 380]])
+        out = self.run_with(TILING_SCRIPT, {"TextOn": "Döşeme açık", "TextOff": "Döşeme kapalı"})
+        self.assertEqual(out["osd"], [["showText", "view-grid", "Döşeme açık"]])
+        self.assertEqual(out["off"]["osd"], ["showText", "view-grid", "Döşeme kapalı"])
+
+    def test_the_gap_is_kept_from_a_floating_island_not_from_its_strip(self):
+        out = self.run_with(TILING_PANELS)
+        self.assertEqual(out["alone"], [12, 60, 1256, 728])
+
+    def test_apply_branding_turns_it_on_and_hands_it_meta_t(self):
+        text = read("tools", "apply-branding.sh")
+        self.assertIn("--group Plugins --key ozios-tilingEnabled true", text)
+        self.assertIn("org.kde.kwin.Scripting.isScriptLoaded ozios-tiling", text)
+        # KWin's tile editor moves to Meta+Shift+T before the script asks for Meta+T.
+        self.assertLess(text.index('shortcut kwin "Edit Tiles" $((0x12000054))'), text.index("ozios-tilingEnabled true"))
+        self.assertIn('shortcut kwin "OziOS Tiling Toggle" $((0x10000054))', text)
+        self.assertIn('shortcut kwin "OziOS Tiling Float" $((0x10000046))', text)
+        self.assertIn("Döşeme açık", text)
+        undo = text.split('if [ "${1:-}" = "--undo" ]; then')[1].split("\nfi\n")[0]
+        self.assertIn('shortcut kwin "Edit Tiles" $((0x10000054))', undo)
+        self.assertIn("ozios-tilingEnabled --delete", undo)
+
+    def test_the_package_installs_it(self):
+        text = read("packages", "ozios-settings", "PKGBUILD")
+        self.assertIn("/usr/share/kwin-wayland/scripts/ozios-tiling/contents/code/main.js", text)
+        self.assertIn("/usr/share/kwin-wayland/scripts/ozios-tiling/metadata.json", text)
+
+
 if __name__ == "__main__":
     unittest.main()
 

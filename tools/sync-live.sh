@@ -43,6 +43,8 @@ cp -r "$src/desktop/plasma-style/ozios" /usr/share/plasma/desktoptheme/
 cp -r "$src"/desktop/kwin/effects/ozios_* /usr/share/kwin-wayland/effects/
 rm -rf /usr/share/kwin-wayland/tabbox/org.ozios.switcher && mkdir -p /usr/share/kwin-wayland/tabbox
 cp -r "$src/desktop/kwin/tabbox/org.ozios.switcher" /usr/share/kwin-wayland/tabbox/
+rm -rf /usr/share/kwin-wayland/scripts/ozios-tiling && mkdir -p /usr/share/kwin-wayland/scripts
+cp -r "$src/desktop/kwin/scripts/ozios-tiling" /usr/share/kwin-wayland/scripts/
 install -m644 "$src"/branding/konsole/*.colorscheme /usr/share/konsole/
 install -m644 "$src/branding/OziOS.colors" "$src"/branding/themes/*.colors /usr/share/color-schemes/
 lnf=/usr/share/plasma/look-and-feel/org.ozios.desktop
@@ -62,6 +64,6 @@ sed "s/@VERSION@/$version/g" "$src/branding/calamares/ozios/branding.desc" > /us
 chmod -R go+rX,go-w /usr/lib/ozios/python/ozipkg /usr/lib/ozios/apps \
   /usr/share/plasma/plasmoids/org.ozios.* /usr/share/plasma/wallpapers/org.ozios.tesseract \
   /usr/share/plasma/desktoptheme/ozios /usr/share/kwin-wayland/effects/ozios_* \
-  /usr/share/kwin-wayland/tabbox/org.ozios.switcher
+  /usr/share/kwin-wayland/tabbox/org.ozios.switcher /usr/share/kwin-wayland/scripts/ozios-tiling
 /usr/lib/ozios/patch-installer
 echo "live session now runs the checkout ($version)"

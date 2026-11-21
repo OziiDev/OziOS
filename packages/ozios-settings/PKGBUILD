@@ -84,6 +84,10 @@ package() {
     install -Dm644 "$src/desktop/kwin/effects/$effect/contents/code/main.js" \
       "$pkgdir/usr/share/kwin-wayland/effects/$effect/contents/code/main.js"
   done
+  # Tiling on Meta+T, a desktop at a time.
+  install -Dm644 "$src/desktop/kwin/scripts/ozios-tiling/metadata.json" "$pkgdir/usr/share/kwin-wayland/scripts/ozios-tiling/metadata.json"
+  install -Dm644 "$src/desktop/kwin/scripts/ozios-tiling/contents/code/main.js" \
+    "$pkgdir/usr/share/kwin-wayland/scripts/ozios-tiling/contents/code/main.js"
   install -Dm644 -t "$pkgdir/usr/share/color-schemes" "$src"/branding/themes/*.colors
   local switcher="$pkgdir/usr/share/kwin-wayland/tabbox/org.ozios.switcher"
   install -Dm644 "$src/desktop/kwin/tabbox/org.ozios.switcher/metadata.json" "$switcher/metadata.json"
