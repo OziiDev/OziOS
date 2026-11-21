@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <utility>
 
 K_PLUGIN_FACTORY_WITH_JSON(OziDecorationFactory, "ozios.json", registerPlugin<Ozi::Decoration>(); registerPlugin<Ozi::Button>();)
@@ -262,9 +263,14 @@ QColor Decoration::accent2() const
     if (m_config.accent2.isValid()) {
         return m_config.accent2;
     }
-    // The accent's neighbour on the colour wheel: cyan leans to violet, and so on.
-    const QColor a = accent().toHsv();
-    return QColor::fromHsv((std::max(0, a.hsvHue()) + 70) % 360, a.hsvSaturation(), a.value());
+    // The accent's partner for the glow: up to 70 degrees toward violet, the short way
+    // round, so cyan turns blue, orange pink and green blue; a violet turns magenta.
+    // The desktop lights and the clock in the bar use the same rule.
+    const QColor a = accent();
+    const int hue = std::max(0, a.hsvHue());
+    const int d = ((270 - hue + 540) % 360) - 180;
+    const int shift = std::abs(d) < 20 ? 40 : (d > 0 ? 1 : -1) * std::min(std::abs(d), 70);
+    return QColor::fromHsv(((hue + shift) % 360 + 360) % 360, a.hsvSaturation(), a.value());
 }
 
 QColor Decoration::titleBarColor() const
