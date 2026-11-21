@@ -3,9 +3,14 @@ import glob
 import json
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
+BASH = shutil.which("bash")
+FRAMES = os.path.join(ROOT, "packages", "ozios-decoration")
 
 
 def read(*parts):
@@ -81,6 +86,118 @@ class InstallerPieces(unittest.TestCase):
         text = read("packages", "ozios-settings", "install-to-target")
         for stage in ("early", "late"):
             self.assertIn("%s)" % stage, text)
+
+
+class WindowFramesPackage(unittest.TestCase):
+    """packages/ozios-decoration: the compiled window frames, built on the ISO."""
+    def test_it_builds_the_plugin_from_the_checkout_and_installs_its_guard(self):
+        text = read("packages", "ozios-decoration", "PKGBUILD")
+        self.assertIn('-S "$src/desktop/decoration"', text)
+        for name in ("decoration-guard", "zz-ozios-decoration.hook"):
+            self.assertIn('"$here/%s"' % name, text)
+            self.assertTrue(os.path.isfile(os.path.join(FRAMES, name)), name)
+        self.assertIn("/usr/share/ozios/decoration-built-with", text)
+        self.assertRegex(text, r"\ndepends=\([^)]*\bkdecoration\b")
+        self.assertRegex(text, r"makedepends=\([^)]*\bextra-cmake-modules\b")
+
+    @unittest.skipUnless(BASH, "bash is not available here")
+    def test_it_is_built_for_any_x86_64_processor_not_the_build_machines(self):
+        text = read("packages", "ozios-decoration", "PKGBUILD")
+        self.assertIn('CFLAGS="$(baseline "$CFLAGS")"', text)
+        self.assertIn('CXXFLAGS="$(baseline "$CXXFLAGS")"', text)
+        cachyos = "-march=native -O3 -pipe -fno-plt -mtune=native -Wp,-D_GLIBCXX_ASSERTIONS"
+        done = subprocess.run([BASH, "-c", 'source "$1"; baseline "$2"', "bash", os.path.join(FRAMES, "PKGBUILD"), cachyos],
+                              capture_output=True, text=True, timeout=30)
+        flags = done.stdout.split()
+        self.assertEqual([f for f in flags if f.startswith(("-march", "-mtune"))], ["-march=x86-64", "-mtune=generic"])
+        self.assertEqual(flags[:4], ["-O3", "-pipe", "-fno-plt", "-Wp,-D_GLIBCXX_ASSERTIONS"])
+
+    def test_pacman_runs_the_guard_when_plasma_or_the_frames_change(self):
+        hook = read("packages", "ozios-decoration", "zz-ozios-decoration.hook")
+        for line in ("Type = Package", "Target = kdecoration", "Target = ozios-decoration", "When = PostTransaction"):
+            self.assertIn(line + "\n", hook)
+        guard = re.search(r"(?m)^Exec = (\S+)$", hook).group(1)
+        self.assertIn('"$pkgdir%s"' % guard, read("packages", "ozios-decoration", "PKGBUILD"))
+
+    def test_the_theme_and_the_branding_name_the_plugin_that_is_built(self):
+        plugin = json.loads(read("desktop", "decoration", "ozios.json"))["KPlugin"]["Id"]
+        self.assertIn("add_library(%s MODULE" % plugin, read("desktop", "decoration", "CMakeLists.txt"))
+        self.assertIn("[kwinrc][org.kde.kdecoration2]\nlibrary=%s\n" % plugin,
+                      read("desktop", "look-and-feel", "org.ozios.desktop", "contents", "defaults"))
+        self.assertIn("decoration=%s " % plugin, read("tools", "apply-branding.sh"))
+        self.assertIn("/org.kde.kdecoration3/%s.so" % plugin, read("packages", "ozios-decoration", "decoration-guard"))
+
+    def test_the_iso_compiles_them_and_installs_them_with_the_settings(self):
+        remaster = read("iso", "remaster.sh")
+        self.assertIn('"$repo/packages/ozios-decoration/PKGBUILD"', remaster)
+        self.assertIn('"${pm[@]}" -U "$package" "$decoration_package"', remaster)
+        self.assertIn('install -Dm644 "$decoration_package" "$root/opt/ozios/', remaster)
+        self.assertIn("extra-cmake-modules", read("tools", "build-iso-in-vm.sh"))
+        self.assertIn('"$src"/ozios-decoration-*.pkg.tar.*', read("packages", "ozios-settings", "install-to-target"))
+        self.assertIn("org.ozios.decoration.so", read("tools", "check-image.sh"))
+
+
+@unittest.skipUnless(BASH, "bash is not available here")
+class DecorationGuard(unittest.TestCase):
+    """A plugin built for another feature release of Plasma is kept away from KWin."""
+    PLUGIN = ("usr", "lib", "qt6", "plugins", "org.kde.kdecoration3", "org.ozios.decoration.so")
+    ASIDE = ("usr", "lib", "ozios", "decoration-aside", "org.ozios.decoration.so")
+    BUILT = ("usr", "share", "ozios", "decoration-built-with")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.put(self.PLUGIN, "plugin")
+        self.put(self.BUILT, "1:6.7.4-1\n")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def put(self, parts, text):
+        path = os.path.join(self.tmp.name, *parts)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+
+    def has(self, parts):
+        return os.path.isfile(os.path.join(self.tmp.name, *parts))
+
+    def guard(self, plasma):
+        env = dict(os.environ, OZI_KDECORATION_VERSION=plasma)
+        done = subprocess.run([BASH, os.path.join(FRAMES, "decoration-guard"), self.tmp.name],
+                              capture_output=True, text=True, env=env, timeout=30)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        return done.stdout
+
+    def test_a_bugfix_release_of_the_same_plasma_keeps_them(self):
+        self.assertEqual(self.guard("1:6.7.5-1"), "")
+        self.assertTrue(self.has(self.PLUGIN))
+        self.assertFalse(self.has(self.ASIDE))
+
+    def test_a_newer_plasma_puts_them_aside_until_a_build_for_it_arrives(self):
+        said = self.guard("1:6.8.0-1")
+        self.assertFalse(self.has(self.PLUGIN))
+        self.assertTrue(self.has(self.ASIDE))
+        self.assertIn("Plasma 6.7", said)
+        self.assertIn("Plasma 6.8", said)
+        self.guard("1:6.8.0-1")                       # again: nothing more to do
+        self.assertTrue(self.has(self.ASIDE))
+        # ozios-decoration built for 6.8 comes with a new plugin; the old copy goes.
+        self.put(self.BUILT, "1:6.8.0-1\n")
+        self.put(self.PLUGIN, "plugin for 6.8")
+        self.guard("1:6.8.0-1")
+        self.assertTrue(self.has(self.PLUGIN))
+        self.assertFalse(self.has(self.ASIDE))
+
+    def test_going_back_to_the_plasma_they_were_built_for_brings_them_back(self):
+        self.guard("1:6.8.0-1")
+        self.assertIn("fit Plasma 6.7 again", self.guard("6.7.4-2"))   # with or without an epoch
+        self.assertTrue(self.has(self.PLUGIN))
+        self.assertFalse(self.has(self.ASIDE))
+
+    def test_without_both_versions_it_leaves_everything_alone(self):
+        os.remove(os.path.join(self.tmp.name, *self.BUILT))
+        self.assertEqual(self.guard("1:6.8.0-1"), "")
+        self.assertTrue(self.has(self.PLUGIN))
 
 
 class Metadata(unittest.TestCase):

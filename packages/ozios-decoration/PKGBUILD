@@ -1,0 +1,41 @@
+# The OziOS window frames (desktop/decoration): rounded corners, an outline in the
+# accent colour and a glow, as a KWin decoration plugin. Unlike ozios-settings it is
+# compiled, against the KDecoration3 of the Plasma it is built on; decoration-guard
+# puts the plugin aside when a newer Plasma arrives before a build for it, and KWin
+# draws Breeze frames meanwhile.
+# Built from a checkout like ozios-settings: iso/remaster.sh points OZI_SRC at it.
+pkgname=ozios-decoration
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="OziOS window frames: rounded corners, an outline in the accent colour and a glow"
+arch=(x86_64)
+license=(MIT)
+depends=(kdecoration kwin qt6-base kcoreaddons kconfig)
+makedepends=(cmake extra-cmake-modules)
+options=(!debug)
+
+baseline() {  # baseline FLAGS: the flags without a processor of their own, for any x86-64
+  echo "$(echo "$1" | sed -E 's/(^| )-m(arch|tune|cpu)=[^ ]*//g') -march=x86-64 -mtune=generic"
+}
+
+build() {
+  local src="${OZI_SRC:?OZI_SRC must point at the OziOS source tree}"
+  # CachyOS's makepkg.conf builds for the processor it runs on (-march=native), and
+  # KWin would crash loading these frames on an older one. A medium is for any x86-64
+  # computer: no -march or -mtune of the build machine, the generic ones instead.
+  CFLAGS="$(baseline "$CFLAGS")"
+  CXXFLAGS="$(baseline "$CXXFLAGS")"
+  export CFLAGS CXXFLAGS
+  cmake -B build -S "$src/desktop/decoration" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -Wno-dev
+  cmake --build build
+}
+
+package() {
+  local here="${OZI_SRC:?}/packages/ozios-decoration"
+  DESTDIR="$pkgdir" cmake --install build
+  # The KDecoration3 these frames were built against, for decoration-guard.
+  install -d "$pkgdir/usr/share/ozios"
+  pacman -Q kdecoration | awk '{ print $2 }' > "$pkgdir/usr/share/ozios/decoration-built-with"
+  install -Dm755 "$here/decoration-guard" "$pkgdir/usr/lib/ozios/decoration-guard"
+  install -Dm644 "$here/zz-ozios-decoration.hook" "$pkgdir/usr/share/libalpm/hooks/zz-ozios-decoration.hook"
+}

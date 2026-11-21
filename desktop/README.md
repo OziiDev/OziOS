@@ -19,6 +19,13 @@ ister, sürücü, çoklu monitör, HDR ve erişilebilirlik işi yıllar sürer. 
 | Temalar | `branding/OziOS.colors`, `branding/themes/`, `branding/konsole/` (`tools/make-themes.py` yazar) | Camgöbeği, Kutup Işığı, Kor, Nane, Gül, Ayaz (açık). `ozi theme <ad>` veya kontrol panelindeki renk yuvarlakları; çubuk, dock, açılır pencereler, duvar kâğıdı, pencere çerçeveleri ve terminal birlikte değişir; OziOS uygulamaları açılırken seçili temayı alır. |
 | Duvar kâğıdı `org.ozios.tesseract` | `wallpaper/org.ozios.tesseract` | Dönen tesseract, nefes alır gibi parlayan ışık, yukarı süzülen ışık zerrecikleri; renkleri temadan. Bir pencere masaüstünü kapatınca tamamen durur. |
 | Kontrol `org.ozios.control` | `plasmoids/org.ozios.control` | Tema, oyun modu, efekt seviyesi, düzen, Windows misafiri, güncellemeler. |
+| Pencere çerçevesi `org.ozios.decoration` | `decoration` (C++, paketi `packages/ozios-decoration`) | Yuvarlak köşeli pencereler (programın içi de); etkin pencerede vurgu renginde kenar ve temanın iki renginde ışıltı, ötekilerde soluk kenar; ortalı başlık, üstüne gelince yanan yuvarlak düğmeler. Plasma'nın yeni ana sürümü gelince `decoration-guard` eklentiyi kenara koyar, KWin o arada Breeze çizer. |
+| Pencere akışı `ozios_morph` | `kwin/effects/ozios_morph` | Büyütme, geri alma, döşeme: pencere eski yerinden yenisine akar (boyut, yer, geçiş). KWin'in kendi büyütme efektinin yerini alır. |
+| Küçültme `ozios_minimize` | `kwin/effects/ozios_minimize` | Pencere dock'taki simgesine süzülür, oradan geri çıkar. |
+| Döşeme `ozios-tiling` | `kwin/scripts/ozios-tiling` | Meta+T masaüstünü yarımlar sarmalında döşer (kenarda 12, arada 10 piksel); her yeni pencere kullanılanın yarısını alır. Sürükleyince yer değişir, kenardan çekince çizgi kayar; Meta+F pencereyi serbest bırakır. |
+| Masaüstleri `org.ozios.workspaces` | `plasmoids/org.ozios.workspaces` | Soldaki adada dört masaüstü ışık olarak: kullanılan vurgu renklerinde hap, pencereli olanlar dolu nokta. Tık veya tekerlek değiştirir; Meta+1…4. |
+| Saat `org.ozios.clock` | `plasmoids/org.ozios.clock` | Ortadaki adada saat ve tarih; tıklayınca takvim. |
+| Görünüm `ozi-look` | `apps/ozi-look` | Hazır stiller (Akıcı, Döşeme, Hafif) ve tek tek ayarlar: köşe, kenar, ışıltı, başlık çubuğu, boşluk, döşeme, hız, bulanıklık; her değişiklik hemen görünür. `ozi-look --keys` Meta+K kısayol kartıdır. |
 
 ## Optimizasyon kuralları
 
@@ -47,7 +54,17 @@ başlatıcı (arama, kategoriler, Enter ile açma), kontrol paneli ve tema deği
 pencere hareketi ve gölgeler çalışıyor; plasmashell OziOS için QML hatası vermiyor.
 Hafif profilde boştaki masaüstü işlemcinin yüzde birinden azını kullanıyor.
 
+0.3'te ayrıca: çerçeve, akış ve küçültme, üç ada ve dört masaüstü, döşeme (Meta+T, Meta+F,
+sürükleme, boyutlandırma) ve Görünüm uygulaması KWin 6.7.4'te denendi.
+
 Öğrenilenler:
+- KWin'in `reconfigure` çağrısı çalışan bir efektin ayarlarını yeniden okumaz; efekte adıyla
+  sorulur (`org.kde.kwin.Effects.reconfigureEffect slide`).
+- Yüzen panel yalnız kendi kalınlığını ayırır, çizildiği yer daha aşağıdadır; döşeme boşluğu
+  adanın görünen kenarından ölçülür.
+- KWin pencere kenarını opak çizer; soluk kenar saydamlıkla değil, karışık bir renkle yapılır.
+- Derlenmiş eklenti `-march=native` ile derlenirse başka işlemcide KWin'i düşürebilir; paket
+  bu yüzden genel x86-64 için derlenir.
 - KWin yazılımsal çizimde bütün animasyonları kapatır; OziOS bunu
   `/usr/lib/environment.d/60-ozios-animations.conf` ile açık tutar.
 - Qt Quick her değişiklikte bütün pencereyi yeniden çizer. Duvar kâğıdındaki hareket

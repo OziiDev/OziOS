@@ -14,9 +14,12 @@ root="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 old="$(tr -d '[:space:]' < "$root/VERSION")"
 
 printf '%s\n' "$new" > "$root/VERSION"
-for pkgbuild in "$root/packages/ozios-settings/PKGBUILD" "$root/packages/ozios-edu/PKGBUILD"; do
+for pkgbuild in "$root/packages/ozios-settings/PKGBUILD" "$root/packages/ozios-edu/PKGBUILD" \
+                "$root/packages/ozios-decoration/PKGBUILD"; do
   sed -i "s/^pkgver=.*/pkgver=$new/; s/^pkgrel=.*/pkgrel=1/" "$pkgbuild"
 done
+# The window frames are a CMake project of their own.
+sed -i -E "s/^(project\(ozios-decoration VERSION )[0-9.]+/\1$new/" "$root/desktop/decoration/CMakeLists.txt"
 
 # A new heading for the changelog, below the introduction.
 if ! grep -q "^## $new" "$root/CHANGELOG.md"; then

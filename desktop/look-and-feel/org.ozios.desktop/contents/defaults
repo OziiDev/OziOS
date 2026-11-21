@@ -14,8 +14,8 @@ name=ozios
 cursorTheme=breeze_cursors
 
 [kwinrc][org.kde.kdecoration2]
-library=org.kde.breeze
-theme=Breeze
+library=org.ozios.decoration
+theme=
 
 [ksplashrc][KSplash]
 Theme=org.ozios.desktop
