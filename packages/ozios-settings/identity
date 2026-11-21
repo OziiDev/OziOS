@@ -25,7 +25,7 @@ for file in /etc/os-release /usr/lib/os-release; do
   echo 'DEFAULT_HOSTNAME=ozios' >> "$file"
   # An edition is named in os-release; the file is written by the edition's package.
   sed -i --follow-symlinks '/^VARIANT=/d;/^VARIANT_ID=/d' "$file"
-  edition="$(tr -d '[:space:]' < /usr/share/ozios/edition 2>/dev/null)"
+  edition="$( { tr -d '[:space:]' < /usr/share/ozios/edition; } 2>/dev/null)"
   if [ "$edition" = edu ]; then
     echo 'VARIANT="Education"' >> "$file"
     echo 'VARIANT_ID=edu' >> "$file"
