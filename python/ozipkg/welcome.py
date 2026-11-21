@@ -23,6 +23,9 @@ ACTIONS = {
     # as tabs (see command()).
     "windowsnet": ["dolphin", "--new-window", "smb:/"],
     "theme": ["bash", "/usr/share/ozios/tools/apply-branding.sh"],
+    # How windows look and move (corners, glow, gaps, tiling, speed), and the keys card.
+    "look": ["ozi-look"],
+    "keys": ["ozi-look", "--keys"],
     "settings": ["systemsettings"],
     "terminal": ["konsole"],
     "network": ["systemsettings", "kcm_networkmanagement"],
