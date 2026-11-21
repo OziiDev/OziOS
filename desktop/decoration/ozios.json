@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Description": "OziOS window frames: rounded corners, an outline in the accent colour and a soft glow around the active window",
+        "Description[tr]": "OziOS pencere çerçevesi: yuvarlak köşeler, vurgu renginde kenar çizgisi ve etkin pencerenin çevresinde yumuşak bir ışıltı",
+        "EnabledByDefault": true,
+        "Id": "org.ozios.decoration",
+        "License": "MIT",
+        "Name": "OziOS"
+    },
+    "org.kde.kdecoration3": {
+        "blur": false,
+        "kcmodule": false,
+        "recommendedBorderSize": "None"
+    }
+}
