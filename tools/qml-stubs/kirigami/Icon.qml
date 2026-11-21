@@ -10,6 +10,7 @@ Item {
     property bool active: false
     property bool selected: false
     property bool roundToIconSize: true
+    property bool isMask: false
     property color color: "transparent"
 
     implicitWidth: 32
