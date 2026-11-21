@@ -68,11 +68,15 @@ mount --bind /var/lib/pacman/local "$local_db"
 trap release EXIT
 if [ "$date" = current ]; then
   # What would be installed; anything among it that the live system already has
-  # would be replaced by today's version.
-  replaced="$(pacman --config "$work/pacman.conf" --dbpath "$work/db" -S --needed --print --print-format '%n' "$@" |
-    while read -r name; do pacman -Q "$name" >/dev/null 2>&1 && echo "$name"; done)"
+  # would be replaced by today's version. (An `if`, not `&&`: a test that fails for
+  # the last name must not end the script under set -e.)
+  wanted="$(pacman --config "$work/pacman.conf" --dbpath "$work/db" -S --needed --print --print-format '%n' "$@")"
+  replaced=""
+  for name in $wanted; do
+    if pacman -Q "$name" >/dev/null 2>&1; then replaced="$replaced $name"; fi
+  done
   if [ -n "$replaced" ]; then
-    echo "archive-install: today's packages would replace what the live system has:" $replaced >&2
+    echo "archive-install: today's packages would replace what the live system has:$replaced" >&2
     exit 1
   fi
 fi

@@ -178,6 +178,24 @@ class WindowFramesPackage(unittest.TestCase):
         self.assertIn('die "the archive does not answer and $name is not cached"', remaster)
         self.assertIn("org.ozios.decoration.so", read("tools", "check-image.sh"))
 
+    @unittest.skipUnless(BASH, "bash is not available here")
+    def test_todays_mirrors_refuse_only_what_would_replace_something(self):
+        # The check runs under set -e; with nothing installed it must carry on, not end silently.
+        archive = read("tools", "archive-install.sh")
+        start = archive.index('if [ "$date" = current ]; then\n  # What would be installed')
+        block = archive[start:archive.index("\nfi\n", start) + 4]
+        stub = ('set -eu\nwork=/nowhere\ndate=current\n'
+                'pacman() { case "$*" in *--print*) printf "cmake\\ncppdap\\njsoncpp\\n" ;;\n'
+                '  "-Q "*) case " $INSTALLED " in *" $2 "*) return 0 ;; esac; return 1 ;; esac; }\n')
+        said = {}
+        for installed in ("", "jsoncpp"):
+            done = subprocess.run([BASH, "-c", stub + block + "echo carried on\n", "bash", "cmake"],
+                                  capture_output=True, text=True, timeout=30, env=dict(os.environ, INSTALLED=installed))
+            said[installed] = (done.returncode, done.stdout.strip(), done.stderr.strip())
+        self.assertEqual(said[""], (0, "carried on", ""))
+        self.assertEqual(said["jsoncpp"][:2], (1, ""))
+        self.assertIn("would replace what the live system has: jsoncpp", said["jsoncpp"][2])
+
 
 @unittest.skipUnless(BASH, "bash is not available here")
 class DecorationGuard(unittest.TestCase):
