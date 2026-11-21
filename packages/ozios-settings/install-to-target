@@ -113,9 +113,16 @@ early() {
     install_pkg "$edu" || echo "ozios: could not install $(basename "$edu")"
   done
   # The window frames; without them KWin draws Breeze frames and nothing else changes.
-  for frames in $(ls "$src"/ozios-decoration-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$'); do
+  # They are compiled for one feature release of Plasma, and an online installation
+  # brings today's, which can be newer than the medium's. With the tools to build them
+  # in place first, the guard that runs with the package builds them for this Plasma
+  # right away, and again whenever an update brings a new Plasma.
+  frames="$(ls "$src"/ozios-decoration-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)"
+  if [ -n "$frames" ]; then
+    arch-chroot "$root" pacman --noconfirm --needed -S cmake extra-cmake-modules gcc make ||
+      echo "ozios: could not install the tools to build the window frames"
     install_pkg "$frames" || echo "ozios: could not install $(basename "$frames")"
-  done
+  fi
 
   # Normally the kernel stage did this; an installer set up before that stage existed relies on this one.
   has_kernel || kernel

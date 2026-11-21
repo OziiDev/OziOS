@@ -176,6 +176,29 @@ class Stages(Target):
         self.assertEqual(names, ["ozios-settings", "ozios-edu", "ozios-decoration"])
         self.assertEqual(len([line for line in self.calls() if "-S linux-ozios" in line]), 1)   # not again
 
+    def test_the_tools_to_build_the_window_frames_go_in_before_them(self):
+        # Online, the new system gets today's Plasma, which can be newer than the medium's frames;
+        # with the tools in place, the guard that comes with the frames builds them for it.
+        self.run_stage("early")
+        calls = self.calls()
+        tools = [i for i, line in enumerate(calls)
+                 if line.endswith("pacman --noconfirm --needed -S cmake extra-cmake-modules gcc make")]
+        frames = [i for i, line in enumerate(calls) if " -U " in line and "ozios-decoration" in line]
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(len(frames), 1)
+        self.assertLess(tools[0], frames[0])
+
+    def test_the_frames_go_in_even_when_the_tools_do_not(self):
+        out = self.run_stage("early", FAKE_FAIL="cmake")
+        self.assertIn("could not install the tools to build the window frames", out)
+        self.assertIn("ozios-decoration", " ".join(self.installs()))
+
+    def test_without_the_frames_on_the_medium_no_build_tools_are_installed(self):
+        for suffix in (".pkg.tar.zst", ".pkg.tar.zst.sig"):
+            os.remove(os.path.join(self.packages, "ozios-decoration-0.3.0-1-x86_64" + suffix))
+        self.run_stage("early")
+        self.assertFalse([line for line in self.calls() if "cmake" in line])
+
     def test_signatures_are_left_alone(self):
         self.run_stage("early")
         self.assertFalse([n for n in self.installs() if n.endswith(".sig")])

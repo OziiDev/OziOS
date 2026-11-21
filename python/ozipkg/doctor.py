@@ -410,11 +410,13 @@ def check_shell(p):
     return out
 
 
-# packages/ozios-decoration: the plugin, where its guard puts it aside, and the
-# KDecoration3 version it was built against.
+# packages/ozios-decoration: the plugin, where its guard puts it aside, the
+# KDecoration3 version the package was built against, and the record of a plugin the
+# guard built on this computer (the version it was built for, then its checksum).
 FRAMES_PLUGIN = "/usr/lib/qt6/plugins/org.kde.kdecoration3/org.ozios.decoration.so"
 FRAMES_ASIDE = "/usr/lib/ozios/decoration-aside/org.ozios.decoration.so"
 FRAMES_BUILT = "/usr/share/ozios/decoration-built-with"
+FRAMES_HERE = "/var/lib/ozios/decoration-built-here"
 
 
 def plasma_series(version):
@@ -428,6 +430,7 @@ def check_frames(p):
     built = plasma_series(p.read(FRAMES_BUILT))
     if not built:
         return []                               # ozios-decoration is not installed
+    local = plasma_series(((p.read(FRAMES_HERE) or "").splitlines() or [""])[0])
     code, out = p.run(["pacman", "-Q", "kdecoration"])
     words = out.split() if code == 0 else []
     now = plasma_series(words[1]) if len(words) > 1 else ""
@@ -436,13 +439,19 @@ def check_frames(p):
             return [Check("frames", "info",
                           tr("Windows have Breeze frames until the OziOS frames are built for Plasma {now}", now=now or "?"),
                           tr("They were built for Plasma {built}, and a frame plugin built for another Plasma can take "
-                             "the desktop down with it. The next OziOS release brings frames for this one.", built=built))]
+                             "the desktop down with it. The guard builds them for this one on the computer once cmake "
+                             "and extra-cmake-modules are installed.", built=built),
+                          "sudo /usr/lib/ozios/decoration-guard")]
         return [Check("frames", "warn", tr("The OziOS window frames are missing"), "", "sudo pacman -S ozios-decoration")]
-    if now and now != built:
+    series = local or built                     # the plugin in place: built here, or the package's
+    if now and now != series:
         return [Check("frames", "warn", tr("The OziOS window frames were built for Plasma {built}, this is Plasma {now}",
-                                           built=built, now=now),
-                      tr("KWin could crash loading them; the guard puts them aside."),
+                                           built=series, now=now),
+                      tr("KWin could crash loading them; the guard builds them again or puts them aside."),
                       "sudo /usr/lib/ozios/decoration-guard")]
+    if local:
+        return [Check("frames", "ok", tr("The OziOS window frames fit this Plasma ({series}), built on this computer",
+                                         series=local))]
     return [Check("frames", "ok", tr("The OziOS window frames fit this Plasma ({series})", series=built))]
 
 

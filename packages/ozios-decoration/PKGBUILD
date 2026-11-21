@@ -1,8 +1,10 @@
 # The OziOS window frames (desktop/decoration): rounded corners, an outline in the
 # accent colour and a glow, as a KWin decoration plugin. Unlike ozios-settings it is
-# compiled, against the KDecoration3 of the Plasma it is built on; decoration-guard
-# puts the plugin aside when a newer Plasma arrives before a build for it, and KWin
-# draws Breeze frames meanwhile.
+# compiled, against the KDecoration3 of the Plasma it is built on. Its source comes
+# along: when Plasma moves to a feature release before a package built for it does,
+# decoration-guard builds the frames again on the computer (decoration-rebuild, with
+# cmake and extra-cmake-modules, which the installer puts in), and only when that
+# cannot be done puts the plugin aside, so that KWin draws Breeze frames meanwhile.
 # Built from a checkout like ozios-settings: iso/remaster.sh points OZI_SRC at it.
 pkgname=ozios-decoration
 pkgver=0.3.0
@@ -12,6 +14,8 @@ arch=(x86_64)
 license=(MIT)
 depends=(kdecoration kwin qt6-base kcoreaddons kconfig)
 makedepends=(cmake extra-cmake-modules)
+optdepends=('cmake: build the frames again when Plasma moves to a new feature release'
+            'extra-cmake-modules: build the frames again when Plasma moves to a new feature release')
 options=(!debug)
 
 baseline() {  # baseline FLAGS: the flags without a processor of their own, for any x86-64
@@ -31,11 +35,14 @@ build() {
 }
 
 package() {
-  local here="${OZI_SRC:?}/packages/ozios-decoration"
+  local src="${OZI_SRC:?}/desktop/decoration" here="${OZI_SRC:?}/packages/ozios-decoration"
   DESTDIR="$pkgdir" cmake --install build
   # The KDecoration3 these frames were built against, for decoration-guard.
   install -d "$pkgdir/usr/share/ozios"
   pacman -Q kdecoration | awk '{ print $2 }' > "$pkgdir/usr/share/ozios/decoration-built-with"
+  # The source, for decoration-rebuild to build the frames for another Plasma.
+  install -Dm644 -t "$pkgdir/usr/share/ozios/decoration-src" "$src/CMakeLists.txt" "$src/ozios.json" "$src"/*.cpp "$src"/*.h
   install -Dm755 "$here/decoration-guard" "$pkgdir/usr/lib/ozios/decoration-guard"
+  install -Dm755 "$here/decoration-rebuild" "$pkgdir/usr/lib/ozios/decoration-rebuild"
   install -Dm644 "$here/zz-ozios-decoration.hook" "$pkgdir/usr/share/libalpm/hooks/zz-ozios-decoration.hook"
 }

@@ -404,8 +404,10 @@ class Shell(unittest.TestCase):
 class Frames(unittest.TestCase):
     """The compiled window frames fit one feature release of Plasma (packages/ozios-decoration)."""
 
-    def check(self, plasma="6.7.5-1", plugin=True, aside=False, built="1:6.7.4-1\n"):
+    def check(self, plasma="6.7.5-1", plugin=True, aside=False, built="1:6.7.4-1\n", here=None):
         files = {doctor.FRAMES_BUILT: built} if built else {}
+        if here:
+            files[doctor.FRAMES_HERE] = here
         if plugin:
             files[doctor.FRAMES_PLUGIN] = ""
         if aside:
@@ -423,6 +425,20 @@ class Frames(unittest.TestCase):
         self.assertEqual(found[0].level, "info")
         self.assertIn("6.8", found[0].title)
         self.assertIn("6.7", found[0].detail)
+        self.assertIn("cmake", found[0].detail)
+        self.assertEqual(found[0].hint, "sudo /usr/lib/ozios/decoration-guard")
+
+    def test_frames_built_on_the_computer_for_this_plasma(self):
+        found = self.check(plasma="1:6.8.3-1", aside=True, here="1:6.8.3-1\n0a1b2c\n")
+        self.assertEqual(found[0].level, "ok")
+        self.assertIn("6.8", found[0].title)
+        self.assertIn("built on this computer", found[0].title)
+
+    def test_a_build_for_an_older_plasma_is_a_warning_too(self):
+        found = self.check(plasma="1:6.9.0-1", aside=True, here="1:6.8.3-1\n0a1b2c\n")
+        self.assertEqual((found[0].level, found[0].hint), ("warn", "sudo /usr/lib/ozios/decoration-guard"))
+        self.assertIn("6.8", found[0].title)
+        self.assertIn("6.9", found[0].title)
 
     def test_frames_for_another_plasma_still_in_kwins_way_are_a_warning(self):
         found = self.check(plasma="1:6.8.0-1")

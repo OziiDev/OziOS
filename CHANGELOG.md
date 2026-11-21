@@ -14,10 +14,14 @@ and is still as easy to use as Plasma. The plan is in `docs/PLAN-0.3.md`.
   colour on the active window and a faint one on the others; a soft glow in the
   theme's two colours; a centred title and round buttons that light up. They are
   compiled, so they come in a package of their own, `ozios-decoration`, built on
-  the ISO for any x86-64 processor (not only the build machine's). When Plasma
-  moves to a new feature release, a pacman hook puts the frames aside and KWin
-  draws Breeze frames until a build for that Plasma arrives; `ozi doctor` says
-  which is the case.
+  the ISO for any x86-64 processor (not only the build machine's). The package
+  carries their source: when Plasma moves to a new feature release, which an
+  online installation can bring on its first day, a pacman hook builds the
+  frames again on the computer, in a minute or two, with cmake and
+  extra-cmake-modules that the installer puts in. Only when that cannot be done
+  does it put them aside, and KWin draws Breeze frames until
+  `sudo /usr/lib/ozios/decoration-guard` builds them. `ozi doctor` says which is
+  the case.
 - Windows flow: maximised, restored or tiled, a window moves from its old frame
   to the new one (`ozios_morph`); minimised, it goes into its dock icon and
   comes back out of it (`ozios_minimize`). Both take the place of KWin's own

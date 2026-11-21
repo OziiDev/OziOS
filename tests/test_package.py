@@ -93,12 +93,37 @@ class WindowFramesPackage(unittest.TestCase):
     def test_it_builds_the_plugin_from_the_checkout_and_installs_its_guard(self):
         text = read("packages", "ozios-decoration", "PKGBUILD")
         self.assertIn('-S "$src/desktop/decoration"', text)
-        for name in ("decoration-guard", "zz-ozios-decoration.hook"):
+        for name in ("decoration-guard", "decoration-rebuild", "zz-ozios-decoration.hook"):
             self.assertIn('"$here/%s"' % name, text)
             self.assertTrue(os.path.isfile(os.path.join(FRAMES, name)), name)
         self.assertIn("/usr/share/ozios/decoration-built-with", text)
         self.assertRegex(text, r"\ndepends=\([^)]*\bkdecoration\b")
         self.assertRegex(text, r"makedepends=\([^)]*\bextra-cmake-modules\b")
+
+    def test_the_source_comes_along_so_the_frames_can_be_built_again(self):
+        pkgbuild = read("packages", "ozios-decoration", "PKGBUILD")
+        rebuild = read("packages", "ozios-decoration", "decoration-rebuild")
+        guard = read("packages", "ozios-decoration", "decoration-guard")
+        src = re.search(r"(?m)^src=(\S+)$", rebuild).group(1)
+        self.assertIn('-t "$pkgdir%s"' % src, pkgbuild)
+        for name in ("CMakeLists.txt", "ozios.json"):
+            self.assertIn('"$src/%s"' % name, pkgbuild)
+        self.assertIn('"$src"/*.cpp "$src"/*.h', pkgbuild)
+        # The guard finds the builder where the package puts it, and both mean the same plugin.
+        self.assertIn('"$pkgdir/usr/lib/ozios/decoration-rebuild"', pkgbuild)
+        self.assertIn("$root/usr/lib/ozios/decoration-rebuild", guard)
+        plugin = re.search(r"(?m)^plugin=(\S+)$", rebuild).group(1)
+        self.assertIn('plugin="$root%s"' % plugin, guard)
+        for tool in ("cmake", "extra-cmake-modules"):
+            self.assertRegex(pkgbuild, r"optdepends=\([^)]*'%s:" % tool)
+
+    @unittest.skipUnless(BASH, "bash is not available here")
+    def test_a_build_without_its_tools_says_what_to_install(self):
+        done = subprocess.run([BASH, os.path.join(FRAMES, "decoration-rebuild")], capture_output=True, text=True,
+                              env=dict(os.environ, PATH=""), timeout=30)
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("without cmake", done.stdout)
+        self.assertIn("(sudo pacman -S cmake", done.stdout)
 
     @unittest.skipUnless(BASH, "bash is not available here")
     def test_it_is_built_for_any_x86_64_processor_not_the_build_machines(self):
@@ -160,6 +185,8 @@ class DecorationGuard(unittest.TestCase):
     PLUGIN = ("usr", "lib", "qt6", "plugins", "org.kde.kdecoration3", "org.ozios.decoration.so")
     ASIDE = ("usr", "lib", "ozios", "decoration-aside", "org.ozios.decoration.so")
     BUILT = ("usr", "share", "ozios", "decoration-built-with")
+    HERE = ("var", "lib", "ozios", "decoration-built-here")
+    REBUILD = ("usr", "lib", "ozios", "decoration-rebuild")
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -178,8 +205,25 @@ class DecorationGuard(unittest.TestCase):
     def has(self, parts):
         return os.path.isfile(os.path.join(self.tmp.name, *parts))
 
+    def text(self, parts):
+        with open(os.path.join(self.tmp.name, *parts), encoding="utf-8") as fh:
+            return fh.read().strip()
+
+    def builder(self, works=True):
+        """A stand-in for decoration-rebuild where the guard looks for it: it 'builds' the plugin."""
+        script = ["#!/bin/bash", 'echo built >> "$OZI_FAKE_ROOT/builds"']
+        if not works:
+            script.append("exit 1")
+        script.append('echo "plugin built for $OZI_KDECORATION_VERSION" > "$OZI_FAKE_ROOT/%s"' % "/".join(self.PLUGIN))
+        self.put(self.REBUILD, "\n".join(script) + "\n")
+
+    def builds(self):
+        path = os.path.join(self.tmp.name, "builds")
+        return len(self.text(("builds",)).split()) if os.path.isfile(path) else 0
+
     def guard(self, plasma):
-        env = dict(os.environ, OZI_KDECORATION_VERSION=plasma)
+        env = dict(os.environ, OZI_KDECORATION_VERSION=plasma, OZI_FAKE_ROOT=self.tmp.name)
+        env.pop("OZI_DECORATION_REBUILD", None)
         done = subprocess.run([BASH, os.path.join(FRAMES, "decoration-guard"), self.tmp.name],
                               capture_output=True, text=True, env=env, timeout=30)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -190,7 +234,7 @@ class DecorationGuard(unittest.TestCase):
         self.assertTrue(self.has(self.PLUGIN))
         self.assertFalse(self.has(self.ASIDE))
 
-    def test_a_newer_plasma_puts_them_aside_until_a_build_for_it_arrives(self):
+    def test_a_newer_plasma_with_no_way_to_build_them_puts_them_aside(self):
         said = self.guard("1:6.8.0-1")
         self.assertFalse(self.has(self.PLUGIN))
         self.assertTrue(self.has(self.ASIDE))
@@ -215,6 +259,69 @@ class DecorationGuard(unittest.TestCase):
         os.remove(os.path.join(self.tmp.name, *self.BUILT))
         self.assertEqual(self.guard("1:6.8.0-1"), "")
         self.assertTrue(self.has(self.PLUGIN))
+
+    # --- with decoration-rebuild: the frames are built on the computer ----------------
+
+    def test_a_newer_plasma_gets_frames_built_on_the_computer(self):
+        self.builder()
+        self.assertIn("are built for Plasma 6.8", self.guard("1:6.8.3-1"))
+        self.assertEqual(self.text(self.PLUGIN), "plugin built for 1:6.8.3-1")
+        self.assertEqual(self.text(self.ASIDE), "plugin")       # the package's, for a Plasma going back
+        self.assertEqual(self.text(self.HERE).splitlines()[0], "1:6.8.3-1")
+        # A bugfix release of that Plasma, or the guard run again: nothing to build.
+        self.assertEqual(self.guard("1:6.8.4-1"), "")
+        self.assertEqual(self.builds(), 1)
+        self.assertTrue(self.has(self.ASIDE))
+
+    def test_the_next_plasma_builds_them_again(self):
+        self.builder()
+        self.guard("1:6.8.3-1")
+        self.assertIn("are built for Plasma 6.9", self.guard("1:6.9.0-1"))
+        self.assertEqual(self.text(self.PLUGIN), "plugin built for 1:6.9.0-1")
+        self.assertEqual(self.text(self.ASIDE), "plugin")       # still the package's own
+        self.assertEqual(self.builds(), 2)
+
+    def test_going_back_brings_the_packages_own_back(self):
+        self.builder()
+        self.guard("1:6.8.3-1")
+        self.assertIn("fit Plasma 6.7 again", self.guard("1:6.7.4-2"))
+        self.assertEqual(self.text(self.PLUGIN), "plugin")
+        self.assertFalse(self.has(self.ASIDE))
+        self.assertFalse(self.has(self.HERE))
+        self.assertEqual(self.builds(), 1)
+
+    def test_a_package_built_for_the_new_plasma_takes_over_from_the_build(self):
+        self.builder()
+        self.guard("1:6.8.3-1")
+        self.put(self.BUILT, "1:6.8.3-1\n")                    # pacman puts the new package's plugin in place
+        self.put(self.PLUGIN, "plugin for 6.8")
+        self.assertEqual(self.guard("1:6.8.3-1"), "")
+        self.assertEqual(self.text(self.PLUGIN), "plugin for 6.8")
+        self.assertFalse(self.has(self.ASIDE))
+        self.assertFalse(self.has(self.HERE))
+        self.assertEqual(self.builds(), 1)
+
+    def test_the_same_package_put_back_by_pacman_is_built_over_again(self):
+        self.builder()
+        self.guard("1:6.8.3-1")
+        self.put(self.PLUGIN, "plugin")                         # ozios-decoration reinstalled
+        self.assertIn("are built for Plasma 6.8", self.guard("1:6.8.3-1"))
+        self.assertEqual(self.builds(), 2)
+        self.assertEqual(self.text(self.PLUGIN), "plugin built for 1:6.8.3-1")
+        self.assertEqual(self.text(self.ASIDE), "plugin")
+
+    def test_when_the_build_fails_windows_get_breeze_frames_until_it_works(self):
+        self.builder(works=False)
+        said = self.guard("1:6.8.3-1")
+        self.assertIn("windows have Breeze frames", said)
+        self.assertIn("sudo /usr/lib/ozios/decoration-guard", said)
+        self.assertFalse(self.has(self.PLUGIN))
+        self.assertTrue(self.has(self.ASIDE))
+        self.assertFalse(self.has(self.HERE))
+        self.builder()                                          # cmake is installed, say
+        self.assertIn("are built for Plasma 6.8", self.guard("1:6.8.3-1"))
+        self.assertEqual(self.text(self.PLUGIN), "plugin built for 1:6.8.3-1")
+        self.assertEqual(self.text(self.ASIDE), "plugin")
 
 
 class Metadata(unittest.TestCase):

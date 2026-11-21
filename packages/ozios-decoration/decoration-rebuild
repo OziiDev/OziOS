@@ -1,0 +1,39 @@
+#!/bin/bash
+# Build the OziOS window frames on this computer, against the Plasma installed here,
+# and put the plugin where KWin finds it. decoration-guard runs it when Plasma has
+# moved to a feature release the packaged frames were not built for.
+#
+# The source comes with ozios-decoration (/usr/share/ozios/decoration-src); the build
+# needs cmake, extra-cmake-modules and a C++ compiler. It exits 0 with the new plugin
+# in place, otherwise non-zero with the plugin file untouched. What the build said is
+# kept in /var/lib/ozios/decoration-build.log.
+set -u
+src=/usr/share/ozios/decoration-src
+plugin=/usr/lib/qt6/plugins/org.kde.kdecoration3/org.ozios.decoration.so
+log=/var/lib/ozios/decoration-build.log
+
+missing=""
+command -v cmake >/dev/null || missing="$missing cmake"
+[ -d /usr/share/ECM ] || missing="$missing extra-cmake-modules"
+command -v c++ >/dev/null || missing="$missing gcc"
+command -v make >/dev/null || missing="$missing make"
+if [ -n "$missing" ]; then
+  echo "OziOS: the window frames cannot be built here without$missing (sudo pacman -S$missing)."
+  exit 2
+fi
+[ -f "$src/CMakeLists.txt" ] || { echo "OziOS: the source of the window frames is missing ($src)."; exit 2; }
+
+work="$(mktemp -d /tmp/ozios-decoration.XXXXXX)" || exit 1
+trap 'rm -rf "$work"' EXIT
+mkdir -p "$(dirname "$log")"
+if cmake -B "$work/build" -S "$src" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr >"$log" 2>&1 &&
+  cmake --build "$work/build" -j "$(nproc 2>/dev/null || echo 2)" >>"$log" 2>&1 &&
+  DESTDIR="$work/stage" cmake --install "$work/build" >>"$log" 2>&1; then
+  built="$(find "$work/stage" -type f -name org.ozios.decoration.so | head -n1)"
+  if [ -n "$built" ] && install -Dm755 "$built" "$plugin.new" && mv -f "$plugin.new" "$plugin"; then
+    exit 0
+  fi
+fi
+rm -f "$plugin.new"
+echo "OziOS: building the window frames did not work; see $log."
+exit 1

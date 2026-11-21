@@ -51,9 +51,13 @@ pes etmeyen indirme (`retry-download`): iki kurulum, ağ birkaç saniye gidince
 
 - Derlenmiş çerçeve KDecoration3'e bağlı. Yalnız genel API kullanılır; yüklenemezse KWin
   Breeze'e döner. Plasma'nın yeni bir ana sürümü (6.7 → 6.8) gelince pacman kancası
-  (`decoration-guard`) eklentiyi kenara koyar, o Plasma için derlenmiş paket gelince geri
-  koyar; `ozi doctor` derlendiği sürümle kurulu sürümü karşılaştırır. Paket ISO'da her
-  x86-64 işlemci için derlenir (CachyOS'un `-march=native` ayarı kullanılmaz).
+  (`decoration-guard`) çerçeveleri paketle gelen kaynaktan o bilgisayarda yeniden derler
+  (`decoration-rebuild`, bir iki dakika; cmake ve extra-cmake-modules'u kurulum
+  koyar). Derleyemezse eklentiyi kenara koyar, KWin Breeze çizer; o Plasma için derlenmiş
+  paket gelince ya da Plasma eski sürüme dönünce paketinki geri gelir. `ozi doctor`
+  derlendiği sürümle kurulu sürümü karşılaştırır. Paket ISO'da her x86-64 işlemci için
+  derlenir (CachyOS'un `-march=native` ayarı kullanılmaz). Çevrimiçi kurulum ilk gün
+  Plasma 6.8.3 getirdi, ISO'daki paket 6.7.4 içindi: çerçeveler kurulan sistemde derlendi.
 - Üçlü üst panel Plasma'da mümkün ama yeni; VM'de denenir, olmazsa tek tam çubuğa dönülür.
 - Yazılımsal çizimde (VM) hafif profil kalır: ışıltı ve bulanıklık kapalı, animasyonlar açık.
 - Kilit ekranı değiştirilmiyor: bozulursa oturum açılamaz.
