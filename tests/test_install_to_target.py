@@ -74,7 +74,8 @@ class Target(unittest.TestCase):
         executable(os.path.join(self.bin, "os-prober"), '#!/bin/bash\nprintf "%s" "$FAKE_OS_PROBER"\n')
         # The machine the tests run on may be a virtual machine itself.
         executable(os.path.join(self.bin, "systemd-detect-virt"), '#!/bin/bash\necho "$FAKE_VIRT"\n[ "$FAKE_VIRT" != none ]\n')
-        for name in ("ozios-settings-0.1.1-1-any", "ozios-edu-0.1.1-1-any", "linux-ozios-7.1.6-1-x86_64",
+        for name in ("ozios-settings-0.1.1-1-any", "ozios-edu-0.1.1-1-any", "ozios-decoration-0.3.0-1-x86_64",
+                     "linux-ozios-7.1.6-1-x86_64",
                      "linux-ozios-headers-7.1.6-1-x86_64", "linux-ozios-nvidia-open-7.1.6-1-x86_64",
                      "linux-ozios-zfs-7.1.6-1-x86_64"):
             for suffix in (".pkg.tar.zst", ".pkg.tar.zst.sig"):
@@ -122,7 +123,7 @@ class Stages(Target):
         repo_add = [line for line in self.calls() if "repo-add" in line]
         self.assertEqual(len(repo_add), 1)
         for name in ("linux-ozios-7.1.6-1-x86_64.pkg.tar.zst", "linux-ozios-headers-7.1.6-1-x86_64.pkg.tar.zst",
-                     "ozios-settings-0.1.1-1-any.pkg.tar.zst"):
+                     "ozios-settings-0.1.1-1-any.pkg.tar.zst", "ozios-decoration-0.3.0-1-x86_64.pkg.tar.zst"):
             self.assertIn(name, repo_add[0])
         self.assertNotIn(".sig", repo_add[0])
         with open(self.pacman_conf(), encoding="utf-8") as fh:
@@ -168,11 +169,11 @@ class Stages(Target):
 
     # --- early stage: after the extra packages ------------------------------------
 
-    def test_the_settings_come_first_then_the_edition(self):
+    def test_the_settings_come_first_then_the_edition_then_the_window_frames(self):
         self.run_stage("kernel")
         self.run_stage("early")
         names = [re.sub(r"-[0-9].*", "", n) for n in self.installs()]
-        self.assertEqual(names, ["ozios-settings", "ozios-edu"])
+        self.assertEqual(names, ["ozios-settings", "ozios-edu", "ozios-decoration"])
         self.assertEqual(len([line for line in self.calls() if "-S linux-ozios" in line]), 1)   # not again
 
     def test_signatures_are_left_alone(self):

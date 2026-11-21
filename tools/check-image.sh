@@ -45,6 +45,8 @@ check "the window motion is installed" 'test -f /usr/share/kwin-wayland/effects/
 check "the Alt+Tab switcher is installed" 'test -f /usr/share/kwin-wayland/tabbox/org.ozios.switcher/contents/ui/SwitcherCard.qml'
 check "the window flow and minimise effects are installed" 'test -f /usr/share/kwin-wayland/effects/ozios_morph/contents/code/main.js && test -f /usr/share/kwin-wayland/effects/ozios_minimize/contents/code/main.js'
 check "the tiling script is installed" 'test -f /usr/share/kwin-wayland/scripts/ozios-tiling/contents/code/main.js'
+check "the OziOS window frames are installed and fit this Plasma" 'test -f /usr/lib/qt6/plugins/org.kde.kdecoration3/org.ozios.decoration.so && test -x /usr/lib/ozios/decoration-guard'
+check "the Look app is installed" 'test -x /usr/lib/ozios/apps/ozi-look/ozi-look && test -f /usr/share/applications/ozi-keys.desktop'
 check "the desktops and clock widgets are installed" 'test -f /usr/share/plasma/plasmoids/org.ozios.workspaces/contents/ui/main.qml && test -f /usr/share/plasma/plasmoids/org.ozios.clock/contents/ui/main.qml'
 check "every colour theme is installed" 'for s in OziOS OziOSAurora OziOSEmber OziOSMint OziOSRose OziOSFrost; do test -f /usr/share/color-schemes/$s.colors && test -f /usr/share/konsole/$s.colorscheme || exit 1; done'
 check "the boot splash and the day and night timer are installed" 'test -f /usr/share/plymouth/themes/ozios/ozios.plymouth && test -f /usr/lib/systemd/user/ozios-theme-auto.timer'

@@ -1,0 +1,36 @@
+#!/bin/bash
+# Run by pacman after Plasma's decoration library (kdecoration) or ozios-decoration
+# changes: are the OziOS window frames still built for this Plasma?
+#
+# A decoration plugin built against another feature release of KDecoration3 can take
+# KWin down with it. So one built for an older Plasma is put aside, and KWin draws
+# Breeze frames until an ozios-decoration built for the new Plasma arrives; with a
+# matching build the plugin is where KWin looks for it again.
+#
+#   decoration-guard [root]     root: a system mounted elsewhere, for tests
+set -u
+root="${1:-}"
+plugin="$root/usr/lib/qt6/plugins/org.kde.kdecoration3/org.ozios.decoration.so"
+aside="$root/usr/lib/ozios/decoration-aside/org.ozios.decoration.so"
+built="$(cat "$root/usr/share/ozios/decoration-built-with" 2>/dev/null)"
+now="${OZI_KDECORATION_VERSION:-$(pacman -Q --root "${root:-/}" kdecoration 2>/dev/null | awk '{ print $2 }')}"
+
+series() {  # series 1:6.7.4-1 -> 6.7: the feature release, which is what the plugin depends on
+  echo "$1" | sed -E 's/^([0-9]+:)?([0-9]+\.[0-9]+).*/\2/'
+}
+
+[ -n "$built" ] && [ -n "$now" ] || exit 0
+if [ "$(series "$built")" = "$(series "$now")" ]; then
+  # A build for this Plasma: the plugin belongs where KWin finds it.
+  if [ ! -f "$plugin" ] && [ -f "$aside" ]; then
+    mv "$aside" "$plugin" && echo "OziOS: the window frames fit Plasma $(series "$now") again."
+  fi
+  rm -f "$aside"
+  exit 0
+fi
+if [ -f "$plugin" ]; then
+  mkdir -p "$(dirname "$aside")" && mv -f "$plugin" "$aside" || exit 0
+  echo "OziOS: the window frames were built for Plasma $(series "$built") and this is Plasma $(series "$now");"
+  echo "       until ozios-decoration is built for it, windows have Breeze frames."
+fi
+exit 0

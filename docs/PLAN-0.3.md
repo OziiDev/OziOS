@@ -20,7 +20,7 @@ ekran, ağ, ses gibi kolaylıkları yoktur. Onun yerine Hyprland'ı güzel yapan
 | Otomatik döşeme (dwindle), boşluklar | Yeni KWin betiği `ozios-tiling`: Meta+T aç/kapa, Meta+F pencereyi serbest bırak, sürükleyerek yer değiştir. Varsayılan kapalı (kolay kullanım), tek tuş uzakta. |
 | Waybar adaları | Üstte üç yüzen ada: solda başlatıcı + çalışma alanları, ortada saat, sağda hızlı ayarlar + tepsi. Yeni uygulamacıklar `org.ozios.workspaces`, `org.ozios.clock`. |
 | Ayar dosyası | Yok: yeni **Görünüm** uygulaması (`ozi-look`) ve `ozi look` komutu: hazır stiller (Akıcı, Döşeme, Hafif), köşe, kenar, boşluk, animasyon hızı, bulanıklık, döşeme. |
-| Kısayol ezberi | Meta+/ ile kısayol kartı (`ozi-keys`). |
+| Kısayol ezberi | Meta+K ile kısayol kartı (`ozi-keys`). |
 
 ## Sıra
 
@@ -32,11 +32,21 @@ ekran, ağ, ses gibi kolaylıkları yoktur. Onun yerine Hyprland'ı güzel yapan
 6. Paket (`ozios-decoration` derlenir), remaster, check-image, testler, belgeler, 0.3.0,
    ISO, kurulum testi, ekran görüntüleri.
 
+## Durum (21 Kasım 2026)
+
+1–5 bitti ve gerçek KWin 6.7.4'te (VirtualBox, yazılımsal çizim) denendi: çerçeve, akış ve
+küçültme efektleri, üç ada, dört masaüstü ve kısayolları, kaymada duran duvar kâğıdı, döşeme
+(aç/kapa, yeni pencere, serbest bırakma, sürükleyip yer değiştirme, kenardan boyutlandırma),
+Görünüm uygulaması Türkçe ve Döşeme stili. 6'da paket, remaster, check-image, testler ve
+belgeler hazır; 0.3.0 ISO'su VM'de derlenip denenecek.
+
 ## Riskler ve önlemler
 
 - Derlenmiş çerçeve KDecoration3'e bağlı. Yalnız genel API kullanılır; yüklenemezse KWin
-  Breeze'e döner. `ozi doctor` derlendiği sürümle kurulu sürümü karşılaştırır; ileride
-  Plasma'nın küçük sürümü değişince paket yeniden derlenir (`tools/build-decoration.sh`).
+  Breeze'e döner. Plasma'nın yeni bir ana sürümü (6.7 → 6.8) gelince pacman kancası
+  (`decoration-guard`) eklentiyi kenara koyar, o Plasma için derlenmiş paket gelince geri
+  koyar; `ozi doctor` derlendiği sürümle kurulu sürümü karşılaştırır. Paket ISO'da her
+  x86-64 işlemci için derlenir (CachyOS'un `-march=native` ayarı kullanılmaz).
 - Üçlü üst panel Plasma'da mümkün ama yeni; VM'de denenir, olmazsa tek tam çubuğa dönülür.
 - Yazılımsal çizimde (VM) hafif profil kalır: ışıltı ve bulanıklık kapalı, animasyonlar açık.
 - Kilit ekranı değiştirilmiyor: bozulursa oturum açılamaz.

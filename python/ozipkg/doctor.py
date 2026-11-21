@@ -410,6 +410,42 @@ def check_shell(p):
     return out
 
 
+# packages/ozios-decoration: the plugin, where its guard puts it aside, and the
+# KDecoration3 version it was built against.
+FRAMES_PLUGIN = "/usr/lib/qt6/plugins/org.kde.kdecoration3/org.ozios.decoration.so"
+FRAMES_ASIDE = "/usr/lib/ozios/decoration-aside/org.ozios.decoration.so"
+FRAMES_BUILT = "/usr/share/ozios/decoration-built-with"
+
+
+def plasma_series(version):
+    """'1:6.7.4-1' -> '6.7': the feature release of Plasma a frame plugin is built for."""
+    match = re.match(r"(?:\d+:)?(\d+\.\d+)", (version or "").strip())
+    return match.group(1) if match else ""
+
+
+def check_frames(p):
+    """The OziOS window frames, a compiled KWin plugin that fits one feature release of Plasma."""
+    built = plasma_series(p.read(FRAMES_BUILT))
+    if not built:
+        return []                               # ozios-decoration is not installed
+    code, out = p.run(["pacman", "-Q", "kdecoration"])
+    words = out.split() if code == 0 else []
+    now = plasma_series(words[1]) if len(words) > 1 else ""
+    if not p.exists(FRAMES_PLUGIN):
+        if p.exists(FRAMES_ASIDE):
+            return [Check("frames", "info",
+                          tr("Windows have Breeze frames until the OziOS frames are built for Plasma {now}", now=now or "?"),
+                          tr("They were built for Plasma {built}, and a frame plugin built for another Plasma can take "
+                             "the desktop down with it. The next OziOS release brings frames for this one.", built=built))]
+        return [Check("frames", "warn", tr("The OziOS window frames are missing"), "", "sudo pacman -S ozios-decoration")]
+    if now and now != built:
+        return [Check("frames", "warn", tr("The OziOS window frames were built for Plasma {built}, this is Plasma {now}",
+                                           built=built, now=now),
+                      tr("KWin could crash loading them; the guard puts them aside."),
+                      "sudo /usr/lib/ozios/decoration-guard")]
+    return [Check("frames", "ok", tr("The OziOS window frames fit this Plasma ({series})", series=built))]
+
+
 SOFTWARE_RENDERERS = re.compile(r"llvmpipe|softpipe|Software Rasterizer", re.I)
 
 
@@ -458,7 +494,7 @@ def check_gaming(p):
 
 CHECKS = (check_identity, check_kernel, check_firmware, check_memory, check_disk, check_gpu, check_virtualization,
           check_packages, check_boxes, check_snapshots, check_time, check_services, check_network, check_shell,
-          check_rendering, check_gaming, check_edition)
+          check_frames, check_rendering, check_gaming, check_edition)
 
 
 def run_checks(probe=None):

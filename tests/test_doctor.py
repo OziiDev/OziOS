@@ -401,6 +401,47 @@ class Shell(unittest.TestCase):
         self.assertIsNone(doctor.config_value(text, "Theme", "other"))
 
 
+class Frames(unittest.TestCase):
+    """The compiled window frames fit one feature release of Plasma (packages/ozios-decoration)."""
+
+    def check(self, plasma="6.7.5-1", plugin=True, aside=False, built="1:6.7.4-1\n"):
+        files = {doctor.FRAMES_BUILT: built} if built else {}
+        if plugin:
+            files[doctor.FRAMES_PLUGIN] = ""
+        if aside:
+            files[doctor.FRAMES_ASIDE] = ""
+        commands = {("pacman", "-Q", "kdecoration"): (0, "kdecoration %s\n" % plasma)} if plasma else {}
+        return doctor.check_frames(Fake(files=files, commands=commands))
+
+    def test_frames_built_for_this_plasma(self):
+        found = self.check()
+        self.assertEqual((found[0].id, found[0].level), ("frames", "ok"))
+        self.assertIn("6.7", found[0].title)
+
+    def test_a_newer_plasma_has_breeze_frames_until_a_build_for_it(self):
+        found = self.check(plasma="6.8.0-1", plugin=False, aside=True)
+        self.assertEqual(found[0].level, "info")
+        self.assertIn("6.8", found[0].title)
+        self.assertIn("6.7", found[0].detail)
+
+    def test_frames_for_another_plasma_still_in_kwins_way_are_a_warning(self):
+        found = self.check(plasma="1:6.8.0-1")
+        self.assertEqual((found[0].level, found[0].hint), ("warn", "sudo /usr/lib/ozios/decoration-guard"))
+
+    def test_frames_gone_without_the_guard_are_missing(self):
+        self.assertEqual(self.check(plugin=False)[0].hint, "sudo pacman -S ozios-decoration")
+
+    def test_without_the_package_nothing_is_said(self):
+        self.assertEqual(self.check(built=None), [])
+
+    def test_without_pacman_the_version_cannot_be_compared(self):
+        self.assertEqual(self.check(plasma=None)[0].level, "ok")
+
+    def test_series(self):
+        self.assertEqual([doctor.plasma_series(v) for v in ("1:6.7.4-1", "6.10.0-2", "", None, "x")],
+                         ["6.7", "6.10", "", "", ""])
+
+
 class Rendering(unittest.TestCase):
     """Software drawing makes the desktop slow; in a VM the fix is the VM's 3D setting."""
 

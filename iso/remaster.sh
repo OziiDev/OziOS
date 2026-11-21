@@ -102,6 +102,17 @@ chown -R "$builder" "$work/pkgbuild" "$work/makepkg" "$work/pkg"
 (cd "$work/pkgbuild" && sudo -u "$builder" env OZI_SRC="$repo" BUILDDIR="$work/makepkg" PKGDEST="$work/pkg" makepkg -f --nodeps)
 package="$(find "$work/pkg" -name 'ozios-settings-*.pkg.tar.*' ! -name '*.sig' | head -n1)"
 [ -n "$package" ] || die "makepkg produced nothing"
+
+# The window frames are compiled, against the Plasma of the system this runs on, which
+# is the image being converted (tools/build-iso-in-vm.sh puts the compiler in place).
+step "Building the OziOS window frames"
+rm -rf "$work/pkgbuild-decoration"
+mkdir -p "$work/pkgbuild-decoration"
+cp "$repo/packages/ozios-decoration/PKGBUILD" "$work/pkgbuild-decoration/"
+chown -R "$builder" "$work/pkgbuild-decoration"
+(cd "$work/pkgbuild-decoration" && sudo -u "$builder" env OZI_SRC="$repo" BUILDDIR="$work/makepkg" PKGDEST="$work/pkg" makepkg -f --nodeps)
+decoration_package="$(find "$work/pkg" -name 'ozios-decoration-*.pkg.tar.*' ! -name '*.sig' | head -n1)"
+[ -n "$decoration_package" ] || die "makepkg produced no window frames"
 edu_package=""
 if [ "$edition" = edu ]; then
   step "Building the Education package"
@@ -160,9 +171,10 @@ if [ -n "$add" ]; then
   "${pm[@]}" -Sy --needed $add
   rm -rf "$root"/var/lib/pacman/sync/*
 fi
-"${pm[@]}" -U "$package" ${edu_package:+"$edu_package"}
-rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*.pkg.tar.*
+"${pm[@]}" -U "$package" "$decoration_package" ${edu_package:+"$edu_package"}
+rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*.pkg.tar.* "$root"/opt/ozios/ozios-decoration-*.pkg.tar.*
 install -Dm644 "$package" "$root/opt/ozios/$(basename "$package")"
+install -Dm644 "$decoration_package" "$root/opt/ozios/$(basename "$decoration_package")"
 [ -z "$edu_package" ] || install -Dm644 "$edu_package" "$root/opt/ozios/$(basename "$edu_package")"
 echo ozios > "$root/etc/hostname"
 # In VirtualBox the folders shared with the host belong to the group vboxsf; the live

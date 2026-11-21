@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = kdecoration
+Target = ozios-decoration
+
+[Action]
+Description = Checking that the OziOS window frames fit this Plasma...
+When = PostTransaction
+Exec = /usr/lib/ozios/decoration-guard

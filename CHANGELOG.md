@@ -3,6 +3,51 @@
 All notable changes to OziOS. Versions follow [Semantic Versioning](https://semver.org/);
 the rules for releases are in [docs/RELEASING.md](docs/RELEASING.md).
 
+## 0.3.0 (unreleased)
+
+"Akış" (flow): a desktop that no longer looks like Plasma, with rounded frames
+that glow, windows that flow, a bar of three islands and tiling one key away,
+and is still as easy to use as Plasma. The plan is in `docs/PLAN-0.3.md`.
+
+- Window frames of our own (`org.ozios.decoration`, a KDecoration3 plugin):
+  rounded windows, the program's content included; an outline in the accent
+  colour on the active window and a faint one on the others; a soft glow in the
+  theme's two colours; a centred title and round buttons that light up. They are
+  compiled, so they come in a package of their own, `ozios-decoration`, built on
+  the ISO for any x86-64 processor (not only the build machine's). When Plasma
+  moves to a new feature release, a pacman hook puts the frames aside and KWin
+  draws Breeze frames until a build for that Plasma arrives; `ozi doctor` says
+  which is the case.
+- Windows flow: maximised, restored or tiled, a window moves from its old frame
+  to the new one (`ozios_morph`); minimised, it goes into its dock icon and
+  comes back out of it (`ozios_minimize`). Both take the place of KWin's own
+  effects. The slide between desktops keeps the wallpaper still.
+- The top bar is three floating islands: the launcher and the desktops on the
+  left, the clock in the middle, the tray and the control centre on the right.
+  The desktops are lights (`org.ozios.workspaces`): the one in use is a pill in
+  the accent colours, desktops with windows are filled dots, and a click or the
+  wheel switches. The clock (`org.ozios.clock`) opens a calendar.
+- Four desktops: Meta+1…4 switches, Meta+Ctrl+1…4 takes the window along.
+- Tiling (`ozios-tiling`, a KWin script): Meta+T tiles the windows of a desktop
+  in a spiral of halves with gaps between them, and each new window takes half
+  of the one in use. Dragging a window onto another swaps the two, and resizing
+  one moves the line beside it. Meta+F lets a window float above the tiles.
+  Dialogs and fixed-size windows stay out of it. Turned off again, the windows
+  go back where they were. It is off until Meta+T, or on everywhere from Look.
+- Look (`ozi-look`, "Görünüm" in Turkish) sets the corner radius, the outline,
+  the glow, title bars, the gaps, tiling, animation speed and blur. It shows each
+  change on a small desktop and applies it at once. Its presets are Fluid,
+  Tiling and Light. `ozi look` does the same in a terminal.
+- Meta+K shows the keys worth knowing. A few keys from tiling desktops are
+  added on top of Plasma's: Meta+Q closes a window (activities move to
+  Meta+Shift+Q), Meta+Enter opens a terminal, and KWin's tile editor moves to
+  Meta+Shift+T.
+- Each theme's second colour, used by the glow, the desktop pill and today in
+  the calendar, leans toward violet: cyan goes blue, ember pink, mint blue.
+- Tested in KWin 6.7.4 in VirtualBox: the islands, the desktop keys and the
+  slide; tiling on and off, new windows, floating, dragging and resizing; and
+  Look in Turkish with its Tiling preset.
+
 ## 0.2.0 (unreleased)
 
 The OziOS desktop of its own, tried in a real Plasma session this time, and an

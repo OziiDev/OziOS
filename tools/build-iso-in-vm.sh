@@ -33,6 +33,14 @@ if ! command -v xorriso >/dev/null; then
   done
 fi
 command -v xorriso >/dev/null || { echo "build: no xorriso"; exit 1; }
+# The window frames are compiled (packages/ozios-decoration); a live image has no compiler.
+if ! command -v cmake >/dev/null || ! command -v g++ >/dev/null || [ ! -d /usr/share/ECM ]; then
+  for _ in 1 2 3; do
+    bash "$repo/tools/archive-install.sh" 2026/08/09 cmake extra-cmake-modules gcc make pkgconf >/dev/null 2>&1 && break
+    sleep 10
+  done
+fi
+command -v cmake >/dev/null && command -v g++ >/dev/null || { echo "build: no compiler for the window frames"; exit 1; }
 
 # A run that stopped early can leave the source ISO mounted inside the work folder.
 findmnt -rno TARGET | grep '^/mnt/build/remaster/' | sort -r | while read -r target; do umount -l "$target"; done
