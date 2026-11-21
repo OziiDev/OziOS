@@ -544,6 +544,9 @@ class Shell(QObject):
         if "status --json" in command:
             out = json.dumps({"version": "0.1.1", "kernel": "7.1.6-1-ozios", "effects": "full", "game_mode": False,
                               "layout": "default", "power_profile": "balanced", "windows_guest": "missing", "updates": 3})
+        elif "quick --json" in command:
+            out = json.dumps({"volume": 40, "muted": False, "wifi": True, "wifi_network": "Ev", "bluetooth": None,
+                              "night": False, "dnd": False})
         elif "theme --json" in command:
             items = themes.listing(os.devnull)
             for item in items:
@@ -631,7 +634,7 @@ def register():
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.kwin", 3, 0, name)
     for name in ("Menu", "MenuItem", "SearchField"):
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.plasma.extras", 1, 0, name)
-    for name in ("Label", "Button", "ToolButton", "Switch", "TextField"):
+    for name in ("Label", "Button", "ToolButton", "Switch", "TextField", "Slider"):
         qmlRegisterType(_url("plasma", name + ".qml"), "org.kde.plasma.components", 3, 0, name)
     for name in ("Theme", "Units"):
         qmlRegisterSingletonType(_url("kirigami", name + ".qml"), "org.kde.kirigami", 2, 0, name)

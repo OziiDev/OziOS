@@ -175,11 +175,16 @@ def drive_control(engine, folder):
     buttons = [b for b in controls if "ToolButton" in b.metaObject().className() and b.property("text") == "Off"]
     if buttons:
         click(view, buttons[0])
-    switches = [s for s in controls if "Switch" in s.metaObject().className()]
-    if switches:
-        click(view, switches[0])
+    named = {o.objectName(): o for o in controls if o.objectName()}
+    # The quick settings: the computer of the stand-in shell has Wi-Fi but no Bluetooth.
+    out["tiles"] = sorted(name for name, o in named.items() if name.startswith("tile-") and o.isVisible())
+    for name in ("tile-game", "tile-night", "tile-dnd", "mute"):
+        if name in named:
+            click(view, named[name])
+    out["night_on_at_once"] = bool(named["tile-night"].property("on")) if "tile-night" in named else None
     QTest.qWait(200)
-    out["commands"] = [c[2] for c in plasma_stubs.CALLS if c[0] == "shell"]
+    out["commands"] = [c[2] for c in plasma_stubs.CALLS if c[0] == "shell" and "--json" not in c[2]]
+    out["volume"] = named["volume"].property("value") if "volume" in named else None
     view.close()
     return out
 

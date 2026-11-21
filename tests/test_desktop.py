@@ -285,7 +285,7 @@ class Themes(unittest.TestCase):
 
     def test_ozi_hands_the_command_to_python(self):
         self.assertIn("theme", tools.COMMANDS)
-        self.assertRegex(read("packages", "ozi-cli", "ozi"), r"gaming \| theme \| look\)")
+        self.assertRegex(read("packages", "ozi-cli", "ozi"), r"gaming \| theme \| look \| quick\)")
 
 
 # --- the Plasma style ---------------------------------------------------------------
@@ -1111,7 +1111,11 @@ class ShellInQt(unittest.TestCase):
 
         control = result["control"]
         self.assertEqual(control["swatches"], [t.id for t in themes.THEMES])
-        self.assertEqual(control["commands"], ["ozi theme aurora", "ozi effects off", "ozi mode game on"])
+        self.assertEqual(control["tiles"], ["tile-dnd", "tile-game", "tile-night", "tile-wifi"])   # no Bluetooth here
+        self.assertEqual(control["commands"], ["ozi theme aurora", "ozi effects off", "ozi mode game on",
+                                               "ozi quick night on", "ozi quick dnd on", "ozi quick mute on"])
+        self.assertTrue(control["night_on_at_once"])
+        self.assertEqual(control["volume"], 40)
 
         bar = result["bar"]
         self.assertEqual(bar["lights"], 4)

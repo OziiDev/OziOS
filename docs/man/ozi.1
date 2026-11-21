@@ -58,6 +58,12 @@ frames, \fBglow\fR and \fBtitlebar\fR (on or off), \fBgaps\fR between tiles (0 t
 every desktop from the start, \fBblur\fR, and the animation \fBspeed\fR (off, fast, normal, relaxed).
 Without arguments it shows them all. The Look app does the same with a preview; Meta+K shows the keys.
 .TP
+.B quick \fR[\fIsetting\fR [\fIvalue\fR]] [\fB\-\-json\fR]
+The quick settings of the control centre in the bar: \fBvolume\fR (a per cent like 40, or +5 and \-5),
+\fBmute\fR (on, off or toggle), \fBwifi\fR, \fBbluetooth\fR, \fBnight\fR light and \fBdnd\fR, do not disturb
+(on or off). They are read and set with wpctl, nmcli, rfkill, KWin's night light and kde\-inhibit, so
+Plasma's own settings show the same. A setting the computer does not have is shown as none.
+.TP
 .BI effects " level"
 Window effects: \fBfull\fR, \fBlight\fR or \fBoff\fR.
 .TP

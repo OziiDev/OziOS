@@ -64,7 +64,7 @@ class Translations(unittest.TestCase):
     def test_nothing_is_left_empty_or_identical(self):
         for english, turkish in table().items():
             self.assertTrue(turkish.strip(), english)
-            if english not in ("Terminal",):               # words that are the same in both languages
+            if english not in ("Terminal", "Wi-Fi", "Bluetooth"):   # words that are the same in both languages
                 self.assertNotEqual(english, turkish, english)
 
 
