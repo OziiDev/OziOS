@@ -12,7 +12,9 @@ anything on the computer you care about.
 - An internet connection during the installation. The installer downloads the
   system while it works (about 2 GB), so a cable or a Wi-Fi network you can
   join from the live desktop is required. If the connection drops for a while
-  during the download, the installer waits for it and carries on.
+  during the download, the installer waits for it and carries on. When the
+  system it downloads has a newer Plasma than the medium, it also builds the
+  OziOS window frames for that Plasma, which adds a minute or two.
 
 ## 1. Put the ISO on a USB stick
 
