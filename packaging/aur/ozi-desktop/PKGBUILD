@@ -30,7 +30,7 @@ optdepends=(
 backup=(etc/pam.d/oziwm)
 options=(!lto)
 source=("OziOS-$_tag.tar.gz::$url/archive/refs/tags/$_tag.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('f06ab16c6ff17ca1138994c40f512c778bf99626627133c5101eb1180fa32f53')
 
 _src() { echo "$srcdir/OziOS-${_tag#v}"; }
 
