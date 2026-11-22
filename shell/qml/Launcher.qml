@@ -11,6 +11,11 @@ Window {
 
     visible: false
     color: "transparent"
+    // Always a real size: when Qt shows the window again it sends the size before
+    // the anchors, and a 0 size without anchors is a protocol error that ends the shell.
+    width: Screen.width > 0 ? Screen.width : 1366
+    height: Screen.height > 0 ? Screen.height : 768
+    LS.Window.scope: "ozi-launcher"
     LS.Window.layer: LS.Window.LayerOverlay
     LS.Window.anchors: LS.Window.AnchorTop | LS.Window.AnchorBottom | LS.Window.AnchorLeft | LS.Window.AnchorRight
     LS.Window.exclusionZone: -1

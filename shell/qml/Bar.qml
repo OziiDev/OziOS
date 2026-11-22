@@ -14,6 +14,7 @@ Window {
     visible: true
     height: 46
     color: "transparent"
+    LS.Window.scope: "ozi-bar"
     LS.Window.layer: LS.Window.LayerTop
     LS.Window.anchors: LS.Window.AnchorTop | LS.Window.AnchorLeft | LS.Window.AnchorRight
     LS.Window.exclusionZone: 46

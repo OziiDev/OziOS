@@ -111,7 +111,17 @@ impl DmabufHandler for OziWm {
     }
 
     fn dmabuf_imported(&mut self, _global: &DmabufGlobal, dmabuf: Dmabuf, notifier: ImportNotifier) {
-        let imported = self.tty.as_mut().is_some_and(|tty| tty.import_dmabuf(&dmabuf));
+        let imported = if let Some(tty) = self.tty.as_mut() {
+            tty.import_dmabuf(&dmabuf)
+        } else if let Some(backend) = self.winit.as_ref() {
+            use smithay::backend::renderer::ImportDma;
+            backend.borrow_mut().renderer().import_dmabuf(&dmabuf, None).is_ok()
+        } else {
+            false
+        };
+        if !imported {
+            tracing::warn!(format = ?smithay::backend::allocator::Buffer::format(&dmabuf), "could not import a client's GPU buffer");
+        }
         if imported {
             let _ = notifier.successful::<OziWm>();
         } else {

@@ -48,3 +48,9 @@ their own licences, and their sources are available from the places they come fr
 
 CachyOS, Arch Linux, KDE, Plasma, Qt, NVIDIA, Windows and Ubuntu are names of their
 owners. OziOS is an independent project and is not endorsed by any of them.
+
+## oziwm/vendor/smithay
+
+Smithay 0.7.0 (MIT, Copyright (c) 2017 Victor Berger and Victoria Brekenfeld), copied
+from crates.io with one fix described in `oziwm/vendor/smithay/OZIOS-PATCH.md`.
+Its licence is in `oziwm/vendor/smithay/LICENSE.txt`.

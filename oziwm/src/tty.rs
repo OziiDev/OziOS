@@ -59,6 +59,8 @@ struct Screen {
     compositor: Compositor,
     /// A frame is on its way to the screen; wait for its vblank.
     waiting: bool,
+    /// When the frame we wait for was queued, to notice a vblank that never came.
+    queued_at: Option<Instant>,
 }
 
 pub struct Tty {
@@ -352,7 +354,7 @@ impl Tty {
             self.drm.cursor_size(),
             Some(self.gbm.clone()),
         )?;
-        Ok(Screen { output, connector, compositor, waiting: false })
+        Ok(Screen { output, connector, compositor, waiting: false, queued_at: None })
     }
 
     pub fn import_dmabuf(&mut self, dmabuf: &smithay::backend::allocator::dmabuf::Dmabuf) -> bool {
@@ -379,6 +381,17 @@ pub fn render_all(state: &mut OziWm) {
     let mut still_moving = false;
     let crtcs: Vec<crtc::Handle> = tty.screens.keys().copied().collect();
     for crtc in crtcs {
+        let Some(screen) = tty.screens.get(&crtc) else {
+            continue;
+        };
+        // A vblank that never arrives must not freeze the screen until the pointer moves.
+        if screen.waiting && screen.queued_at.is_some_and(|t| now.duration_since(t) > Duration::from_millis(200)) {
+            tracing::warn!(output = %screen.output.name(), "no vblank for the last frame; drawing again");
+            if let Some(screen) = tty.screens.get_mut(&crtc) {
+                screen.waiting = false;
+                let _ = screen.compositor.frame_submitted();
+            }
+        }
         let Some(screen) = tty.screens.get(&crtc) else {
             continue;
         };
@@ -415,7 +428,10 @@ pub fn render_all(state: &mut OziWm) {
             .render_frame(&mut tty.renderer, &elements, BACKGROUND, FrameFlags::DEFAULT)
         {
             Ok(result) if !result.is_empty => match screen.compositor.queue_frame(()) {
-                Ok(()) => screen.waiting = true,
+                Ok(()) => {
+                    screen.waiting = true;
+                    screen.queued_at = Some(Instant::now());
+                }
                 Err(err) => tracing::warn!(?err, "could not queue frame"),
             },
             Ok(_) => {}
@@ -442,6 +458,9 @@ pub fn render_all(state: &mut OziWm) {
         }
     }
     state.space.refresh();
+    for output in state.space.outputs() {
+        smithay::desktop::layer_map_for_output(output).cleanup();
+    }
     state.popups.cleanup();
     let _ = state.display_handle.flush_clients();
     state.needs_redraw = still_moving;

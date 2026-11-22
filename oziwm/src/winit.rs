@@ -27,11 +27,14 @@ pub fn init_winit(
     event_loop: &mut EventLoop<'static, OziWm>,
     state: &mut OziWm,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (mut backend, winit) = winit::init::<GlesRenderer>()?;
-    backend.window().set_title("OziOS (oziwm)");
+    let (backend, winit) = winit::init::<GlesRenderer>()?;
+    let backend = std::rc::Rc::new(std::cell::RefCell::new(backend));
+    state.winit = Some(backend.clone());
+    let mut backend_ref = backend.borrow_mut();
+    backend_ref.window().set_title("OziOS (oziwm)");
 
     let mode = Mode {
-        size: backend.window_size(),
+        size: backend_ref.window_size(),
         refresh: 60_000,
     };
     let output = Output::new(
@@ -50,7 +53,14 @@ pub fn init_winit(
     state.nested = true;
 
     let mut damage_tracker = OutputDamageTracker::from_output(&output);
-    let shaders = Shaders::compile(backend.renderer())?;
+    let shaders = Shaders::compile(backend_ref.renderer())?;
+    // Like on real hardware: GPU clients hand over their buffers as dmabufs.
+    {
+        use smithay::backend::renderer::ImportDma;
+        let formats = backend_ref.renderer().dmabuf_formats();
+        state.dmabuf_state.create_global::<OziWm>(&state.display_handle, formats);
+    }
+    drop(backend_ref);
 
     event_loop.handle().insert_source(winit, move |event, _, state| match event {
         WinitEvent::Resized { size, .. } => {
@@ -62,6 +72,7 @@ pub fn init_winit(
         }
         WinitEvent::Input(event) => state.process_input_event(event),
         WinitEvent::Redraw => {
+            let mut backend = backend.borrow_mut();
             let size = backend.window_size();
             let age = backend.buffer_age().unwrap_or(0);
             let started = Instant::now();
@@ -110,6 +121,7 @@ pub fn init_winit(
                 layer.send_frame(&output, elapsed, Some(Duration::ZERO), |_, _| Some(output.clone()));
             }
             state.space.refresh();
+            smithay::desktop::layer_map_for_output(&output).cleanup();
             state.popups.cleanup();
             let _ = state.display_handle.flush_clients();
             backend.window().request_redraw();

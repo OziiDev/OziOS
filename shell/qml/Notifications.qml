@@ -13,6 +13,7 @@ Window {
     color: "transparent"
     width: 380
     height: Math.max(1, list.height + 12)
+    LS.Window.scope: "ozi-notifications"
     LS.Window.layer: LS.Window.LayerOverlay
     LS.Window.anchors: LS.Window.AnchorTop | LS.Window.AnchorRight
     LS.Window.margins.top: 50

@@ -15,6 +15,7 @@ Window {
     color: "transparent"
     width: shelf.width + 40
     height: 92
+    LS.Window.scope: "ozi-dock"
     LS.Window.layer: LS.Window.LayerTop
     LS.Window.anchors: LS.Window.AnchorBottom
     LS.Window.exclusionZone: 78

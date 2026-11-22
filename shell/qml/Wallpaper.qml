@@ -11,6 +11,7 @@ Window {
 
     visible: true
     color: c.ink
+    LS.Window.scope: "ozi-wallpaper"
     LS.Window.layer: LS.Window.LayerBackground
     LS.Window.anchors: LS.Window.AnchorTop | LS.Window.AnchorBottom | LS.Window.AnchorLeft | LS.Window.AnchorRight
     LS.Window.exclusionZone: -1

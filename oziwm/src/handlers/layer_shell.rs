@@ -18,6 +18,8 @@ use smithay::{
     },
 };
 
+use smithay::reexports::wayland_server::Resource;
+
 use crate::OziWm;
 
 impl WlrLayerShellHandler for OziWm {
@@ -40,7 +42,7 @@ impl WlrLayerShellHandler for OziWm {
             tracing::warn!(%namespace, "layer surface without an output");
             return;
         };
-        tracing::info!(%namespace, "layer surface");
+        tracing::info!(%namespace, object = surface.shell_surface().id().protocol_id(), "layer surface");
         let mut map = layer_map_for_output(&output);
         if let Err(err) = map.map_layer(&LayerSurface::new(surface, namespace)) {
             tracing::warn!(?err, "could not map layer surface");

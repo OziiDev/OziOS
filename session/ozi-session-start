@@ -19,6 +19,8 @@ mkdir -p "$state"
 # so a broken shell cannot spin the processor.
 quick=0
 while [ "$quick" -lt 5 ]; do
+    # oziwm is gone (the session ended): nothing left to draw on.
+    [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/${WAYLAND_DISPLAY:-wayland-0}" ] || break
     started=$(date +%s)
     echo "$(date '+%F %T') ozi-shell starting" >> "$state/shell.log"
     ozi-shell 2>> "$state/shell.log"

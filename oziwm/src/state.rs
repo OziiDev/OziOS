@@ -92,6 +92,8 @@ pub struct OziWm {
     /// Something changed since the last frame (real hardware only draws then).
     pub needs_redraw: bool,
     pub tty: Option<crate::tty::Tty>,
+    /// The nested window's renderer, shared with the winit event source (for dmabuf imports).
+    pub winit: Option<std::rc::Rc<std::cell::RefCell<smithay::backend::winit::WinitGraphicsBackend<smithay::backend::renderer::gles::GlesRenderer>>>>,
     /// The X display xwayland-satellite serves, for old X11 programs (Steam, games).
     pub x_display: Option<String>,
     pub session: Option<smithay::backend::session::libseat::LibSeatSession>,
@@ -183,6 +185,7 @@ impl OziWm {
             cursor_status: CursorImageStatus::default_named(),
             needs_redraw: true,
             tty: None,
+            winit: None,
             x_display: None,
             session: None,
             suppressed_keys: Vec::new(),
@@ -613,5 +616,20 @@ pub struct ClientState {
 
 impl ClientData for ClientState {
     fn initialized(&self, _client_id: ClientId) {}
-    fn disconnected(&self, _client_id: ClientId, _reason: DisconnectReason) {}
+
+    /// A client oziwm throws out for a protocol error is the bug to look for:
+    /// say exactly which object and why.
+    fn disconnected(&self, client_id: ClientId, reason: DisconnectReason) {
+        match reason {
+            DisconnectReason::ProtocolError(err) => tracing::warn!(
+                ?client_id,
+                interface = %err.object_interface,
+                object = err.object_id,
+                code = err.code,
+                message = %err.message,
+                "client disconnected for a protocol error"
+            ),
+            DisconnectReason::ConnectionClosed => tracing::debug!(?client_id, "client left"),
+        }
+    }
 }
