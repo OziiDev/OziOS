@@ -65,7 +65,7 @@ if "--launcher" in sys.argv[1:]:
 os.environ.setdefault("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell")
 os.environ.setdefault("QT_QPA_PLATFORM", "wayland")
 
-from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtClassInfo, pyqtProperty, pyqtSignal, pyqtSlot  # noqa: E402
+from PyQt6.QtCore import QFileSystemWatcher, QObject, QTimer, QUrl, pyqtClassInfo, pyqtProperty, pyqtSignal, pyqtSlot  # noqa: E402
 from PyQt6.QtDBus import QDBusAbstractAdaptor, QDBusConnection, QDBusMessage  # noqa: E402
 from PyQt6.QtGui import QGuiApplication, QIcon  # noqa: E402
 from PyQt6.QtQml import QQmlApplicationEngine  # noqa: E402
@@ -107,6 +107,11 @@ class Shell(QObject):
         self._look_timer.setSingleShot(True)
         self._look_timer.setInterval(50)
         self._look_timer.timeout.connect(self._flush_look)
+        # The look file changed from outside (`ozi theme`, another program): follow it.
+        self._watcher = QFileSystemWatcher(self)
+        self._watch_config()
+        self._watcher.fileChanged.connect(self._config_changed)
+        self._watcher.directoryChanged.connect(self._config_changed)
         self._starting = {}
         self._networks = []
         self._statusReady.connect(self._set_status)
@@ -324,6 +329,22 @@ class Shell(QObject):
         if not self._look_timer.isActive():
             self._look_timer.start()
         self.lookChanged.emit()
+
+    def _watch_config(self):
+        path = shell.desktop_config_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        for p in (path, os.path.dirname(path)):
+            if os.path.exists(p) and p not in self._watcher.files() + self._watcher.directories():
+                self._watcher.addPath(p)
+
+    def _config_changed(self, _path):
+        if self._pending_look:
+            return  # our own write is on its way
+        self._watch_config()  # an atomic replace drops the watch on the old file
+        look = shell.look()
+        if look != self._look:
+            self._look = look
+            self.lookChanged.emit()
 
     def _flush_look(self):
         if not self._pending_look:

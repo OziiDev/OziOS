@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OziOS — Windows uygulamaları açan, kendi masaüstüne sahip Linux</title>
+  <meta name="description" content="OziOS: CachyOS tabanlı, Rust ile yazılmış kendi masaüstüne sahip Linux. .exe dosyalarına çift tıkla, kendi pencerelerinde açılsın. Temalar, ışıltılı pencereler, döşeme, tek tıkla güncellemeler.">
+  <meta property="og:title" content="OziOS">
+  <meta property="og:description" content="Windows uygulamaları açan, kendi masaüstüne sahip Linux.">
+  <meta property="og:image" content="img/night.png">
+  <link rel="icon" href="logo.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="#"><img src="logo.svg" alt="">OziOS</a>
+      <nav>
+        <a href="#ozellikler">Özellikler</a>
+        <a href="#windows">Windows uygulamaları</a>
+        <a href="#galeri">Galeri</a>
+        <a href="#indir">İndir</a>
+        <a href="https://github.com/OziiDev/OziOS">GitHub</a>
+      </nav>
+      <a class="btn" href="demo/">Tarayıcıda dene</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <span class="tag">0.4 "Öz" · beta</span>
+        <h1>Windows uygulamaları açan,<br><span class="glow">kendi masaüstüne sahip</span> Linux.</h1>
+        <p class="lead">OziOS, CachyOS'un hızlı temeli üstüne sıfırdan yazılmış kendi masaüstüyle gelir:
+          ışıltılı pencereler, altı tema, döşeme, kilit ekranı, hızlı ayarlar. Bir <b>.exe</b>'ye çift tıkla;
+          Windows uygulaması kendi penceresinde açılsın.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/latest">OziOS'u indir</a>
+          <a class="btn" href="demo/">Masaüstünü tarayıcıda dene →</a>
+        </div>
+        <div class="shot"><img src="img/night.png" alt="OziOS masaüstü: gece şehri duvar kâğıdı, üç adalı çubuk ve dock" width="1280" height="706"></div>
+      </div>
+    </section>
+
+    <section id="ozellikler">
+      <div class="wrap">
+        <h2>Her şey sıfırdan, her şey OziOS'un</h2>
+        <p class="sub">Masaüstü başka bir masaüstünün üstüne giydirilmiş bir tema değil. Pencere yöneticisi
+          <b>oziwm</b> Rust ile, kabuk <b>ozi-shell</b> Qt ile yazıldı; ikisi de OziOS için.</p>
+        <div class="grid">
+          <div class="card"><div class="icon">⧉</div><h3>Işıltılı pencereler</h3><p>Yuvarlak köşeler, gölge, odaktaki pencerenin çevresinde temanın iki renginde akan ışıltı. Hepsi ekran kartında çizilir.</p></div>
+          <div class="card"><div class="icon">◐</div><h3>Altı tema, canlı ayar</h3><p>Camgöbeği, Kutup Işığı, Kor, Nane, Gül, Ayaz. Işıltı, köşe ve hareket kaydırıcıları oynarken bütün pencereler o an değişir.</p></div>
+          <div class="card"><div class="icon">▦</div><h3>Döşeme ve çalışma alanları</h3><p>Super+T ile pencereler kendini düzenler, Super+1…4 ile dört masaüstü. Pencereler yerlerine akarak geçer.</p></div>
+          <div class="card"><div class="icon">✦</div><h3>Hızlı ayarlar</h3><p>Wi-Fi ve ağlar, Bluetooth cihazları, uçak modu, parlaklık, ses, güç profili. Klavyedeki tuşlar ekranda gösterilir.</p></div>
+          <div class="card"><div class="icon">🔒</div><h3>Kilit ekranı ve bildirimler</h3><p>Kilit ekranı pencere yöneticisinin içinde çizilir; hiçbir uygulama onu atlatamaz. Bildirimler, rahatsız etme kipi.</p></div>
+          <div class="card"><div class="icon">↻</div><h3>Kendi kendine güncellenir</h3><p>Düzeltmeler GitHub'daki OziOS deposundan gelir: <code>sudo pacman -Syu</code> ve bitti.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="windows">
+      <div class="wrap">
+        <div class="windows">
+          <div>
+            <h2>Windows uygulamaları, Linux'ta</h2>
+            <p class="sub" style="margin-bottom:12px">OziOS, kendi Windows kopyanı bir sanal makinede kendiliğinden kurar ve programlarını
+              masaüstünde normal pencereler gibi açar. Uyumluluk sorunu yok: gerçek Windows çalışıyor.</p>
+            <ol>
+              <li>Bir Windows ISO'su seç (lisansı sende olsun).</li>
+              <li>OziOS onu kendi kendine kurar; telemetri kapalı, gereksiz uygulamalar silinmiş.</li>
+              <li>Bir <b>.exe</b>'ye çift tıkla: uygulama kendi penceresinde açılır, dosyaların ortak.</li>
+            </ol>
+          </div>
+          <div class="exe">
+            <div><b>~/İndirilenler/kurulum.exe</b> çift tıklandı</div>
+            <div style="margin-top:10px">→ Windows açılıyor…</div>
+            <div>→ kurulum.exe kendi penceresinde açıldı ✓</div>
+            <div style="margin-top:14px;color:var(--muted)">Hızlı ayarlar → Windows kutucuğu:<br>başlat · masaüstünü aç · kapat</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="galeri">
+      <div class="wrap">
+        <h2>Galeri</h2>
+        <p class="sub">Bütün görüntüler OziOS'un kendisinden; düzenleme yok.</p>
+        <div class="gallery">
+          <figure><img src="img/launcher.png" alt="Başlatıcı" loading="lazy" width="1280" height="706"><figcaption>Başlatıcı: Super'e bas, yaz, Enter.</figcaption></figure>
+          <figure><img src="img/tiling.png" alt="Döşenmiş pencereler" loading="lazy" width="1280" height="706"><figcaption>Döşeme: Super+T.</figcaption></figure>
+          <figure><img src="img/quick.png" alt="Hızlı ayarlar" loading="lazy" width="1280" height="706"><figcaption>Hızlı ayarlar ve Windows kutucuğu.</figcaption></figure>
+          <figure><img src="img/sakura.png" alt="Sakura duvar kâğıdı" loading="lazy" width="1280" height="706"><figcaption>OziOS'un kendi duvar kâğıtları.</figcaption></figure>
+          <figure><img src="img/lock.png" alt="Kilit ekranı" loading="lazy" width="1280" height="706"><figcaption>Kilit ekranı.</figcaption></figure>
+        </div>
+        <div class="themes" aria-label="Temalar">
+          <span style="background:linear-gradient(90deg,#00e5ff,#7c5cff)" title="Camgöbeği"></span>
+          <span style="background:linear-gradient(90deg,#b08cff,#ff5cc8)" title="Kutup Işığı"></span>
+          <span style="background:linear-gradient(90deg,#ff8c40,#e8408c)" title="Kor"></span>
+          <span style="background:linear-gradient(90deg,#3ce6a0,#3c8cff)" title="Nane"></span>
+          <span style="background:linear-gradient(90deg,#ff5e8c,#a05cff)" title="Gül"></span>
+          <span style="background:linear-gradient(90deg,#0091ac,#6e50e6)" title="Ayaz"></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="indir">
+      <div class="wrap">
+        <h2>İndir ve kur</h2>
+        <p class="sub">USB belleğe yaz (Ventoy ya da balenaEtcher), bilgisayarı ondan aç, "Kur"a bas.</p>
+        <div class="install">
+          <div class="card">
+            <h3>OziOS ISO</h3>
+            <p>Masaüstü, Windows desteği ve OziOS çekirdeği hazır gelir.</p>
+            <p style="margin-top:14px"><a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/latest">Son sürümü indir</a></p>
+          </div>
+          <div class="card">
+            <h3>Arch / CachyOS'a yalnız masaüstü</h3>
+            <p>Sistemin kalır, giriş ekranına "OziOS" oturumu eklenir.</p>
+            <pre>yay -S ozi-desktop</pre>
+          </div>
+          <div class="card">
+            <h3>Güncellemeler</h3>
+            <p>OziOS sistemleri bu depoyu kullanır; her yeni düzeltme tek komutla gelir.</p>
+            <pre>[ozios]
+SigLevel = Optional TrustAll
+Server = https://github.com/OziiDev/OziOS/releases/download/repo</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 OziOS. Kaynak kodu MIT lisanslıdır. Windows, Microsoft'un markasıdır; OziOS Windows içermez.</span>
+      <span><a href="https://github.com/OziiDev/OziOS">GitHub</a> · <a href="demo/">Tarayıcıda dene</a> · <a href="https://github.com/OziiDev/OziOS/issues">Sorun bildir</a></span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OziOS masaüstü — tarayıcıda dene</title>
+<meta name="description" content="OziOS masaüstünü tarayıcıda dene: ışıltılı pencereler, temalar, başlatıcı, hızlı ayarlar, döşeme ve Windows uygulamaları.">
+<link rel="icon" href="../logo.svg">
+<style>
+:root {
+  --ink: #080b10; --raised: #0e131b; --control: #141b26; --text: #f4fcff; --muted: #8096a0;
+  --accent: #00e5ff; --accent2: #7c5cff;
+  --glow: 1; --radius: 12px; --speed: 1;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--text);
+  font: 14px/1.45 "Overpass", "Segoe UI", system-ui, sans-serif; user-select: none; }
+#screen { position: fixed; inset: 0; transition: filter .3s; }
+
+/* Wallpaper */
+#wall { position: absolute; inset: 0; background: var(--ink) center/cover no-repeat; transition: background-image .6s; }
+#tess { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Bar */
+.bar { position: absolute; top: 7px; left: 10px; right: 10px; height: 34px; display: flex; justify-content: space-between; pointer-events: none; z-index: 50; }
+.island { pointer-events: auto; height: 34px; border-radius: 17px; background: color-mix(in srgb, var(--raised) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent); display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  font-weight: 600; font-size: 13px; cursor: default; }
+.island:hover { border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+.ozi { width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(90deg, var(--accent), var(--accent2)); display: grid; place-items: center; transition: transform .26s cubic-bezier(.3,1.6,.5,1); }
+.ozi::after { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--ink); }
+.island:hover .ozi { transform: rotate(45deg); }
+.ws { display: flex; gap: 6px; align-items: center; }
+.ws i { width: 10px; height: 10px; border-radius: 5px; border: 1.5px solid var(--muted); transition: width .25s cubic-bezier(.3,1.6,.5,1); cursor: pointer; }
+.ws i.full { background: color-mix(in srgb, var(--text) 75%, transparent); border: 0; }
+.ws i.on { width: 26px; border: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+#title { max-width: 26vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+#date { color: var(--muted); font-weight: 400; }
+
+/* Dock */
+.dock { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); height: 64px; padding: 0 12px; border-radius: 22px;
+  background: color-mix(in srgb, var(--raised) 90%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  display: flex; align-items: flex-end; gap: 4px; z-index: 50; }
+.dock::before { content: ""; position: absolute; top: 0; left: 22px; right: 22px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent); opacity: .8; }
+.app { position: relative; width: 56px; height: 62px; display: grid; place-items: center; cursor: pointer; }
+.app .ic { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; font-size: 22px; transform-origin: bottom center;
+  transition: transform .18s cubic-bezier(.3,1.5,.5,1); }
+.app:hover .ic { transform: scale(1.35) translateY(-6px); }
+.app .run { position: absolute; bottom: 3px; width: 14px; height: 3px; border-radius: 2px; background: var(--text); opacity: 0; transition: .2s; }
+.app.running .run { opacity: .8; }
+.app.active .run { background: var(--accent); width: 20px; opacity: 1; }
+.app .tip { position: absolute; bottom: 76px; padding: 4px 10px; border-radius: 12px; background: var(--ink); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  white-space: nowrap; font-size: 12px; opacity: 0; pointer-events: none; transition: .15s; }
+.app:hover .tip { opacity: 1; }
+.sep { width: 1px; height: 32px; background: color-mix(in srgb, var(--muted) 40%, transparent); align-self: center; margin: 0 4px; }
+
+/* Windows */
+.win { position: absolute; border-radius: var(--radius); background: var(--ink); display: flex; flex-direction: column; min-width: 280px; min-height: 160px;
+  box-shadow: 0 16px 40px -8px #000c; transition: box-shadow .2s, left .3s, top .3s, width .3s, height .3s; z-index: 10; }
+.win.dragging { transition: none; }
+.win::before { content: ""; position: absolute; inset: -2px; border-radius: calc(var(--radius) + 2px); z-index: -1; padding: 2px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.win.focus::before { background: conic-gradient(from var(--a), var(--accent), var(--accent2), var(--accent)); animation: flow calc(6s / var(--speed)) linear 1; }
+.win.focus { box-shadow: 0 0 calc(30px * var(--glow)) calc(2px * var(--glow)) color-mix(in srgb, var(--accent) calc(45% * var(--glow)), transparent), 0 18px 46px -8px #000d; }
+@property --a { syntax: "<angle>"; initial-value: 30deg; inherits: false; }
+@keyframes flow { from { --a: 30deg; } to { --a: 390deg; } }
+.win.opening { animation: open calc(.42s / var(--speed)) cubic-bezier(.3,1.5,.45,1); }
+@keyframes open { from { transform: scale(.9); opacity: 0; } }
+.win.closing { animation: close calc(.2s / var(--speed)) ease-in forwards; }
+@keyframes close { to { transform: scale(.92); opacity: 0; } }
+.win.min { animation: minimize calc(.3s / var(--speed)) ease-in forwards; }
+@keyframes minimize { to { transform: translateY(60vh) scale(.2); opacity: 0; } }
+.tb { height: 34px; flex: none; display: flex; align-items: center; justify-content: center; position: relative; cursor: grab;
+  background: linear-gradient(color-mix(in srgb, var(--accent) 8%, var(--raised)), var(--raised)); border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 12.5px; color: var(--muted); }
+.win.focus .tb { color: var(--text); }
+.btns { position: absolute; right: 14px; display: flex; gap: 10px; }
+.btns b { width: 14px; height: 14px; border-radius: 7px; background: #4a5560; cursor: pointer; transition: .15s; }
+.win.focus .btns b:nth-child(1) { background: #ffbe5a; } .win.focus .btns b:nth-child(2) { background: #3ce6a0; } .win.focus .btns b:nth-child(3) { background: #ff556e; }
+.btns b:hover { box-shadow: 0 0 10px currentColor; filter: brightness(1.2); }
+.body { flex: 1; overflow: auto; border-radius: 0 0 var(--radius) var(--radius); user-select: text; }
+.grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
+
+/* App contents */
+.term { background: #05080c; color: #c7f6ff; font: 13px/1.55 "Overpass Mono", ui-monospace, monospace; padding: 12px 14px; height: 100%; }
+.term input { background: none; border: 0; outline: 0; color: inherit; font: inherit; width: 70%; }
+.term .p { color: var(--accent); }
+.files { display: flex; height: 100%; }
+.files .side { width: 150px; background: var(--raised); padding: 10px; color: var(--muted); font-size: 13px; }
+.files .side div { padding: 5px 8px; border-radius: 8px; } .files .side div.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
+.files .main { flex: 1; padding: 16px; display: flex; flex-wrap: wrap; gap: 14px; align-content: flex-start; }
+.file { width: 92px; text-align: center; padding: 8px 4px; border-radius: 10px; cursor: default; font-size: 12px; }
+.file:hover { background: var(--control); } .file .big { font-size: 36px; }
+.hint { width: 100%; color: var(--muted); font-size: 12px; margin-top: 6px; }
+.lookapp { padding: 18px; }
+.row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.row label { width: 90px; color: var(--muted); }
+input[type=range] { flex: 1; accent-color: var(--accent); }
+.themes { display: flex; gap: 10px; flex-wrap: wrap; }
+.themes span { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #ffffff30; cursor: pointer; transition: transform .15s; }
+.themes span:hover { transform: scale(1.15); } .themes span.on { border-color: var(--text); }
+.walls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.walls div { aspect-ratio: 16/9; border-radius: 9px; background: var(--ink) center/cover; border: 2px solid #ffffff22; cursor: pointer; display: grid; place-items: center; font-size: 11px; color: var(--muted); }
+.walls div.on { border-color: var(--accent); }
+.winapp { background: #f0f0f0; color: #111; height: 100%; font: 13px "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+.winapp .hd { background: linear-gradient(90deg, #0067c0, #2b88d8); color: #fff; padding: 16px 18px; font-size: 17px; font-weight: 600; }
+.winapp .ct { padding: 16px 18px; flex: 1; }
+.winapp .bar2 { height: 14px; background: #ddd; border-radius: 3px; overflow: hidden; margin: 14px 0; }
+.winapp .bar2 i { display: block; height: 100%; width: 0; background: #06b025; transition: width 3s linear; }
+.winapp button { padding: 6px 18px; border: 1px solid #adadad; background: #e1e1e1; border-radius: 3px; float: right; }
+.store { padding: 16px; display: grid; gap: 10px; }
+.store div { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; background: var(--raised); }
+.store b { flex: 1; } .store button { border: 0; border-radius: 999px; padding: 6px 14px; background: linear-gradient(90deg, var(--accent), var(--accent2)); color: var(--ink); font-weight: 700; cursor: pointer; }
+
+/* Overlays */
+.overlay { position: absolute; inset: 0; z-index: 80; display: none; }
+.overlay.show { display: block; }
+#launcher { background: color-mix(in srgb, var(--ink) 72%, transparent); }
+#launcher .card { position: absolute; left: 50%; top: 50%; width: min(820px, 92vw); max-height: 84vh; overflow: auto; transform: translate(-50%, -50%) scale(.95); opacity: 0;
+  background: color-mix(in srgb, var(--raised) 97%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 26px; padding: 26px;
+  transition: transform calc(.3s / var(--speed)) cubic-bezier(.3,1.5,.45,1), opacity .2s; }
+#launcher.show .card { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+#launcher h2 { margin: 0 0 14px; font-size: 26px; }
+#q { width: 100%; height: 46px; border-radius: 23px; border: 2px solid var(--accent); background: var(--control); color: var(--text); font: inherit; font-size: 16px; padding: 0 20px; outline: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; margin: 16px 0; }
+.grid div { text-align: center; padding: 12px 4px; border-radius: 16px; cursor: pointer; font-size: 12px; }
+.grid div:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.grid .ic { width: 48px; height: 48px; margin: 0 auto 8px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; }
+.power { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.power span { padding: 10px 18px; border-radius: 23px; background: var(--control); border: 1px solid #ffffff22; cursor: pointer; }
+.power span:hover { border-color: var(--accent); }
+#panel .card { position: absolute; right: 10px; top: 50px; width: min(360px, 94vw); border-radius: 24px; padding: 18px;
+  background: color-mix(in srgb, var(--raised) 97%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { height: 56px; border-radius: 16px; background: var(--control); border: 1px solid #ffffff14; display: flex; align-items: center; gap: 10px; padding: 0 10px; cursor: pointer; }
+.tile .b { width: 34px; height: 34px; border-radius: 17px; background: #ffffff18; display: grid; place-items: center; font-size: 16px; }
+.tile.on { background: color-mix(in srgb, var(--accent) 20%, transparent); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.tile.on .b { background: var(--accent); color: var(--ink); }
+.tile small { display: block; color: var(--muted); font-size: 11px; }
+#lock { background: radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 45%),
+  radial-gradient(circle at 72% 65%, color-mix(in srgb, var(--accent2) 28%, transparent), transparent 45%), var(--ink); z-index: 95; text-align: center; }
+#lock .clock { font-size: 112px; font-weight: 300; margin-top: 18vh; }
+#lock input { width: 340px; max-width: 80vw; height: 52px; border-radius: 26px; border: 2px solid var(--accent); background: #0c1118; color: var(--text); text-align: center; font: inherit; font-size: 16px; outline: 0;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+.toasts { position: absolute; top: 50px; right: 10px; z-index: 90; display: grid; gap: 8px; width: min(380px, 94vw); }
+.toast { background: color-mix(in srgb, var(--raised) 97%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 18px; padding: 14px 16px;
+  animation: in .35s cubic-bezier(.3,1.5,.45,1); }
+@keyframes in { from { transform: translateX(60px); opacity: 0; } }
+.toast b { display: block; } .toast span { color: var(--muted); font-size: 12.5px; }
+.badge { position: fixed; left: 12px; bottom: 12px; z-index: 99; font-size: 12px; color: var(--muted); background: #000a; padding: 6px 10px; border-radius: 10px; }
+.badge a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="screen">
+  <div id="wall"><canvas id="tess"></canvas></div>
+
+  <div class="bar">
+    <div class="island" id="left"><div class="ozi"></div><div class="ws" id="ws"></div><span id="title">OziOS</span></div>
+    <div class="island"><span id="clock"></span><span class="dot"></span><span id="date"></span></div>
+    <div class="island" id="right" title="Hızlı ayarlar">📶 🔊 <span style="color:var(--accent)">•••</span></div>
+  </div>
+
+  <div class="dock" id="dock"></div>
+  <div class="toasts" id="toasts"></div>
+
+  <div class="overlay" id="launcher"><div class="card">
+    <h2 id="greet">Merhaba</h2>
+    <input id="q" placeholder="Uygulama ara…" autocomplete="off">
+    <div class="grid" id="grid"></div>
+    <div class="power"><span data-p="lock">🔒 Kilitle</span><span data-p="logout">⇥ Oturumu kapat</span><span data-p="reboot">↻ Yeniden başlat</span></div>
+  </div></div>
+
+  <div class="overlay" id="panel"><div class="card">
+    <div class="tiles" id="tiles"></div>
+    <div class="row"><label>🔊 Ses</label><input type="range" min="0" max="100" value="40"></div>
+    <div class="row"><label>☀ Parlaklık</label><input type="range" id="bright" min="30" max="100" value="100"></div>
+    <div style="font-weight:700;margin:14px 0 8px">Tema</div><div class="themes" id="themes1"></div>
+  </div></div>
+
+  <div class="overlay" id="lock"><div class="clock" id="lclock"></div><div id="ldate" style="color:var(--muted);font-size:22px;margin:4px 0 40px"></div>
+    <input id="lpw" type="password" placeholder="Kilidi açmak için bir şey yaz, Enter"><div style="color:var(--muted);margin-top:16px">demo</div></div>
+</div>
+<div class="badge">Tarayıcı demosu · <a href="../">OziOS'a dön</a></div>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const root = document.documentElement.style;
+
+const THEMES = {
+  cyan: ["#080b10", "#0e131b", "#141b26", "#00e5ff", "#7c5cff"],
+  aurora: ["#0b0814", "#130f21", "#1c162f", "#b08cff", "#ff5cc8"],
+  ember: ["#100a08", "#1b120e", "#271a14", "#ff8c40", "#e8408c"],
+  mint: ["#070e0c", "#0c1714", "#12211d", "#3ce6a0", "#3c8cff"],
+  rose: ["#10080b", "#1b0e13", "#27141c", "#ff5e8c", "#a05cff"],
+  frost: ["#0a1016", "#111a22", "#18232e", "#0091ac", "#6e50e6"],
+};
+const WALLS = ["tesseract", "ozi-gece-sehri", "ozi-gun-batimi", "ozi-sakura", "ozi-kutup-isiklari", "ozi-okyanus"];
+const state = { theme: "cyan", wall: "tesseract", ws: 0, tiling: [false, false, false, false], z: 20, quiet: false, wifi: true, bt: true, plane: false, winGuest: "off" };
+
+function setTheme(name) {
+  state.theme = name;
+  const [ink, raised, control, a1, a2] = THEMES[name];
+  root.setProperty("--ink", ink); root.setProperty("--raised", raised); root.setProperty("--control", control);
+  root.setProperty("--accent", a1); root.setProperty("--accent2", a2);
+  document.querySelectorAll(".themes span").forEach(s => s.classList.toggle("on", s.dataset.t === name));
+}
+function setWall(name) {
+  state.wall = name;
+  $("#wall").style.backgroundImage = name === "tesseract" ? "none" : `url(../wallpapers/${name}.svg)`;
+  $("#tess").style.display = name === "tesseract" ? "block" : "none";
+  document.querySelectorAll(".walls div").forEach(d => d.classList.toggle("on", d.dataset.w === name));
+}
+
+/* Living tesseract wallpaper */
+const cv = $("#tess"), cx = cv.getContext("2d");
+let t = 0;
+function tesseract() {
+  const w = cv.width = innerWidth * devicePixelRatio, h = cv.height = innerHeight * devicePixelRatio;
+  const st = getComputedStyle(document.documentElement);
+  const a1 = st.getPropertyValue("--accent").trim(), a2 = st.getPropertyValue("--accent2").trim();
+  const g = cx.createRadialGradient(w * .3, h * .3, 0, w * .3, h * .3, w * .6); g.addColorStop(0, a1 + "40"); g.addColorStop(1, "transparent");
+  cx.fillStyle = g; cx.fillRect(0, 0, w, h);
+  const g2 = cx.createRadialGradient(w * .75, h * .7, 0, w * .75, h * .7, w * .55); g2.addColorStop(0, a2 + "38"); g2.addColorStop(1, "transparent");
+  cx.fillStyle = g2; cx.fillRect(0, 0, w, h);
+  const s = Math.min(w, h) * .2, pts = [];
+  for (let i = 0; i < 16; i++) {
+    let p = [i & 1 ? 1 : -1, i & 2 ? 1 : -1, i & 4 ? 1 : -1, i & 8 ? 1 : -1];
+    const r = (a, b, ang) => { const c = Math.cos(ang), n = Math.sin(ang); const x = p[a] * c - p[b] * n, y = p[a] * n + p[b] * c; p[a] = x; p[b] = y; };
+    r(0, 3, t); r(1, 2, t * .7); r(0, 2, t * .4);
+    const k = 2.6 / (3 - p[3]), z = 3.2 / (4 - p[2] * k);
+    pts.push([w / 2 + p[0] * k * z * s, h / 2 + p[1] * k * z * s]);
+  }
+  cx.strokeStyle = a1; cx.globalAlpha = .55; cx.lineWidth = 1.6 * devicePixelRatio;
+  for (let i = 0; i < 16; i++) for (let b = 0; b < 4; b++) { const j = i ^ (1 << b); if (j > i) { cx.beginPath(); cx.moveTo(...pts[i]); cx.lineTo(...pts[j]); cx.stroke(); } }
+  cx.globalAlpha = 1;
+}
+function loop() { if (state.wall === "tesseract" && !document.hidden) { t += .006; tesseract(); } setTimeout(() => requestAnimationFrame(loop), 40); }
+
+/* Apps */
+const APPS = [
+  { id: "files", name: "Dosyalar", ic: "📁", bg: "linear-gradient(135deg,#ff8bb5,#ff5e8c)", w: 720, h: 440 },
+  { id: "web", name: "Tarayıcı", ic: "🌐", bg: "linear-gradient(135deg,#ff9640,#e04f8c)", w: 860, h: 520 },
+  { id: "term", name: "Terminal", ic: "❯", bg: "#2a3440", w: 640, h: 380 },
+  { id: "store", name: "Mağaza", ic: "⬇", bg: "linear-gradient(135deg,#6be08a,#2fae55)", w: 520, h: 420 },
+  { id: "look", name: "Görünüm", ic: "🎨", bg: "linear-gradient(135deg,#ff5e5e,#ffd24c,#3ce6a0,#3c8cff)", w: 460, h: 520 },
+  { id: "windows", name: "Windows", ic: "⊞", bg: "linear-gradient(135deg,#0067c0,#2b88d8)", w: 800, h: 500 },
+];
+const wins = [];
+
+function body(app) {
+  switch (app.id) {
+    case "term": {
+      const b = el("div", "term", `<div>OziOS 0.4 "Öz" — <span class="p">help</span> yaz</div>`);
+      const line = () => { const l = el("div", "", `<span class="p">ozi@ozios</span> ~ ❯ <input>`); b.append(l); const i = $("input", l); setTimeout(() => i.focus(), 50);
+        i.onkeydown = e => { if (e.key !== "Enter") return; i.replaceWith(document.createTextNode(i.value)); run(i.value.trim()); line(); b.scrollTop = b.scrollHeight; }; };
+      const out = s => b.append(el("div", "", s));
+      const run = c => {
+        const [cmd, arg] = c.split(/\s+/);
+        if (!cmd) return;
+        if (cmd === "help") out("komutlar: <b>ozi-fetch</b>, <b>ozi theme &lt;cyan|aurora|ember|mint|rose|frost&gt;</b>, <b>ozi winrun kurulum.exe</b>, <b>ls</b>, <b>clear</b>");
+        else if (cmd === "clear") b.innerHTML = "";
+        else if (cmd === "ls") out("Belgeler  İndirilenler  Masaüstü  Müzik  Resimler  Videolar");
+        else if (cmd === "ozi-fetch") out(`<pre style="margin:4px 0;color:var(--accent)">  ◢◣   OziOS 0.4 "Öz"\n ◢██◣  Masaüstü  oziwm + ozi-shell\n ◥██◤  Çekirdek  7.1.6-ozios\n  ◥◤   Tema      ${state.theme}</pre>`);
+        else if (cmd === "ozi" && arg === "theme") { const n = c.split(/\s+/)[2]; if (THEMES[n]) { setTheme(n); out("tema: " + n); } else out("temalar: " + Object.keys(THEMES).join(", ")); }
+        else if (cmd === "ozi" && arg === "winrun") { openWinApp(); out("Windows'ta açılıyor…"); }
+        else out(`${cmd}: bu demoda yok — gerçeği için OziOS'u kur 🙂`);
+      };
+      line(); return b;
+    }
+    case "files": {
+      const b = el("div", "files", `<div class="side"><div>🏠 Ana klasör</div><div class="on">⬇ İndirilenler</div><div>🖼 Resimler</div><div>🎵 Müzik</div></div><div class="main"></div>`);
+      const m = $(".main", b);
+      [["📦", "kurulum.exe", true], ["📄", "ödev.docx"], ["🖼", "tatil.jpg"], ["🎵", "şarkı.mp3"], ["📁", "projeler"]].forEach(([i, n, exe]) => {
+        const f = el("div", "file", `<div class="big">${i}</div>${n}`);
+        if (exe) f.ondblclick = openWinApp;
+        m.append(f);
+      });
+      m.append(el("div", "hint", "İpucu: <b>kurulum.exe</b>'ye çift tıkla — OziOS onu Windows'ta, kendi penceresinde açar."));
+      return b;
+    }
+    case "web": return Object.assign(document.createElement("iframe"), { src: "../", style: "border:0;width:100%;height:100%;background:#fff" });
+    case "store": {
+      const b = el("div", "store");
+      [["Firefox", "🦊"], ["VLC", "🎬"], ["GIMP", "🖌"], ["Steam", "🎮"], ["LibreOffice", "📝"]].forEach(([n, i]) => {
+        const r = el("div", "", `<span style="font-size:24px">${i}</span><b>${n}</b><button>Kur</button>`);
+        $("button", r).onclick = e => { e.target.textContent = "Kuruldu ✓"; toast(n + " kuruldu", "Paket kurucusu önce ne olacağını anlatır, sonra kurar."); };
+        b.append(r);
+      });
+      return b;
+    }
+    case "look": {
+      const b = el("div", "lookapp", `<div style="font-weight:700;margin-bottom:8px">Tema</div><div class="themes"></div>
+        <div class="row"><label>Işıltı</label><input type="range" min="0" max="2" step=".05" value="1" data-v="--glow"></div>
+        <div class="row"><label>Köşeler</label><input type="range" min="0" max="24" value="12" data-v="--radius" data-u="px"></div>
+        <div class="row"><label>Hareket</label><input type="range" min=".3" max="2" step=".1" value="1" data-v="--speed"></div>
+        <div style="font-weight:700;margin-top:6px">Duvar kâğıdı</div><div class="walls"></div>`);
+      fillThemes($(".themes", b));
+      b.querySelectorAll("input[data-v]").forEach(r => r.oninput = () => root.setProperty(r.dataset.v, r.value + (r.dataset.u || "")));
+      const wl = $(".walls", b);
+      WALLS.forEach(w => { const d = el("div", "", w === "tesseract" ? "canlı" : ""); d.dataset.w = w; if (w !== "tesseract") d.style.backgroundImage = `url(../wallpapers/${w}.svg)`; d.onclick = () => setWall(w); wl.append(d); });
+      setWall(state.wall); return b;
+    }
+    case "windows":
+      return el("div", "", `<div style="height:100%;background:linear-gradient(135deg,#0a3d7a,#0067c0);display:grid;place-items:center;color:#fff;text-align:center;font-family:'Segoe UI',sans-serif">
+        <div><div style="font-size:64px">⊞</div><div style="font-size:20px;font-weight:600">Windows masaüstü</div>
+        <div style="opacity:.8;margin-top:8px">Gerçek OziOS'ta burada kendi Windows'un çalışır.<br>.exe dosyaları ise ayrı pencerelerde açılır.</div></div></div>`);
+    case "winapp": {
+      const b = el("div", "winapp", `<div class="hd">Kurulum Sihirbazı</div><div class="ct">Uygulama kuruluyor…<div class="bar2"><i></i></div>
+        <div style="color:#555">Bu bir Windows programı. OziOS onu senin Windows misafirinde çalıştırıyor ve buraya, normal bir pencere olarak getiriyor.</div>
+        <div style="margin-top:20px"><button>İleri &gt;</button></div></div>`);
+      setTimeout(() => { $("i", b).style.width = "100%"; }, 100);
+      return b;
+    }
+  }
+}
+
+function openWinApp() {
+  toast("kurulum.exe Windows'ta açılıyor…", "Windows misafiri arka planda hazırlanıyor.");
+  setTimeout(() => openWindow({ id: "winapp", name: "kurulum.exe — Windows", ic: "📦", w: 520, h: 340 }), 1400);
+}
+
+function focus(w) {
+  wins.forEach(x => x.el.classList.toggle("focus", x === w));
+  if (w) { w.el.style.zIndex = ++state.z; $("#title").textContent = w.app.name; } else $("#title").textContent = "OziOS";
+  renderDock();
+}
+
+function openWindow(app) {
+  const existing = wins.find(w => w.app.id === app.id && w.app.id !== "term");
+  if (existing) { existing.el.style.display = "flex"; existing.el.classList.remove("min"); existing.ws = state.ws; focus(existing); return; }
+  const e = el("div", "win opening");
+  const W = Math.min(app.w || 640, innerWidth - 40), H = Math.min(app.h || 420, innerHeight - 160);
+  const n = wins.filter(w => w.ws === state.ws).length;
+  Object.assign(e.style, { width: W + "px", height: H + "px", left: (innerWidth - W) / 2 + n * 28 + "px", top: Math.max(54, (innerHeight - H) / 2 - 30 + n * 28) + "px" });
+  e.innerHTML = `<div class="tb">${app.name}<div class="btns"><b title="Küçült"></b><b title="Büyüt"></b><b title="Kapat"></b></div></div><div class="body"></div><div class="grip"></div>`;
+  $(".body", e).append(body(app));
+  $("#screen").append(e);
+  const w = { app, el: e, ws: state.ws, max: null };
+  wins.push(w);
+  e.addEventListener("animationend", () => e.classList.remove("opening"), { once: true });
+  e.addEventListener("pointerdown", () => focus(w));
+  const [bMin, bMax, bClose] = e.querySelectorAll(".btns b");
+  bClose.onclick = ev => { ev.stopPropagation(); e.classList.add("closing"); setTimeout(() => { e.remove(); wins.splice(wins.indexOf(w), 1); focus(wins.filter(x => x.ws === state.ws).at(-1)); layout(); }, 220 / speed()); };
+  bMin.onclick = ev => { ev.stopPropagation(); e.classList.add("min"); setTimeout(() => { e.style.display = "none"; focus(null); }, 300 / speed()); };
+  bMax.onclick = ev => { ev.stopPropagation(); toggleMax(w); };
+  drag(w); focus(w); layout();
+}
+function speed() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--speed")) || 1; }
+function toggleMax(w) {
+  const s = w.el.style;
+  if (w.max) { Object.assign(s, w.max); w.max = null; }
+  else { w.max = { left: s.left, top: s.top, width: s.width, height: s.height }; Object.assign(s, { left: "8px", top: "50px", width: innerWidth - 16 + "px", height: innerHeight - 136 + "px" }); }
+}
+function drag(w) {
+  const tb = $(".tb", w.el), grip = $(".grip", w.el);
+  const track = (target, move) => target.addEventListener("pointerdown", ev => {
+    if (ev.target.closest(".btns")) return;
+    w.el.classList.add("dragging"); const sx = ev.clientX, sy = ev.clientY, r = w.el.getBoundingClientRect();
+    const mv = e => move(e.clientX - sx, e.clientY - sy, r);
+    const up = () => { w.el.classList.remove("dragging"); removeEventListener("pointermove", mv); };
+    addEventListener("pointermove", mv); addEventListener("pointerup", up, { once: true });
+  });
+  track(tb, (dx, dy, r) => { w.el.style.left = r.left + dx + "px"; w.el.style.top = Math.max(46, r.top + dy) + "px"; });
+  tb.ondblclick = () => toggleMax(w);
+  track(grip, (dx, dy, r) => { w.el.style.width = Math.max(280, r.width + dx) + "px"; w.el.style.height = Math.max(160, r.height + dy) + "px"; });
+}
+
+/* Tiling: the same spiral as oziwm */
+function layout() {
+  if (!state.tiling[state.ws]) return;
+  const list = wins.filter(w => w.ws === state.ws && w.el.style.display !== "none");
+  let x = 12, y = 54, W = innerWidth - 24, H = innerHeight - 54 - 90;
+  list.forEach((w, i) => {
+    let r;
+    if (i === list.length - 1) r = [x, y, W, H];
+    else if (W >= H) { const a = (W - 10) / 2; r = [x, y, a, H]; x += a + 10; W -= a + 10; }
+    else { const a = (H - 10) / 2; r = [x, y, W, a]; y += a + 10; H -= a + 10; }
+    Object.assign(w.el.style, { left: r[0] + "px", top: r[1] + "px", width: r[2] + "px", height: r[3] + "px" });
+  });
+}
+
+/* Workspaces */
+function renderWs() {
+  const ws = $("#ws"); ws.innerHTML = "";
+  for (let i = 0; i < 4; i++) {
+    const d = el("i", (i === state.ws ? "on " : "") + (wins.some(w => w.ws === i) ? "full" : ""));
+    d.onclick = e => { e.stopPropagation(); switchWs(i); }; ws.append(d);
+  }
+}
+function switchWs(i) {
+  state.ws = i;
+  wins.forEach(w => { w.el.style.display = w.ws === i ? "flex" : "none"; if (w.ws === i) { w.el.classList.add("opening"); w.el.addEventListener("animationend", () => w.el.classList.remove("opening"), { once: true }); } });
+  focus(wins.filter(w => w.ws === i).at(-1)); layout();
+}
+
+/* Dock */
+function renderDock() {
+  const d = $("#dock"); d.innerHTML = "";
+  const l = el("div", "app", `<div class="ic" style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--ink);font-size:20px">⠿</div><div class="tip">Uygulamalar</div>`);
+  l.onclick = () => toggle("#launcher"); d.append(l, el("div", "sep"));
+  APPS.forEach(app => {
+    const running = wins.some(w => w.app.id === app.id), active = wins.some(w => w.app.id === app.id && w.el.classList.contains("focus"));
+    const a = el("div", "app" + (running ? " running" : "") + (active ? " active" : ""), `<div class="ic" style="background:${app.bg}">${app.ic}</div><div class="run"></div><div class="tip">${app.name}</div>`);
+    a.onclick = () => openWindow(app); d.append(a);
+  });
+  renderWs();
+}
+
+/* Launcher, panel, lock */
+function toggle(sel) { const o = $(sel); o.classList.toggle("show"); if (sel === "#launcher" && o.classList.contains("show")) { $("#q").value = ""; fillGrid(""); setTimeout(() => $("#q").focus(), 30); } if (sel === "#panel") fillTiles(); }
+function fillGrid(q) {
+  const g = $("#grid"); g.innerHTML = "";
+  const f = s => s.toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i");
+  APPS.filter(a => f(a.name).includes(f(q))).forEach(a => {
+    const c = el("div", "", `<div class="ic" style="background:${a.bg}">${a.ic}</div>${a.name}`);
+    c.onclick = () => { toggle("#launcher"); openWindow(a); }; g.append(c);
+  });
+}
+function fillThemes(box) {
+  box.innerHTML = "";
+  Object.entries(THEMES).forEach(([n, c]) => { const s = el("span"); s.dataset.t = n; s.style.background = `linear-gradient(90deg,${c[3]},${c[4]})`; s.onclick = () => setTheme(n); box.append(s); });
+  setTheme(state.theme);
+}
+function fillTiles() {
+  const t = $("#tiles"); t.innerHTML = "";
+  const tiles = [
+    ["wifi", "📶", "Wi-Fi", () => state.wifi ? "Ev Ağı" : "Kapalı"], ["bt", "ᛒ", "Bluetooth", () => state.bt ? "Açık" : "Kapalı"],
+    ["plane", "✈", "Uçak modu", () => state.plane ? "Açık" : "Kapalı"], ["quiet", "☾", "Rahatsız etme", () => state.quiet ? "Açık" : "Kapalı"],
+    ["tile", "▦", "Döşeme", () => state.tiling[state.ws] ? "Açık" : "Kapalı"], ["win", "⊞", "Windows", () => state.winGuest === "on" ? "Hazır" : "Kapalı"],
+  ];
+  tiles.forEach(([k, i, n, sub]) => {
+    const on = k === "tile" ? state.tiling[state.ws] : k === "win" ? state.winGuest === "on" : state[k];
+    const d = el("div", "tile" + (on ? " on" : ""), `<div class="b">${i}</div><div>${n}<small>${sub()}</small></div>`);
+    d.onclick = () => {
+      if (k === "tile") { state.tiling[state.ws] = !state.tiling[state.ws]; layout(); }
+      else if (k === "win") { if (state.winGuest === "on") { toggle("#panel"); openWindow(APPS[5]); } else { state.winGuest = "on"; toast("Windows açılıyor", "Hazır olunca .exe dosyaları kendi pencerelerinde açılır."); } }
+      else if (k === "plane") { state.plane = !state.plane; state.wifi = state.bt = !state.plane; }
+      else state[k] = !state[k];
+      fillTiles();
+    };
+    t.append(d);
+  });
+  fillThemes($("#themes1"));
+}
+function toast(title, text) {
+  if (state.quiet) return;
+  const n = el("div", "toast", `<b>${title}</b><span>${text}</span>`); $("#toasts").append(n);
+  setTimeout(() => { n.style.transition = ".3s"; n.style.opacity = 0; setTimeout(() => n.remove(), 300); }, 4500);
+}
+function lock() {
+  $("#launcher").classList.remove("show"); $("#lock").classList.add("show"); $("#lpw").value = ""; setTimeout(() => $("#lpw").focus(), 50);
+}
+
+/* Clock */
+function tick() {
+  const d = new Date(), hm = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  $("#clock").textContent = hm; $("#lclock").textContent = hm;
+  $("#date").textContent = d.toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
+  $("#ldate").textContent = d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
+  const h = d.getHours(); $("#greet").textContent = h < 6 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
+}
+
+/* Wiring */
+$("#left").onclick = () => toggle("#launcher");
+$("#right").onclick = () => toggle("#panel");
+$("#launcher").onclick = e => { if (e.target.id === "launcher") toggle("#launcher"); };
+$("#panel").onclick = e => { if (e.target.id === "panel") toggle("#panel"); };
+$("#q").oninput = e => fillGrid(e.target.value);
+$("#q").onkeydown = e => { if (e.key === "Enter") $("#grid div")?.click(); };
+document.querySelectorAll(".power span").forEach(s => s.onclick = () => s.dataset.p === "lock" ? lock() : toast("Bu bir demo", "Gerçek OziOS'ta bu düğme " + s.textContent.trim().toLowerCase() + "."));
+$("#lpw").onkeydown = e => { if (e.key === "Enter") $("#lock").classList.remove("show"); };
+$("#bright").oninput = e => $("#screen").style.filter = `brightness(${e.target.value / 100})`;
+addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".overlay.show").forEach(o => o.id !== "lock" && o.classList.remove("show"));
+  if ((e.key === "Meta" || e.key === "OS") || (e.altKey && e.code === "Space")) { e.preventDefault(); toggle("#launcher"); }
+  if (e.altKey && /^[1-4]$/.test(e.key)) switchWs(+e.key - 1);
+});
+addEventListener("resize", layout);
+
+setTheme("cyan"); setWall("tesseract"); renderDock(); tick(); setInterval(tick, 10000); loop();
+setTimeout(() => toast("OziOS'a hoş geldin 👋", "Bu, tarayıcıda çalışan bir demo. Dosyalar'daki kurulum.exe'ye çift tıkla!"), 900);
+setTimeout(() => openWindow(APPS[0]), 400);
+</script>
+</body>
+</html>
