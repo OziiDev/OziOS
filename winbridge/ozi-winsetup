@@ -84,7 +84,12 @@ needed=()
 have() { command -v "$1" >/dev/null; }
 have virsh        || needed+=(libvirt dnsmasq)
 have virt-install || needed+=(virt-install)
-have qemu-system-x86_64 || needed+=(qemu-desktop)
+# A bare qemu-system-x86 (pulled in by other packages) has no SPICE or QXL
+# modules, and virt-install then stops with "video model 'qxl'" unsupported.
+pacman -Q qemu-desktop >/dev/null 2>&1 || needed+=(qemu-desktop)
+# qemu-system-x86 alone (as some systems have it) does not bring qemu-img,
+# and libvirt needs it to create the qcow2 disk.
+have qemu-img     || needed+=(qemu-img)
 have swtpm        || needed+=(swtpm)
 have xorriso      || needed+=(libisoburn)
 have secret-tool  || needed+=(libsecret)
@@ -95,7 +100,7 @@ if [ "${#needed[@]}" -gt 0 ]; then
   echo "Installing: ${needed[*]}"
   sudo pacman -S --needed "${needed[@]}"
 fi
-for tool in virsh virt-install xorriso secret-tool openssl; do
+for tool in virsh virt-install qemu-system-x86_64 qemu-img xorriso secret-tool openssl; do
   have "$tool" || die "$tool is still missing"
 done
 [ -f "$share/autounattend.xml" ] || die "$share is missing; reinstall ozios-settings"
@@ -123,6 +128,31 @@ sudo virsh -c "$conn" dominfo "$vm" >/dev/null 2>&1 && die "a guest named $vm al
 sudo virsh -c "$conn" net-autostart default >/dev/null 2>&1 || true
 sudo virsh -c "$conn" net-start default >/dev/null 2>&1 || true
 id -nG "$USER" | grep -qw libvirt || sudo usermod -aG libvirt "$USER"
+
+# QEMU runs as libvirt-qemu, which cannot look inside a USB stick or a home
+# folder (/run/media/<user> is private). Copy such an ISO next to the disk.
+reachable() {
+  local qemu_user
+  qemu_user="$(sudo sed -n 's/^user *= *"\(.*\)"/\1/p' /etc/libvirt/qemu.conf | tail -n 1)"
+  sudo -u "${qemu_user:-libvirt-qemu}" test -r "$1" 2>/dev/null
+}
+stage() {
+  local src="$1" dest="$images/$2"
+  if reachable "$src"; then
+    printf '%s' "$src"
+    return
+  fi
+  # A second attempt finds the copy from the first one.
+  if [ "$(stat -c %s "$src")" = "$(sudo stat -c %s "$dest" 2>/dev/null)" ]; then
+    printf '%s' "$dest"
+    return
+  fi
+  echo "Copying $(basename "$src") to $images so the guest can read it..." >&2
+  sudo install -m644 "$src" "$dest" || die "could not copy $src to $images"
+  printf '%s' "$dest"
+}
+iso="$(stage "$iso" ozi-windows.iso)"
+[ -n "$virtio" ] && virtio="$(stage "$(readlink -f "$virtio")" ozi-virtio-win.iso)"
 
 # The account password never touches a config file; it lives in the keyring
 # and, during setup only, in the answer file on a throwaway CD image.
