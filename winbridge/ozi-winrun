@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Run a Windows program or file in the OziOS Windows guest.
 #
+#   ozi-winrun <file.exe | file.msi | program>   open it in its own window
+#   ozi-winrun --desktop                        the whole Windows desktop
+#   ozi-winrun --start | --stop                 start or shut down the guest
+#   ozi-winrun --status                         one JSON line for ozi-shell
+#
 # Tries a seamless RemoteApp window first, then a full Windows desktop
 # window, then gives up and points at the reboot option.
-#
-# Not tested against a real guest yet.
 set -u
 
 conf="${XDG_CONFIG_HOME:-$HOME/.config}/ozi/winbridge.conf"
@@ -16,9 +19,10 @@ RDP_PASS_CMD="secret-tool lookup service ozi-winvm"   # keeps the password out o
 SHARE='\\tsclient\home'   # $HOME, redirected into the session by the RDP client
 [ -f "$conf" ] && . "$conf"
 
+SETUP_ISO=/var/lib/libvirt/images/ozi-setup.iso
 target="${1:-}"
 if [ -z "$target" ]; then
-  echo "usage: ozi-winrun <file.exe | file.msi | program>" >&2
+  echo "usage: ozi-winrun <file.exe | file.msi | program> | --desktop | --start | --stop | --status" >&2
   exit 2
 fi
 
@@ -38,12 +42,41 @@ start_guest() {
   # A cold boot needs time both to get an address and to bring RDP up.
   for _ in $(seq 1 120); do
     [ -n "$RDP_HOST" ] || RDP_HOST="$(guest_address)"
-    if [ -n "$RDP_HOST" ] && (exec 3<>"/dev/tcp/$RDP_HOST/$RDP_PORT") 2>/dev/null; then
+    if rdp_open "$RDP_HOST"; then
       return 0
     fi
     sleep 1
   done
   return 1
+}
+
+# The guest account's password: from the keyring, or, when the keyring lost it,
+# from the answer file on the setup CD (which put it into Windows), stored back.
+guest_password() {
+  local pw
+  pw="$($RDP_PASS_CMD 2>/dev/null)"
+  if [ -z "$pw" ] && [ -r "$SETUP_ISO" ]; then
+    pw="$(bsdtar -xOf "$SETUP_ISO" autounattend.xml 2>/dev/null |
+      sed -n '/<LocalAccount /,/<\/LocalAccount>/s:.*<Value>\(.*\)</Value>.*:\1:p' | head -n 1)"
+    [ -n "$pw" ] && printf '%s' "$pw" | secret-tool store --label="OziOS Windows guest" service ozi-winvm 2>/dev/null
+  fi
+  printf '%s' "$pw"
+}
+
+rdp_open() {
+  [ -n "$1" ] && (exec 3<>"/dev/tcp/$1/$RDP_PORT") 2>/dev/null
+}
+
+status_json() {
+  local state host="" ready=false
+  state="$(virsh -c qemu:///system domstate "$VM" 2>/dev/null | head -n 1)"
+  [ -n "$state" ] || state=missing
+  if [ "$state" = running ]; then
+    host="$(guest_address)"
+    rdp_open "$host" && ready=true
+  fi
+  # running without RDP yet: booting, or Windows Setup still installing.
+  printf '{"state": "%s", "ready": %s, "address": "%s"}\n' "$state" "$ready" "$host"
 }
 
 guest_address() {
@@ -68,11 +101,23 @@ guest_path() {
 }
 
 rdp() {
-  xfreerdp3 /v:"$RDP_HOST":"$RDP_PORT" /u:"$RDP_USER" /p:"$($RDP_PASS_CMD)" \
+  xfreerdp3 /v:"$RDP_HOST":"$RDP_PORT" /u:"$RDP_USER" /p:"$(guest_password)" \
     /cert:ignore +clipboard /sound /drive:home,"$HOME" "$@"
 }
 
-start_guest || { notify "Windows did not answer on RDP."; exit 5; }
+case "$target" in
+  --status) status_json; exit 0 ;;
+  --start) virsh -c qemu:///system start "$VM" >/dev/null 2>&1; status_json; exit 0 ;;
+  --stop) virsh -c qemu:///system shutdown "$VM" >/dev/null 2>&1; status_json; exit 0 ;;
+  --desktop)
+    start_guest || { notify "Windows henüz hazır değil: kuruluyor ya da açılıyor olabilir. Biraz sonra yeniden dene."; exit 5; }
+    rdp /dynamic-resolution /size:1600x900 +auto-reconnect && exit 0
+    command -v virt-viewer >/dev/null && exec virt-viewer -c qemu:///system "$VM"
+    exit 6 ;;
+esac
+
+notify "$(basename "$target") Windows'ta açılıyor…"
+start_guest || { notify "Windows henüz hazır değil: kuruluyor ya da açılıyor olabilir. Biraz sonra yeniden dene."; exit 5; }
 
 if [ -e "$target" ]; then
   winpath="$(guest_path "$(readlink -f "$target")")" || { notify "Could not share $target with Windows."; exit 5; }
@@ -84,9 +129,9 @@ if rdp /app:program:"cmd.exe",cmd:"/c start \"\" \"$winpath\"",name:"$(basename 
   exit 0
 fi
 
-notify "Could not open the app window. Opening the Windows desktop instead."
+notify "Uygulama penceresi açılamadı; Windows masaüstü açılıyor."
 rdp /dynamic-resolution /size:1600x900 && exit 0
 command -v virt-viewer >/dev/null && virt-viewer -c qemu:///system "$VM" && exit 0
 
-notify "Could not open a Windows window. To boot real Windows: ozi reboot-windows"
+notify "Windows penceresi açılamadı. Gerçek Windows'u başlatmak için: ozi reboot-windows"
 exit 6

@@ -120,6 +120,10 @@ Canvas {
             line([s / 2, s * 0.72, s / 2, s * 0.9])
             line([s * 0.15, s * 0.85, s * 0.85, s * 0.15])
             break
+        case "windows":
+            g.fillRect(s * 0.12, s * 0.14, s * 0.35, s * 0.33); g.fillRect(s * 0.53, s * 0.1, s * 0.37, s * 0.37)
+            g.fillRect(s * 0.12, s * 0.53, s * 0.35, s * 0.33); g.fillRect(s * 0.53, s * 0.53, s * 0.37, s * 0.37)
+            break
         case "search":
             arc(s * 0.42, s * 0.42, s * 0.28, 0, Math.PI * 2)
             line([s * 0.63, s * 0.63, s * 0.88, s * 0.88])

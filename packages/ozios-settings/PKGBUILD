@@ -38,6 +38,7 @@ package() {
   install -Dm755 "$src/winbridge/ozi-winrun"   "$pkgdir/usr/bin/ozi-winrun"
   install -Dm755 "$src/winbridge/ozi-winsetup" "$pkgdir/usr/bin/ozi-winsetup"
   install -Dm644 "$src/winbridge/ozi-winrun.desktop" "$pkgdir/usr/share/applications/ozi-winrun.desktop"
+  install -Dm644 "$src/winbridge/ozi-windows.desktop" "$pkgdir/usr/share/applications/ozi-windows.desktop"
 
   install -Dm755 "$src/branding/ozi-fetch"       "$share/branding/ozi-fetch"
   install -Dm644 -t "$share/branding"            "$src/branding/OziOS.colors" "$src/branding/logo.svg" "$src/branding/wallpaper.svg"

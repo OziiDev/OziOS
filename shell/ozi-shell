@@ -99,7 +99,8 @@ class Shell(QObject):
                         "battery": {"present": False}, "network": {"kind": "none", "name": ""},
                         "wifi": {"available": False, "wifi": False, "wifi_hw": False},
                         "bluetooth": {"available": False, "powered": False, "devices": []},
-                        "airplane": False, "brightness": {"available": False, "percent": 100}, "power": ""}
+                        "airplane": False, "brightness": {"available": False, "percent": 100}, "power": "",
+                        "windows": {"available": False, "state": "missing", "ready": False, "label": ""}}
         self._look = shell.look()
         self._pending_look = {}
         self._look_timer = QTimer(self)
@@ -399,6 +400,12 @@ class Shell(QObject):
     @pyqtSlot(str)
     def setPowerProfile(self, name):
         self._background("power", shell.set_power_profile, name)
+
+    @pyqtSlot(str)
+    def windowsGuest(self, action):
+        """The Windows guest: start, stop, open its desktop, or set it up."""
+        shell.windows_action(action)
+        QTimer.singleShot(1500, self.refreshStatus)
 
     @pyqtSlot(str)
     def openSettings(self, module):
