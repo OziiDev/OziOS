@@ -1,0 +1,14 @@
+#!/bin/sh
+# Updates for the OziOS packages come from the "repo" release on GitHub
+# (tools/publish-repo.sh); the copy the installer left on this disk stays as a
+# fallback. Run after every install and upgrade of ozios-settings.
+conf=/etc/pacman.conf
+url="https://github.com/OziiDev/OziOS/releases/download/repo"
+[ -f "$conf" ] || exit 0
+grep -q "^Server = $url\$" "$conf" && exit 0
+if grep -q '^\[ozios\]' "$conf"; then
+  # First server listed is tried first: the online one, then the local copy.
+  sed -i "/^\[ozios\]/a Server = $url" "$conf"
+else
+  printf '\n# OziOS packages and their updates.\n[ozios]\nSigLevel = Optional TrustAll\nServer = %s\n' "$url" >> "$conf"
+fi

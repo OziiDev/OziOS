@@ -113,6 +113,15 @@ chown -R "$builder" "$work/pkgbuild-decoration"
 (cd "$work/pkgbuild-decoration" && sudo -u "$builder" env OZI_SRC="$repo" BUILDDIR="$work/makepkg" PKGDEST="$work/pkg" makepkg -f --nodeps)
 decoration_package="$(find "$work/pkg" -name 'ozios-decoration-*.pkg.tar.*' ! -name '*.sig' | head -n1)"
 [ -n "$decoration_package" ] || die "makepkg produced no window frames"
+# The OziOS desktop (oziwm + ozi-shell): Rust, so this needs cargo on the build machine.
+step "Building the OziOS desktop"
+rm -rf "$work/pkgbuild-desktop"
+mkdir -p "$work/pkgbuild-desktop"
+cp "$repo/packages/ozi-desktop/PKGBUILD" "$work/pkgbuild-desktop/"
+chown -R "$builder" "$work/pkgbuild-desktop"
+(cd "$work/pkgbuild-desktop" && sudo -u "$builder" env OZI_SRC="$repo" BUILDDIR="$work/makepkg" PKGDEST="$work/pkg" CARGO_BUILD_JOBS=3 makepkg -f --nodeps --nocheck)
+desktop_package="$(find "$work/pkg" -name 'ozi-desktop-*.pkg.tar.*' ! -name '*.sig' | head -n1)"
+[ -n "$desktop_package" ] || die "makepkg produced no OziOS desktop"
 edu_package=""
 if [ "$edition" = edu ]; then
   step "Building the Education package"
@@ -182,10 +191,14 @@ if [ -n "$add" ]; then
   fi
   rm -rf "$root"/var/lib/pacman/sync/*
 fi
-"${pm[@]}" -U "$package" "$decoration_package" ${edu_package:+"$edu_package"}
-rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*.pkg.tar.* "$root"/opt/ozios/ozios-decoration-*.pkg.tar.*
+# The desktop's runtime dependencies come from the repositories like the --add ones.
+"${pm[@]}" -S --needed seatd layer-shell-qt qt6-svg bluez-utils power-profiles-daemon xdg-desktop-portal-gtk xwayland-satellite cachyos-wallpapers ||
+  echo "some OziOS desktop dependencies could not be installed; the installed system will fetch them"
+"${pm[@]}" -U "$package" "$decoration_package" "$desktop_package" ${edu_package:+"$edu_package"}
+rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*.pkg.tar.* "$root"/opt/ozios/ozios-decoration-*.pkg.tar.* "$root"/opt/ozios/ozi-desktop-*.pkg.tar.*
 install -Dm644 "$package" "$root/opt/ozios/$(basename "$package")"
 install -Dm644 "$decoration_package" "$root/opt/ozios/$(basename "$decoration_package")"
+install -Dm644 "$desktop_package" "$root/opt/ozios/$(basename "$desktop_package")"
 [ -z "$edu_package" ] || install -Dm644 "$edu_package" "$root/opt/ozios/$(basename "$edu_package")"
 echo ozios > "$root/etc/hostname"
 # In VirtualBox the folders shared with the host belong to the group vboxsf; the live

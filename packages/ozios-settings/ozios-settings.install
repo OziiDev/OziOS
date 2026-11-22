@@ -1,5 +1,6 @@
 post_install() {
   /usr/lib/ozios/identity
+  /usr/lib/ozios/online-repo
   /usr/lib/ozios/patch-installer
 }
 

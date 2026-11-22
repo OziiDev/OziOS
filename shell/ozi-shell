@@ -16,7 +16,7 @@ import threading
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 # A checkout uses its own code; an installed shell finds /usr/lib/ozios/python.
-for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python"):
+for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python", "/usr/lib/ozi-desktop/python"):
     if os.path.isdir(os.path.join(root, "ozipkg")):
         sys.path.insert(0, root)
         break

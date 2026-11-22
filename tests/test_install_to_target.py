@@ -129,7 +129,10 @@ class Stages(Target):
         with open(self.pacman_conf(), encoding="utf-8") as fh:
             conf = fh.read()
         self.assertTrue(conf.startswith(PACMAN_CONF))                     # the rest of the file is kept
-        self.assertIn("[ozios]\nSigLevel = Optional TrustAll\nServer = file:///opt/ozios\n", conf)
+        # Updates from the OziOS repository on GitHub first, the copy on the disk as a fallback.
+        self.assertIn("[ozios]\nSigLevel = Optional TrustAll\n"
+                      "Server = https://github.com/OziiDev/OziOS/releases/download/repo\n"
+                      "Server = file:///opt/ozios\n", conf)
         self.assertTrue(os.path.isfile(os.path.join(self.target, "var", "lib", "pacman", "sync", "ozios.db")))
 
     def test_the_kernel_and_its_headers_are_installed_by_name(self):
