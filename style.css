@@ -1,0 +1,139 @@
+:root {
+  --ink: #080b10;
+  --raised: #0e131b;
+  --control: #141b26;
+  --text: #f4fcff;
+  --muted: #8096a0;
+  --accent: #00e5ff;
+  --accent2: #7c5cff;
+  --pink: #ff5eaf;
+  --radius: 22px;
+  --max: 1120px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font: 16px/1.6 "Overpass", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+.wrap { width: min(var(--max), 100% - 32px); margin: 0 auto; }
+
+/* Top navigation */
+.nav {
+  position: sticky; top: 0; z-index: 10;
+  backdrop-filter: blur(14px);
+  background: color-mix(in srgb, var(--ink) 72%, transparent);
+  border-bottom: 1px solid #ffffff10;
+}
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 800; font-size: 20px; letter-spacing: .2px; }
+.brand img { width: 34px; height: 32px; }
+.nav nav { display: flex; gap: 22px; font-size: 15px; }
+.nav nav a { color: var(--muted); }
+.nav nav a:hover { color: var(--text); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 22px; border-radius: 999px; font-weight: 700; font-size: 15px;
+  border: 1px solid #ffffff22; color: var(--text); background: var(--control);
+  transition: transform .15s ease, box-shadow .2s ease, border-color .2s;
+}
+.btn:hover { transform: translateY(-2px); border-color: var(--accent); }
+.btn.primary {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: var(--ink); border: 0;
+  box-shadow: 0 10px 40px -10px var(--accent);
+}
+
+/* Hero */
+.hero { position: relative; padding: 90px 0 60px; overflow: hidden; }
+.hero::before, .hero::after {
+  content: ""; position: absolute; width: 760px; height: 760px; border-radius: 50%;
+  filter: blur(40px); opacity: .28; z-index: -1;
+}
+.hero::before { background: radial-gradient(var(--accent), transparent 65%); left: -220px; top: -260px; }
+.hero::after { background: radial-gradient(var(--accent2), transparent 65%); right: -260px; top: 40px; }
+.hero h1 { font-size: clamp(38px, 6vw, 68px); line-height: 1.05; margin: 18px 0; letter-spacing: -1.5px; }
+.hero h1 .glow { background: linear-gradient(90deg, var(--accent), var(--accent2), var(--pink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p.lead { font-size: clamp(17px, 2.2vw, 21px); color: #c9d6dc; max-width: 720px; }
+.tag { display: inline-block; padding: 6px 14px; border-radius: 999px; border: 1px solid #ffffff22; color: var(--muted); font-size: 13px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 30px 0 46px; }
+
+/* The big screenshot, framed like an OziOS window */
+.shot {
+  border-radius: var(--radius); overflow: hidden; position: relative;
+  border: 2px solid transparent;
+  background: linear-gradient(var(--raised), var(--raised)) padding-box,
+              conic-gradient(from var(--a, 0deg), var(--accent), var(--accent2), var(--pink), var(--accent)) border-box;
+  box-shadow: 0 30px 90px -30px #00e5ff66, 0 30px 80px -40px #7c5cff88;
+  animation: spin 8s linear infinite;
+}
+@property --a { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+@keyframes spin { to { --a: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .shot { animation: none; } }
+
+/* Sections */
+section { padding: 70px 0; }
+section h2 { font-size: clamp(28px, 4vw, 42px); margin: 0 0 12px; letter-spacing: -.8px; }
+section p.sub { color: var(--muted); max-width: 680px; margin: 0 0 34px; font-size: 18px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.card {
+  background: var(--raised); border: 1px solid #ffffff12; border-radius: var(--radius);
+  padding: 26px; transition: transform .2s ease, border-color .2s;
+}
+.card:hover { transform: translateY(-4px); border-color: #00e5ff55; }
+.card .icon {
+  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--ink); font-weight: 900; font-size: 22px;
+}
+.card h3 { margin: 0 0 6px; font-size: 19px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+/* Windows apps highlight */
+.windows {
+  display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center;
+  background: linear-gradient(135deg, #0b1a2a, #15102b); border: 1px solid #ffffff12;
+  border-radius: 32px; padding: 46px;
+}
+.windows ol { padding-left: 20px; color: #c9d6dc; }
+.windows li { margin: 8px 0; }
+.windows .exe {
+  border-radius: 18px; background: #0a0f16; border: 1px solid #ffffff18; padding: 22px;
+  font-family: "Overpass Mono", ui-monospace, monospace; font-size: 14px; color: #9fe9f5;
+}
+.windows .exe b { color: var(--text); }
+
+/* Gallery */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.gallery figure { margin: 0; background: var(--raised); border-radius: 18px; overflow: hidden; border: 1px solid #ffffff12; }
+.gallery figcaption { padding: 12px 16px; color: var(--muted); font-size: 14px; }
+
+/* Themes row */
+.themes { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 20px; }
+.themes span { width: 46px; height: 46px; border-radius: 50%; border: 2px solid #ffffff30; }
+
+/* Install */
+.install { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+pre {
+  margin: 12px 0 0; padding: 16px 18px; border-radius: 14px; background: #05080c; border: 1px solid #ffffff14;
+  overflow-x: auto; font: 14px/1.6 "Overpass Mono", ui-monospace, monospace; color: #c7f6ff;
+}
+
+footer { padding: 40px 0 60px; border-top: 1px solid #ffffff10; color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; }
+
+@media (max-width: 760px) {
+  .nav nav { display: none; }
+  .windows { grid-template-columns: 1fr; padding: 28px; }
+  section { padding: 50px 0; }
+}
