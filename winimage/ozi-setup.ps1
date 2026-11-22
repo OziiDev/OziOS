@@ -12,7 +12,9 @@ function Set-Reg($Path, $Name, $Value, $Type = 'DWord') {
 # Remote Desktop, and RemoteApp for any program rather than an allow list.
 Set-Reg 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' 'fDenyTSConnections' 0
 Set-Reg 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\TSAppAllowList' 'fDisabledAllowList' 1
-Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+# By the group's resource id: the display name is translated ("Uzak Masaüstü" on a
+# Turkish Windows), and asking for 'Remote Desktop' there enabled nothing.
+Enable-NetFirewallRule -Group '@FirewallAPI.dll,-28752'
 
 # Files from the Linux side arrive as \\tsclient\home. Treat that as local
 # intranet so programs start without a security prompt every time.
