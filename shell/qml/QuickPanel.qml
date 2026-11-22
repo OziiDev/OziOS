@@ -4,7 +4,7 @@ import org.kde.layershell 1.0 as LS
 
 // Quick settings, from the right island. Two pages:
 //   Hızlı    Wi-Fi (with the networks), Bluetooth (with the devices), airplane
-//            mode, do not disturb, power profile, sound and brightness.
+//            mode, do not disturb, power profile, tiling, sound and brightness.
 //   Görünüm  theme, glow, corners, motion, idle lock and the wallpaper; every
 //            window frame follows while the sliders move.
 Window {
@@ -141,6 +141,15 @@ Window {
                             const order = ["power-saver", "balanced", "performance"]
                             Shell.setPowerProfile(order[(order.indexOf(panel.s.power) + 1) % 3])
                         }
+                    }
+                    Tile {
+                        readonly property var desk: Shell.workspaces.find(w => w.active) || {}
+                        c: panel.c; width: parent.tileWidth
+                        glyph: "tiles"
+                        title: "Döşeme"
+                        subtitle: desk.tiling ? "Açık" : "Kapalı"
+                        on: desk.tiling === true
+                        onToggled: Shell.toggleTiling()
                     }
                     Tile {
                         c: panel.c; width: parent.tileWidth

@@ -225,6 +225,12 @@ class Shell(QObject):
     def switchWorkspace(self, index):
         ask({"do": "workspace", "index": index})
 
+    @pyqtSlot()
+    def toggleTiling(self):
+        """Tile the windows of the desktop in view, or let them float again."""
+        ask({"do": "toggle-tiling"})
+        self._refresh_windows()
+
     @pyqtProperty("QVariantList", notify=windowsChanged)
     def dock(self):
         return shell.dock_items(self._by_id, shell.pins(self._by_id), self._windows)

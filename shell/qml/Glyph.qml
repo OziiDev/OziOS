@@ -101,6 +101,11 @@ Canvas {
             g.beginPath(); g.moveTo(s * 0.58, s * 0.06); g.lineTo(s * 0.2, s * 0.56); g.lineTo(s * 0.48, s * 0.56)
             g.lineTo(s * 0.4, s * 0.94); g.lineTo(s * 0.8, s * 0.42); g.lineTo(s * 0.52, s * 0.42); g.closePath(); g.fill()
             break
+        case "tiles":
+            g.strokeRect(s * 0.1, s * 0.14, s * 0.36, s * 0.72)
+            g.strokeRect(s * 0.56, s * 0.14, s * 0.34, s * 0.3)
+            g.strokeRect(s * 0.56, s * 0.56, s * 0.34, s * 0.3)
+            break
         case "sun":
             g.beginPath(); g.arc(s / 2, s / 2, s * 0.18, 0, Math.PI * 2); g.fill()
             for (let i = 0; i < 8; i++) {

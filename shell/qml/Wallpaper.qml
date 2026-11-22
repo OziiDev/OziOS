@@ -72,8 +72,11 @@ Window {
         next.source = path ? "file://" + path : ""
         front = front === 0 ? 1 : 0
     }
-    onChosenChanged: showPicture(live ? "" : chosen)
-    Component.onCompleted: showPicture(live ? "" : chosen)
+    // Decide from `chosen` itself: in this handler `live` may still hold the
+    // value from before the change, which left the screen black when going
+    // from the tesseract to a picture.
+    onChosenChanged: showPicture(chosen === "tesseract" ? "" : chosen)
+    Component.onCompleted: showPicture(chosen === "tesseract" ? "" : chosen)
     Image {
         id: pictureA
         anchors.fill: parent
