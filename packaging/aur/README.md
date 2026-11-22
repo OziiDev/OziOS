@@ -12,7 +12,7 @@ Publishing (needs an AUR account with an SSH key, once):
     updpkgsums                      # fills sha256sums from the release tarball
     makepkg --printsrcinfo > .SRCINFO
     makepkg -si                     # try it
-    git add PKGBUILD .SRCINFO && git commit -m "ozi-desktop 0.4.0beta1" && git push
+    git add PKGBUILD .SRCINFO && git commit -m "ozi-desktop 0.4.0beta2" && git push
 
 OziOS systems do not need the AUR: they get the same desktop and its updates
 from the OziOS repository (tools/publish-repo.sh, the GitHub release "repo").
