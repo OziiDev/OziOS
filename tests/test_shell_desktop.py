@@ -211,16 +211,6 @@ class Radios(unittest.TestCase):
             self.assertEqual(shell.brightness(root), {"available": True, "percent": 50})
 
 
-class WindowsGuest(unittest.TestCase):
-    def test_states(self):
-        p = shell.parse_windows_status
-        self.assertEqual(p('{"state": "running", "ready": true, "address": "x"}')["label"], "Hazır")
-        self.assertEqual(p('{"state": "running", "ready": false, "address": ""}')["label"], "Hazırlanıyor")
-        self.assertEqual(p('{"state": "shut off", "ready": false, "address": ""}')["label"], "Kapalı")
-        self.assertEqual(p("garbage")["state"], "missing")
-        self.assertFalse(p("", has_virsh=False)["available"])
-
-
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 
 

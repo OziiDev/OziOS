@@ -60,7 +60,7 @@ echo "kdeglobals [KDE] AnimationDurationFactor = '$(kreadconfig6 --file kdegloba
 
 echo
 echo "## Script syntax"
-for script in winbridge/ozi-winrun packages/ozi-cli/ozi vfio/detect-iommu.sh tools/apply-branding.sh; do
+for script in packages/ozi-cli/ozi tools/apply-branding.sh; do
   endings=LF
   grep -q $'\r' "$root/$script" && endings=CRLF
   if err="$(tr -d '\r' < "$root/$script" | bash -n 2>&1)"; then
@@ -71,13 +71,10 @@ for script in winbridge/ozi-winrun packages/ozi-cli/ozi vfio/detect-iommu.sh too
 done
 python3 -m py_compile "$root/branding/ozi-fetch" 2>&1 && echo "ok    branding/ozi-fetch"
 
-echo
-echo "## detect-iommu.sh"
-tr -d '\r' < "$root/vfio/detect-iommu.sh" | bash 2>&1
 
 echo
 echo "## Tools"
-for tool in xfreerdp3 virsh qemu-system-x86_64 virt-viewer secret-tool snapper paru efibootmgr calamares mkarchiso cmake; do
+for tool in secret-tool snapper paru efibootmgr calamares mkarchiso cmake; do
   printf '%-22s %s\n' "$tool" "$(command -v "$tool" || echo missing)"
 done
 } > "$report" 2>&1

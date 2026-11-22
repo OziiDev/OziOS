@@ -47,12 +47,4 @@ Presentation {
                                     "OziOS, masaüstü ve oyun kullanımı için ayarlanmış kendi Linux çekirdeğiyle gelir.")
         }
     }
-
-    Slide {
-        OziSlide {
-            heading: presentation.say("Windows programs", "Windows programları")
-            words: presentation.say("With a Windows ISO of your own, OziOS can open .exe files in a window next to your other programs. It is set up separately, after the install.",
-                                    "Kendi Windows ISO'nuz varsa OziOS, .exe dosyalarını diğer programlarınızın yanında bir pencerede açabilir. Kurulumdan sonra ayrıca ayarlanır.")
-        }
-    }
 }

@@ -199,13 +199,6 @@ def sysinfo():
         info.append(("Uptime", "%dh %dm" % (up // 3600, up % 3600 // 60)))
     except OSError:
         pass
-    if shutil.which("virsh") is None:
-        windows = "not installed"
-    elif os.path.exists("/run/libvirt/qemu/ozi-win.pid"):
-        windows = "running"
-    else:
-        windows = "stopped"
-    info.append(("Windows", windows))
     return info
 
 

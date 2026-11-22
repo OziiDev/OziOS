@@ -59,19 +59,6 @@ class Welcome(unittest.TestCase):
         self.assertEqual(welcome.launch("store", popen=lambda cmd, **k: Quick(0), wait=0), {"started": "store"})
         self.assertEqual(welcome.launch("store", popen=lambda cmd, **k: Quick(None), wait=0), {"started": "store"})
 
-    def test_the_windows_button_explains_a_live_session_and_missing_virtualization(self):
-        started = []
-        popen = lambda cmd, **k: started.append(cmd)
-        with self.assertRaises(ValueError) as caught:
-            welcome.launch("windows", popen=popen, live=True, kvm_path=__file__)
-        self.assertIn("live session", str(caught.exception))
-        with self.assertRaises(ValueError) as caught:
-            welcome.launch("windows", popen=popen, live=False, kvm_path=__file__ + ".missing")
-        self.assertIn("virtualization", str(caught.exception))
-        self.assertEqual(started, [])
-        welcome.launch("windows", popen=popen, live=False, kvm_path=__file__)
-        self.assertEqual(started, [["ozi-winsetup", "--gui"]])
-
     def test_the_windows_network_button_also_opens_what_a_virtualbox_host_shares(self):
         mounts = "\n".join(["proc /proc proc rw 0 0", "ozios /mnt/ozios vboxsf rw,nodev 0 0",
                             r"Belgelerim /media/sf_My\040Documents vboxsf rw 0 0", "/dev/sda2 / btrfs rw 0 0", ""])

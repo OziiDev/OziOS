@@ -142,23 +142,6 @@ Window {
                             Shell.setPowerProfile(order[(order.indexOf(panel.s.power) + 1) % 3])
                         }
                     }
-                    // The Windows guest: set up, start, or open its desktop.
-                    Tile {
-                        c: panel.c; width: parent.tileWidth
-                        visible: panel.s.windows.available === true
-                        glyph: "windows"
-                        title: "Windows"
-                        subtitle: panel.s.windows.label
-                        on: panel.s.windows.state === "running"
-                        more: panel.s.windows.state === "running"
-                        onToggled: {
-                            const w = panel.s.windows
-                            if (w.state === "missing") { panel.close(); Shell.windowsGuest("setup") }
-                            else if (w.state !== "running") Shell.windowsGuest("start")
-                            else { panel.close(); Shell.windowsGuest("desktop") }
-                        }
-                        onOpened: panel.drawer = panel.drawer === "windows" ? "" : "windows"
-                    }
                     Tile {
                         c: panel.c; width: parent.tileWidth
                         visible: panel.s.battery.present === true
@@ -246,28 +229,6 @@ Window {
                         width: quickPage.width; height: 38; radius: 12; color: panel.c.control
                         Text { anchors.centerIn: parent; text: "Yeni cihaz eşleştir…"; color: panel.c.text; font.pixelSize: 12 }
                         MouseArea { anchors.fill: parent; onClicked: { panel.close(); Shell.openSettings("kcm_bluetooth") } }
-                    }
-                }
-
-                // Windows guest actions.
-                Column {
-                    visible: panel.drawer === "windows"
-                    width: parent.width
-                    spacing: 6
-                    Text {
-                        width: parent.width; wrapMode: Text.Wrap
-                        text: panel.s.windows.ready ? "Windows hazır. .exe dosyalarına çift tıklayınca kendi pencerelerinde açılır."
-                                                    : "Windows açılıyor ya da ilk kurulumunu yapıyor; bu bir süre sürebilir."
-                        color: panel.c.muted; font.pixelSize: 12
-                    }
-                    Repeater {
-                        model: [{ label: "Windows masaüstünü aç", action: "desktop" }, { label: "Windows'u kapat", action: "stop" }]
-                        Rectangle {
-                            required property var modelData
-                            width: quickPage.width; height: 38; radius: 12; color: panel.c.control
-                            Text { anchors.centerIn: parent; text: parent.modelData.label; color: panel.c.text; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; onClicked: { if (parent.modelData.action === "desktop") panel.close(); Shell.windowsGuest(parent.modelData.action) } }
-                        }
                     }
                 }
 

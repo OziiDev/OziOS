@@ -37,10 +37,6 @@ their own licences, and their sources are available from the places they come fr
 
 ## Not included
 
-- **Windows.** OziOS does not contain or distribute it. `ozi-winsetup` installs a
-  copy from an ISO you provide and you accept Microsoft's terms for that copy.
-- **virtio-win drivers.** Fetched by `ozi-winsetup` on first use (Red Hat, mostly
-  BSD-3-Clause and GPL-2.0).
 - **Ubuntu base images** used for `.deb` boxes are downloaded on first use from the
   upstream registry and carry Ubuntu's own licences.
 

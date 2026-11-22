@@ -1,5 +1,5 @@
 # fish completion for ozi
-set -l commands update install remove search review box apps rollback layout theme look quick effects mode status doctor report clean play gaming winsetup reboot-windows hw help
+set -l commands update install remove search review box apps rollback layout theme look quick effects mode status doctor report clean play gaming help
 complete -c ozi -f
 complete -c ozi -n "not __fish_seen_subcommand_from $commands" -a "$commands"
 complete -c ozi -n "__fish_seen_subcommand_from layout" -a "default deck classic board"

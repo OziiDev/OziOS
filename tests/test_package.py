@@ -356,7 +356,7 @@ class Metadata(unittest.TestCase):
             self.assertEqual(data["KPlugin"]["Id"], os.path.basename(os.path.dirname(path)))
 
     def test_desktop_files_have_the_basics(self):
-        for path in glob.glob(os.path.join(ROOT, "apps", "*.desktop")) + glob.glob(os.path.join(ROOT, "winbridge", "*.desktop")):
+        for path in glob.glob(os.path.join(ROOT, "apps", "*.desktop")):
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
             self.assertTrue(text.startswith("[Desktop Entry]"), path)
@@ -398,7 +398,7 @@ class Layouts(unittest.TestCase):
 
 class DesktopEntries(unittest.TestCase):
     def entries(self):
-        patterns = ("apps/*.desktop", "winbridge/*.desktop", "edu/applications/*.desktop", "packages/*/*.desktop")
+        patterns = ("apps/*.desktop", "edu/applications/*.desktop", "packages/*/*.desktop")
         return [p for pattern in patterns for p in glob.glob(os.path.join(ROOT, pattern))]
 
     def test_there_are_entries_to_check(self):

@@ -545,7 +545,7 @@ def full_status():
     """Everything the bar and the quick panel show."""
     w, b = wifi(), bluetooth()
     return dict(status(), wifi=w, bluetooth=b, airplane=airplane(w, b),
-                brightness=brightness(), power=power_profile(), windows=windows_guest())
+                brightness=brightness(), power=power_profile())
 
 
 # ---- wallpapers ---------------------------------------------------------
@@ -604,47 +604,3 @@ def wallpapers(environ=os.environ, limit=200):
                 if len(found) >= limit:
                     return found
     return found
-
-
-# ---- the Windows guest --------------------------------------------------
-
-def _winrun():
-    here = os.path.join(os.path.dirname(__file__), "..", "..", "winbridge", "ozi-winrun")
-    return here if os.path.exists(here) else shutil.which("ozi-winrun")
-
-
-def parse_windows_status(text, has_virsh=True):
-    """ozi-winrun --status -> what the quick panel shows."""
-    if not has_virsh:
-        return {"available": False, "state": "missing", "ready": False, "label": "Kurulmadı"}
-    try:
-        data = json.loads((text or "").strip().splitlines()[-1])
-    except (ValueError, IndexError):
-        data = {"state": "missing", "ready": False}
-    state, ready = data.get("state", "missing"), bool(data.get("ready"))
-    label = {"missing": "Kurulmadı", "shut off": "Kapalı", "paused": "Duraklatıldı"}.get(state, "")
-    if state == "running":
-        label = "Hazır" if ready else "Hazırlanıyor"
-    return {"available": True, "state": state, "ready": ready, "label": label or state}
-
-
-def windows_guest():
-    tool = _winrun()
-    if not tool or not shutil.which("virsh"):
-        return parse_windows_status("", has_virsh=False)
-    return parse_windows_status(_run([tool, "--status"], timeout=5))
-
-
-def windows_action(action):
-    """start | stop | desktop | setup, in the background."""
-    tool = _winrun()
-    argv = {"start": [tool, "--start"], "stop": [tool, "--stop"], "desktop": [tool, "--desktop"],
-            "setup": ["ozi-winsetup", "--gui"]}.get(action)
-    if not argv or not argv[0]:
-        return False
-    try:
-        subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
-    except OSError:
-        return False

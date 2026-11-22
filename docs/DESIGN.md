@@ -7,15 +7,13 @@ says "verify in VM", nobody has run it on a real system yet.
 
 An Arch-based desktop system built on CachyOS packages and KDE Plasma 6, for
 people coming from Windows who want speed without the Arch learning curve.
-Three things set it apart:
+Two things set it apart:
 
 1. Its own desktop on top of Plasma: one visual language from boot menu to
    lock screen, with motion that feels designed rather than default.
 2. A package installer that explains what an install will do before it does
    it, and can install Debian/Ubuntu `.deb` files without letting them touch
    the system.
-3. Windows programs opened from the file manager, running in a real Windows
-   guest (see `winbridge/`).
 
 Ease of use wins over configurability. Anything that needs a terminal is a bug.
 
@@ -97,7 +95,7 @@ Delivered as standard Plasma packages so System Settings keeps working.
 | Window decoration | Breeze, configured through `breezerc` | no custom decoration engine |
 | Wallpaper `org.ozios.tesseract` | `desktop/wallpaper/` | add settings (animate, speed, size) and still variants |
 | Window effects | `desktop/kwin/effects/ozios_motion` | scripted (JavaScript) open/close effect in KWin's open/close group; built-in effects tuned by config |
-| Control widget `org.ozios.control` | `desktop/plasmoids/` | tray popup: game mode, effects level, wallpaper motion, power profile, Windows guest, updates |
+| Control widget `org.ozios.control` | `desktop/plasmoids/` | tray popup: game mode, effects level, wallpaper motion, power profile, updates |
 | Lock screen | `kscreenlockerrc` | uses the tesseract wallpaper |
 | Login screen | plasma-login-manager config | verify in VM what can be themed |
 | Defaults for new users | `packages/ozios-settings/seed-defaults` | writes config into `/etc/skel` and existing homes so the first login already looks right |
@@ -114,8 +112,7 @@ wobble, still wallpaper); file content indexing is off by default.
 `ozi-welcome`, shown once after first login and from the menu. Replaces
 CachyOS Hello. Pages: a hero with a tesseract that can be turned by dragging;
 Install (live session only, starts the installer); Look (layout, effects
-level, wallpaper motion); Apps (opens Packages); Windows programs (guest
-setup with the licence notice); Updates.
+level, wallpaper motion); Apps (opens Packages); Updates.
 
 ## 6. Packages
 
@@ -131,7 +128,6 @@ setup with the licence notice); Updates.
 | `.deb` (Debian/Ubuntu) | installed with apt inside a per-app container image; started in a fresh container each launch | cannot change the system; sees only what its permissions allow |
 | Flatpak (`.flatpakref`, Flathub search) | flatpak, user installation | Flatpak sandbox, permissions editable |
 | AppImage | moved to `~/Applications`, never executed during inspection, launched in a sandbox | bubblewrap sandbox |
-| `.exe` / `.msi` | handed to `ozi-winrun` | Windows guest |
 
 ### 6.2 `.deb` in a box
 

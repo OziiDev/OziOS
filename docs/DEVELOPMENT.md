@@ -118,9 +118,6 @@ Checked in a virtual machine (VirtualBox, UEFI) with the live ISO:
   so the password prompt of the helper has not been seen. It is the stock
   `auth_admin_keep` action.
 - AUR builds have not been run against real podman and the real AUR.
-- Windows guest: scripts exist (`winbridge/`, `winimage/`) but have never run
-  against a real guest, because the development machine cannot run one. GPU
-  passthrough is not automated; `ozi hw` only reports what the machine can do.
 - Installing next to another system (dual boot), BIOS mode, encrypted disks
   and ZFS (not offered) have not been tried.
 - Nothing has been run on real hardware. A virtual machine does not show how

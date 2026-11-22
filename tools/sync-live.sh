@@ -18,7 +18,6 @@ for f in identity patch-installer install-to-target first-login start-installer 
 done
 install -Dm644 "$src/packages/ozios-settings/zz-ozios-menu.hook" /usr/share/libalpm/hooks/zz-ozios-menu.hook
 install -Dm644 "$src/packages/ozios-settings/60-ozios-animations.conf" /usr/lib/environment.d/60-ozios-animations.conf
-install -m644 "$src/winbridge/ozi-winrun.desktop" /usr/share/applications/ozi-winrun.desktop
 /usr/lib/ozios/tidy-menu
 for f in ozi ozi-pkg ozi-box ozi-tools; do
   install -m755 "$src/packages/ozi-cli/$f" "/usr/bin/$f"

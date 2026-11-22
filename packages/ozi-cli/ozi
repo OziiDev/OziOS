@@ -36,15 +36,12 @@ usage: ozi <command>
   quick [name value]   quick settings: volume, mute, wifi, bluetooth, night, dnd
   effects <level>      window effects: full, light or off
   mode game on|off     game mode: performance profile, no compositing effects
-  status [--json]      version, kernel, effects, game mode, Windows guest, updates
+  status [--json]      version, kernel, effects, game mode, updates
   doctor [--json]      check that the system is in good shape
   report               write a bug report, names and addresses removed
   clean [--yes]        free disk space (shows what first)
   play -- <game>       run a game with game mode on (Steam: ozi play -- %command%)
   gaming [--yes]       install Steam and what games need for this graphics card
-  winsetup             set up the Windows guest
-  reboot-windows       reboot into real Windows (dual boot only)
-  hw                   show what this machine supports
 EOF
 }
 
@@ -164,7 +161,7 @@ game_mode() {  # game_mode on|off
 }
 
 status() {
-  local version kernel effects game power guest updates layout
+  local version kernel effects game power updates layout
   layout="$(cat "$state_dir/layout" 2>/dev/null || true)"; : "${layout:=default}"
   version=unknown
   [ -r /usr/share/ozios/VERSION ] && version="$(tr -d '[:space:]' < /usr/share/ozios/VERSION)"
@@ -172,22 +169,20 @@ status() {
   effects="$(effects_level)"
   [ -e "$game_flag" ] && game=true || game=false
   power="$(powerprofilesctl get 2>/dev/null || echo unknown)"
-  guest="$(virsh -c qemu:///system domstate ozi-win 2>/dev/null | head -n1 || true)"
-  [ -n "$guest" ] || guest=missing
   updates="$(checkupdates 2>/dev/null | wc -l || true)"
   updates="${updates//[^0-9]/}"; : "${updates:=0}"
   if [ "${1:-}" = "--json" ]; then
-    python3 - "$version" "$kernel" "$effects" "$game" "$power" "$guest" "$updates" "$layout" <<'PY'
+    python3 - "$version" "$kernel" "$effects" "$game" "$power" "$updates" "$layout" <<'PY'
 import json, sys
-keys = ("version", "kernel", "effects", "game_mode", "power_profile", "windows_guest", "updates", "layout")
+keys = ("version", "kernel", "effects", "game_mode", "power_profile", "updates", "layout")
 values = list(sys.argv[1:])
 values[3] = values[3] == "true"
-values[6] = int(values[6].strip() or 0)
+values[5] = int(values[5].strip() or 0)
 print(json.dumps(dict(zip(keys, values))))
 PY
   else
-    printf 'OziOS %s, kernel %s\nlayout: %s, effects: %s, game mode: %s, power: %s\nWindows guest: %s, updates waiting: %s\n' \
-      "$version" "$kernel" "$layout" "$effects" "$game" "$power" "$guest" "$updates"
+    printf 'OziOS %s, kernel %s\nlayout: %s, effects: %s, game mode: %s, power: %s\nupdates waiting: %s\n' \
+      "$version" "$kernel" "$layout" "$effects" "$game" "$power" "$updates"
   fi
 }
 
@@ -238,24 +233,6 @@ case "$cmd" in
     ;;
   doctor | report | clean | play | gaming | theme | look | quick)
     exec ozi-tools "$cmd" "$@"
-    ;;
-  winsetup)
-    exec ozi-winsetup "$@"
-    ;;
-  reboot-windows)
-    entry="$(efibootmgr | awk '/Windows Boot Manager/ { gsub(/Boot|\*/, "", $1); print $1; exit }')"
-    if [ -z "$entry" ]; then
-      echo "ozi: no Windows Boot Manager entry found; is Windows installed next to OziOS?" >&2
-      exit 1
-    fi
-    sudo efibootmgr --bootnext "$entry" && systemctl reboot
-    ;;
-  hw)
-    for dir in /usr/share/ozios /usr/local/share/ozios; do
-      [ -f "$dir/vfio/detect-iommu.sh" ] && exec bash "$dir/vfio/detect-iommu.sh"
-    done
-    echo "ozi: detect-iommu.sh is not installed" >&2
-    exit 1
     ;;
   help | -h | --help)
     usage

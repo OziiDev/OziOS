@@ -151,10 +151,10 @@ def check_virtualization(p):
         return [Check("kvm", "ok", tr("Hardware virtualization is on"))]
     if capable:
         return [Check("kvm", "warn", tr("The processor can virtualize but /dev/kvm is missing"),
-                      tr("Virtualization may be switched off in the firmware setup. The Windows layer needs it."),
+                      tr("Virtualization may be switched off in the firmware setup. Virtual machines need it."),
                       tr("Turn on VT-x or SVM in the firmware setup"))]
     return [Check("kvm", "info", tr("No hardware virtualization"),
-                  tr("The Windows layer can not run without it. Everything else is unaffected."))]
+                  tr("Virtual machines can not run without it. Everything else is unaffected."))]
 
 
 def check_gpu(p):
@@ -324,7 +324,7 @@ def check_memory(p):
     out = []
     if total < 3 * GIB:
         out.append(Check("memory", "warn", tr("Only {size} of memory", size=human_size(total)),
-                         tr("The Windows layer and boxes need more to run well.")))
+                         tr("Boxes and bigger programs need more to run well.")))
     else:
         out.append(Check("memory", "ok", tr("{size} of memory", size=human_size(total))))
     if "zram" in (p.read("/proc/swaps") or ""):

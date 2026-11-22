@@ -543,7 +543,7 @@ class Shell(QObject):
         CALLS.append(("shell", "run", command))
         if "status --json" in command:
             out = json.dumps({"version": "0.1.1", "kernel": "7.1.6-1-ozios", "effects": "full", "game_mode": False,
-                              "layout": "default", "power_profile": "balanced", "windows_guest": "missing", "updates": 3})
+                              "layout": "default", "power_profile": "balanced", "updates": 3})
         elif "quick --json" in command:
             out = json.dumps({"volume": 40, "muted": False, "wifi": True, "wifi_network": "Ev", "bluetooth": None,
                               "night": False, "dnd": False})

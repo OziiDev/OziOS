@@ -3,6 +3,19 @@
 All notable changes to OziOS. Versions follow [Semantic Versioning](https://semver.org/);
 the rules for releases are in [docs/RELEASING.md](docs/RELEASING.md).
 
+## 0.4.0 (unreleased)
+
+"Öz": a desktop of OziOS's own, written from scratch. `oziwm` (a Wayland
+compositor in Rust, on Smithay) and `ozi-shell` (Qt/QML) come in the
+`ozi-desktop` package, from the OziOS repository or the AUR.
+
+- Removed: the Windows guest. `ozi-winsetup`, `ozi-winrun`, `ozi winsetup`,
+  `ozi reboot-windows`, `ozi hw`, the Windows tile in the quick settings and the
+  control widget, the Welcome row and the installer slide are gone, and the ISO
+  no longer carries QEMU, libvirt or FreeRDP for it. OziOS no longer promises to
+  run Windows programs. Opening the shared folders of Windows computers on the
+  network still works.
+
 ## 0.3.0 (unreleased)
 
 "Akış" (flow): a desktop that no longer looks like Plasma, with rounded frames

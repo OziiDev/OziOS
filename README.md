@@ -1,7 +1,7 @@
 # OziOS
 
 An Arch-based desktop system for gaming and everyday use, built on CachyOS
-packages and KDE Plasma 6. It aims to be quick on ordinary hardware and easy
+packages, with a desktop of its own written from scratch. It aims to be quick on ordinary hardware and easy
 for people who do not want to learn Arch first.
 
 ![The OziOS desktop](docs/img/desktop.png)
@@ -14,8 +14,8 @@ The desktop after a fresh install, the login screen and the Welcome window:
 **Status: early development.** A live ISO boots to the OziOS desktop on the
 OziOS kernel in a virtual machine, the installer puts it on a disk and the
 result starts, and the package installer works for `.deb`, AppImage and Arch
-packages. The Windows layer has not run on a real guest yet
-and nothing has been tried on real hardware. See
+packages. The 0.4 desktop (`ozi-desktop`) runs as the daily session on a real
+PC; it is still a beta. See
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 To try it, follow [docs/INSTALL.md](docs/INSTALL.md): put the ISO on a USB stick,
@@ -23,7 +23,13 @@ start from it, press Install.
 
 ## What it is
 
-- **A desktop of its own on top of KWin.** Its own dock (icons grow toward the
+- **A desktop of its own (0.4, `ozi-desktop`).** `oziwm`, a Wayland compositor
+  written in Rust on Smithay, draws the windows: a glow in the theme colours
+  around the focused one, rounded corners, tiling (Super+T), four workspaces,
+  its own lock screen. `ozi-shell` (Qt/QML) is the bar, dock, launcher, quick
+  settings (Wi-Fi, Bluetooth, airplane mode, brightness, sound, power) and
+  notifications. On Arch or CachyOS: `yay -S ozi-desktop`.
+- **The 0.3 Plasma desktop on top of KWin.** Its own dock (icons grow toward the
   pointer, hop while a program starts), its own launcher, window motion, a
   Plasma style for the bar and every popup, and a living tesseract wallpaper
   that stops whenever a window covers it. Six colour themes (`ozi theme`):
@@ -34,9 +40,6 @@ start from it, press Install.
   container and AppImages in a sandbox, builds AUR packages in a throwaway
   container, and gives every contained app one set of permissions: internet,
   files, camera, sound, devices.
-- **Windows programs from the file manager** (in progress). `.exe` and `.msi`
-  files open through a Windows guest that is installed from your own Windows
-  ISO, with telemetry and bundled apps removed. OziOS does not ship Windows.
 - **Next to Windows.** The shared folders of Windows computers on the network
   open from the Welcome window; in VirtualBox the folders shared with a Windows
   host open in the file manager; installed beside Windows, the clock stays right
@@ -58,7 +61,8 @@ start from it, press Install.
 | `edu/` | the Education edition: board layout, school defaults, links |
 | `python/ozipkg/` | package review, containment and permissions (no GUI code) |
 | `packages/` | the `ozios-settings` package and the `ozi` command |
-| `winbridge/`, `winimage/` | Windows guest setup and launcher |
+| `oziwm/` | the window manager (Rust, Smithay) |
+| `shell/`, `session/` | ozi-shell (bar, dock, launcher, quick settings) and the session |
 | `kernel/` | build the OziOS kernel |
 | `iso/` | turn a CachyOS ISO into an OziOS ISO |
 | `docs/` | design, development notes, releasing, licences |

@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OziOS — Windows uygulamaları açan, kendi masaüstüne sahip Linux</title>
-  <meta name="description" content="OziOS: CachyOS tabanlı, Rust ile yazılmış kendi masaüstüne sahip Linux. .exe dosyalarına çift tıkla, kendi pencerelerinde açılsın. Temalar, ışıltılı pencereler, döşeme, tek tıkla güncellemeler.">
+  <title>OziOS — kendi masaüstüne sahip, hızlı ve güzel Linux</title>
+  <meta name="description" content="OziOS: CachyOS tabanlı, Rust ile yazılmış kendi masaüstüne sahip Linux. Temalar, ışıltılı pencereler, döşeme, tek tıkla güncellemeler.">
   <meta property="og:title" content="OziOS">
-  <meta property="og:description" content="Windows uygulamaları açan, kendi masaüstüne sahip Linux.">
+  <meta property="og:description" content="Sıfırdan yazılmış kendi masaüstüne sahip, hızlı ve güzel Linux.">
   <meta property="og:image" content="img/night.png">
   <link rel="icon" href="logo.svg">
   <link rel="stylesheet" href="style.css">
@@ -17,7 +17,7 @@
       <a class="brand" href="#"><img src="logo.svg" alt="">OziOS</a>
       <nav>
         <a href="#ozellikler">Özellikler</a>
-        <a href="#windows">Windows uygulamaları</a>
+        <a href="#temalar">Temalar</a>
         <a href="#galeri">Galeri</a>
         <a href="#indir">İndir</a>
         <a href="https://github.com/OziiDev/OziOS">GitHub</a>
@@ -30,10 +30,10 @@
     <section class="hero">
       <div class="wrap">
         <span class="tag">0.4 "Öz" · beta</span>
-        <h1>Windows uygulamaları açan,<br><span class="glow">kendi masaüstüne sahip</span> Linux.</h1>
+        <h1>Hyprland kadar güzel,<br><span class="glow">Plasma kadar kolay</span> bir Linux.</h1>
         <p class="lead">OziOS, CachyOS'un hızlı temeli üstüne sıfırdan yazılmış kendi masaüstüyle gelir:
-          ışıltılı pencereler, altı tema, döşeme, kilit ekranı, hızlı ayarlar. Bir <b>.exe</b>'ye çift tıkla;
-          Windows uygulaması kendi penceresinde açılsın.</p>
+          ışıltılı pencereler, altı tema, döşeme, kilit ekranı, hızlı ayarlar. Terminal bilmeden kullanılır,
+          tek komutla güncellenir.</p>
         <div class="actions">
           <a class="btn primary" href="#indir">OziOS'u indir</a>
           <a class="btn" href="demo/">Masaüstünü tarayıcıda dene →</a>
@@ -58,29 +58,6 @@
       </div>
     </section>
 
-    <section id="windows">
-      <div class="wrap">
-        <div class="windows">
-          <div>
-            <h2>Windows uygulamaları, Linux'ta</h2>
-            <p class="sub" style="margin-bottom:12px">OziOS, kendi Windows kopyanı bir sanal makinede kendiliğinden kurar ve programlarını
-              masaüstünde normal pencereler gibi açar. Uyumluluk sorunu yok: gerçek Windows çalışıyor.</p>
-            <ol>
-              <li>Bir Windows ISO'su seç (lisansı sende olsun).</li>
-              <li>OziOS onu kendi kendine kurar; telemetri kapalı, gereksiz uygulamalar silinmiş.</li>
-              <li>Bir <b>.exe</b>'ye çift tıkla: uygulama kendi penceresinde açılır, dosyaların ortak.</li>
-            </ol>
-          </div>
-          <div class="exe">
-            <div><b>~/İndirilenler/kurulum.exe</b> çift tıklandı</div>
-            <div style="margin-top:10px">→ Windows açılıyor…</div>
-            <div>→ kurulum.exe kendi penceresinde açıldı ✓</div>
-            <div style="margin-top:14px;color:var(--muted)">Hızlı ayarlar → Windows kutucuğu:<br>başlat · masaüstünü aç · kapat</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section id="galeri">
       <div class="wrap">
         <h2>Galeri</h2>
@@ -88,11 +65,11 @@
         <div class="gallery">
           <figure><img src="img/launcher.png" alt="Başlatıcı" loading="lazy" width="1280" height="706"><figcaption>Başlatıcı: Super'e bas, yaz, Enter.</figcaption></figure>
           <figure><img src="img/tiling.png" alt="Döşenmiş pencereler" loading="lazy" width="1280" height="706"><figcaption>Döşeme: Super+T.</figcaption></figure>
-          <figure><img src="img/quick.png" alt="Hızlı ayarlar" loading="lazy" width="1280" height="706"><figcaption>Hızlı ayarlar ve Windows kutucuğu.</figcaption></figure>
+          <figure><img src="img/quick.png" alt="Hızlı ayarlar" loading="lazy" width="1280" height="706"><figcaption>Hızlı ayarlar: Wi-Fi, Bluetooth, parlaklık, ses.</figcaption></figure>
           <figure><img src="img/sakura.png" alt="Sakura duvar kâğıdı" loading="lazy" width="1280" height="706"><figcaption>OziOS'un kendi duvar kâğıtları.</figcaption></figure>
           <figure><img src="img/lock.png" alt="Kilit ekranı" loading="lazy" width="1280" height="706"><figcaption>Kilit ekranı.</figcaption></figure>
         </div>
-        <div class="themes" aria-label="Temalar">
+        <div class="themes" id="temalar" aria-label="Temalar">
           <span style="background:linear-gradient(90deg,#00e5ff,#7c5cff)" title="Camgöbeği"></span>
           <span style="background:linear-gradient(90deg,#b08cff,#ff5cc8)" title="Kutup Işığı"></span>
           <span style="background:linear-gradient(90deg,#ff8c40,#e8408c)" title="Kor"></span>
@@ -110,7 +87,7 @@
         <div class="install">
           <div class="card">
             <h3>OziOS ISO</h3>
-            <p>Masaüstü, Windows desteği ve OziOS çekirdeği hazır gelir. 0.4 ISO'su hazırlanıyor;
+            <p>Masaüstü, uygulama mağazası ve OziOS çekirdeği hazır gelir. 0.4 ISO'su hazırlanıyor;
               sürüm notları ve paketler şimdiden sürüm sayfasında.</p>
             <p style="margin-top:14px"><a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/tag/v0.4.0-beta1">0.4 sürüm sayfası</a></p>
           </div>
@@ -133,7 +110,7 @@ Server = https://github.com/OziiDev/OziOS/releases/download/repo</pre>
 
   <footer>
     <div class="wrap">
-      <span>© 2026 OziOS. Kaynak kodu MIT lisanslıdır. Windows, Microsoft'un markasıdır; OziOS Windows içermez.</span>
+      <span>© 2026 OziOS. Her hakkı saklıdır. Kaynak kodu MIT lisanslıdır.</span>
       <span><a href="https://github.com/OziiDev/OziOS">GitHub</a> · <a href="demo/">Tarayıcıda dene</a> · <a href="https://github.com/OziiDev/OziOS/issues">Sorun bildir</a></span>
     </div>
   </footer>

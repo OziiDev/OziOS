@@ -2,7 +2,7 @@
 _ozi() {
   local cur prev words cword
   _init_completion 2>/dev/null || { cur="${COMP_WORDS[COMP_CWORD]}"; prev="${COMP_WORDS[COMP_CWORD-1]}"; cword=$COMP_CWORD; words=("${COMP_WORDS[@]}"); }
-  local commands="update install remove search review box apps rollback layout theme look quick effects mode status doctor report clean play gaming winsetup reboot-windows hw help"
+  local commands="update install remove search review box apps rollback layout theme look quick effects mode status doctor report clean play gaming help"
   if [ "$cword" -eq 1 ]; then
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return

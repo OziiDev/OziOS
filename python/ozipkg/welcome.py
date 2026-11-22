@@ -16,7 +16,6 @@ INSTALLER = "/usr/lib/ozios/start-installer"
 ACTIONS = {
     "gaming": ["konsole", "--hold", "-e", "ozi", "gaming", "--yes"],
     "store": ["ozi-store"],
-    "windows": ["ozi-winsetup", "--gui"],
     # Windows computers nearby and their shared folders: the SMB worker of kio-extras
     # finds them (WS-Discovery). network:/ is gone from Plasma 6; seen failing in a
     # Plasma session. In a VirtualBox guest the folders the host shares are added
@@ -52,11 +51,6 @@ def version():
 
 def blocker(name, live=None, kvm_path="/dev/kvm"):
     """A reason a button can not work on this machine right now, or an empty string."""
-    if name == "windows":
-        if (is_live() if live is None else live):
-            return tr("The Windows layer needs a disk to live on, and this is a live session. Install OziOS first, then set it up from here.")
-        if not os.path.exists(kvm_path):
-            return tr("Hardware virtualization is not available. Turn on VT-x or SVM in the firmware setup.")
     return ""
 
 

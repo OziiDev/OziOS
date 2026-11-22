@@ -15,7 +15,7 @@ PlasmoidItem {
     id: root
 
     property var status: ({ version: "", kernel: "", effects: "full", game_mode: false, layout: "default",
-                            power_profile: "unknown", windows_guest: "missing", updates: 0 })
+                            power_profile: "unknown", updates: 0 })
     property var themes: []
     property var quick: ({ volume: null, muted: false, wifi: null, wifi_network: "", bluetooth: null,
                            night: null, dnd: false })
@@ -340,19 +340,6 @@ PlasmoidItem {
                     // The panel holding this popup is replaced, so the command must outlive it.
                     onClicked: root.run("setsid -f ozi layout " + modelData[0])
                 }
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            PlasmaComponents.Label {
-                Layout.fillWidth: true
-                text: root.status.windows_guest === "missing" ? root.tx("Windows guest: not set up", "Windows misafiri: kurulmadı")
-                                                              : root.tx("Windows guest: %1", "Windows misafiri: %1", root.status.windows_guest)
-            }
-            PlasmaComponents.Button {
-                text: root.status.windows_guest === "missing" ? root.tx("Set up", "Kur") : root.tx("Open", "Aç")
-                onClicked: root.run(root.status.windows_guest === "missing" ? "ozi-winsetup --gui" : "virsh -c qemu:///system start ozi-win; virt-viewer -c qemu:///system ozi-win")
             }
         }
 

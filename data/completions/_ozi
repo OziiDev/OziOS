@@ -22,9 +22,6 @@ commands=(
   'clean:free disk space'
   'play:run a game with game mode on'
   'gaming:install what games need'
-  'winsetup:set up the Windows guest'
-  'reboot-windows:reboot into Windows'
-  'hw:show what this machine supports'
   'help:show help'
 )
 if (( CURRENT == 2 )); then
