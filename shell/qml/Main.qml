@@ -14,6 +14,7 @@ QtObject {
     property Dock dock: Dock { shell: root; onLauncher: launcher.toggle() }
     property Launcher launcher: Launcher { shell: root }
     property QuickPanel panel: QuickPanel { shell: root }
+    property Notifications notes: Notifications { shell: root }
 
     property Connections events: Connections {
         target: Shell

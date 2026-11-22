@@ -9,6 +9,8 @@ mod handlers;
 mod input;
 mod ipc;
 mod keyboard;
+mod layout;
+mod lock;
 mod placement;
 mod render;
 mod state;
@@ -16,6 +18,7 @@ mod theme;
 mod title;
 mod tty;
 mod winit;
+mod workspace;
 
 use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
 
@@ -86,6 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut event_loop: EventLoop<OziWm> = EventLoop::try_new()?;
     let display: Display<OziWm> = Display::new()?;
     let mut state = OziWm::new(&mut event_loop, display)?;
+    lock::init(&mut state)?;
 
     let inside_a_desktop = std::env::var_os("WAYLAND_DISPLAY").is_some() || std::env::var_os("DISPLAY").is_some();
     let nested = match args.backend {

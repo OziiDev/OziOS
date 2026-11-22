@@ -28,6 +28,8 @@ pub enum Request {
     /// Read ~/.config/ozios/desktop.json again (theme, glow, corners, speed).
     ReloadLook,
     ToggleLauncher,
+    ToggleTiling,
+    Lock,
     Quit,
     Subscribe(Vec<String>),
 }
@@ -60,6 +62,8 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("quit") => Ok(Request::Quit),
         Some("reload-look") => Ok(Request::ReloadLook),
         Some("toggle-launcher") => Ok(Request::ToggleLauncher),
+        Some("toggle-tiling") => Ok(Request::ToggleTiling),
+        Some("lock") => Ok(Request::Lock),
         Some("workspace") => {
             let index = value
                 .get("index")
@@ -113,7 +117,7 @@ pub fn window_json(state: &OziWm, window: &Window) -> Value {
         "id": window_id(window),
         "app_id": app_id.unwrap_or_default(),
         "title": title.unwrap_or_default(),
-        "workspace": 1,
+        "workspace": crate::workspace::workspace_of(window) + 1,
         "focused": focused,
         "minimized": state.minimized.contains(window),
         "x": loc.x, "y": loc.y, "width": size.w, "height": size.h,
@@ -135,6 +139,7 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
                     .space
                     .elements()
                     .chain(state.minimized.iter())
+                    .chain(state.hidden.iter().map(|(w, _)| w))
                     .map(|w| window_json(state, w))
                     .collect(),
             )),
@@ -153,9 +158,7 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
                     })
                     .collect(),
             )),
-            "workspaces" => ok(json!([{
-                "index": 1, "active": true, "windows": state.space.elements().count()
-            }])),
+            "workspaces" => ok(state.workspaces_json()),
             other => error(format!("nothing called \"{other}\"")),
         },
         Request::Focus(id) => match state.window_by_id(id) {
@@ -183,10 +186,21 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
             state.spawn(&command);
             ok(Value::Null)
         }
-        Request::Workspace(1) => ok(Value::Null),
-        Request::Workspace(index) => error(format!("workspace {index} does not exist yet")),
+        Request::Workspace(index) if (1..=crate::workspace::WORKSPACES as u32).contains(&index) => {
+            state.switch_workspace(index as usize - 1);
+            ok(Value::Null)
+        }
+        Request::Workspace(index) => error(format!("no workspace {index}")),
         Request::ReloadLook => {
             state.reload_look();
+            ok(Value::Null)
+        }
+        Request::Lock => {
+            state.lock();
+            ok(Value::Null)
+        }
+        Request::ToggleTiling => {
+            state.toggle_tiling();
             ok(Value::Null)
         }
         Request::ToggleLauncher => {
@@ -230,6 +244,15 @@ pub fn emit_window(state: &mut OziWm, window: &Window, kind: &str) {
 
 pub fn emit_closed(state: &mut OziWm, id: u64) {
     emit(state, "windows", json!({ "event": "window-closed", "id": id }));
+}
+
+pub fn emit_workspace(state: &mut OziWm, index: usize) {
+    let event = json!({ "event": "workspace", "index": index + 1, "workspaces": state.workspaces_json() });
+    emit(state, "windows", event);
+}
+
+pub fn emit_locked(state: &mut OziWm, locked: bool) {
+    emit(state, "shell", json!({ "event": "locked", "locked": locked }));
 }
 
 /// Ask ozi-shell to open or close the launcher.

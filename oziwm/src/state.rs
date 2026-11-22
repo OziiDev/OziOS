@@ -103,6 +103,20 @@ pub struct OziWm {
     /// In a nested window the host desktop owns the Super key, so bindings use Alt.
     pub nested: bool,
     pub ipc_subscribers: Vec<ipc::Subscriber>,
+
+    /// 0-based; see workspace.rs.
+    pub active_ws: usize,
+    /// Windows of the other workspaces and where they were.
+    pub hidden: Vec<(Window, Point<i32, Logical>)>,
+    pub tiling: [bool; crate::workspace::WORKSPACES],
+    /// Window ids in the order they opened: the tiling order.
+    pub tile_order: Vec<u64>,
+    /// A workspace switch in progress: when, and which way (+1 right, -1 left).
+    pub ws_switch: Option<(Instant, i32)>,
+
+    /// Some while the screen is locked.
+    pub lock: Option<crate::lock::Lock>,
+    pub lock_answers: Option<crate::lock::LockAnswers>,
 }
 
 impl OziWm {
@@ -166,6 +180,13 @@ impl OziWm {
             super_alone: false,
             nested: true,
             ipc_subscribers: Vec::new(),
+            active_ws: 0,
+            hidden: Vec::new(),
+            tiling: [false; crate::workspace::WORKSPACES],
+            tile_order: Vec::new(),
+            ws_switch: None,
+            lock: None,
+            lock_answers: None,
         })
     }
 
@@ -314,6 +335,7 @@ impl OziWm {
         self.space
             .elements()
             .chain(self.minimized.iter())
+            .chain(self.hidden.iter().map(|(w, _)| w))
             .find(|w| window_id(w) == id)
             .cloned()
     }
@@ -370,6 +392,7 @@ impl OziWm {
             return;
         };
         let maximized = toplevel.current_state().states.contains(State::Maximized);
+        self.begin_morph(window);
         if maximized {
             let restore = window.user_data().get::<RestoreRect>().and_then(|r| r.0.lock().ok().and_then(|g| *g));
             toplevel.with_pending_state(|s| {
@@ -414,12 +437,22 @@ impl OziWm {
 
     /// Raise a window, give it the keyboard and mark it active.
     pub fn focus_window(&mut self, window: Option<Window>) {
+        if self.lock.is_some() {
+            return;
+        }
         let serial = SERIAL_COUNTER.next_serial();
         let Some(keyboard) = self.seat.get_keyboard() else {
             return;
         };
+        // On another workspace: go there first.
+        if let Some(window) = &window
+            && self.hidden.iter().any(|(w, _)| w == window)
+        {
+            self.switch_workspace(crate::workspace::workspace_of(window));
+        }
         if let Some(window) = &window
             && let Some(i) = self.minimized.iter().position(|w| w == window) {
+                crate::workspace::set_workspace(window, self.active_ws);
                 let window = self.minimized.remove(i);
                 let loc = window.user_data().get::<MinimizedAt>()
                     .and_then(|r| r.0.lock().ok().and_then(|g| g.map(|r| r.loc)));
@@ -475,6 +508,7 @@ impl OziWm {
             &taken,
         );
         self.space.map_element(window.clone(), (x, y + title), true);
+        self.track_new_window(&window);
         ipc::emit_window(self, &window, "window-opened");
         self.focus_window(Some(window));
     }

@@ -103,6 +103,27 @@ Window {
                 Text { width: 32; text: content.s.volume.percent + "%"; color: panel.c.muted; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
             }
 
+            // Do not disturb: only critical notifications get through.
+            Rectangle {
+                width: parent.width; height: 44; radius: 14
+                color: Notes.quiet ? Qt.alpha(panel.c.accent, 0.16) : panel.c.control
+                border.width: 1; border.color: Qt.alpha(panel.c.accent, Notes.quiet ? 0.5 : 0.12)
+                Text { anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
+                       text: "Rahatsız etme"; color: panel.c.text; font.pixelSize: 13 }
+                Rectangle {
+                    anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                    width: 40; height: 22; radius: 11
+                    color: Notes.quiet ? panel.c.accent : Qt.alpha(panel.c.muted, 0.35)
+                    Rectangle {
+                        width: 18; height: 18; radius: 9; color: panel.c.text
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: Notes.quiet ? parent.width - width - 2 : 2
+                        Behavior on x { NumberAnimation { duration: panel.shell.ms(160); easing.type: Easing.OutCubic } }
+                    }
+                }
+                MouseArea { anchors.fill: parent; onClicked: Notes.setQuiet(!Notes.quiet) }
+            }
+
             Rectangle { width: parent.width; height: 1; color: Qt.alpha(panel.c.muted, 0.2) }
 
             // Look: a live preview of a window frame, then the controls.

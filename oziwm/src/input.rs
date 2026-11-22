@@ -84,6 +84,16 @@ impl OziWm {
                 wm.super_alone = false;
                 return FilterResult::Intercept(Some(Action::ToggleLauncher));
             }
+            // Locked: every key goes to the lock screen, except console switching.
+            if wm.lock.is_some() {
+                if state == KeyState::Pressed {
+                    let vt = bindings::action_for(Mods::default(), handle.modified_sym(), nested)
+                        .filter(|a| matches!(a, Action::SwitchVt(_)));
+                    let key = Action::LockKey(handle.modified_sym(), handle.modified_sym().key_char());
+                    return FilterResult::Intercept(Some(vt.unwrap_or(key)));
+                }
+                return FilterResult::Intercept(None);
+            }
             if state == KeyState::Released {
                 // The press was a shortcut, so the program never saw it: hide the release too.
                 if let Some(i) = wm.suppressed_keys.iter().position(|k| *k == code) {
@@ -118,6 +128,20 @@ impl OziWm {
             Action::CycleFocus => self.cycle_focus(),
             Action::Quit => self.loop_signal.stop(),
             Action::ToggleLauncher => crate::ipc::emit_launcher(self),
+            Action::Workspace(n) => self.switch_workspace(n),
+            Action::MoveToWorkspace(n) => {
+                if let Some(w) = self.focused_window() {
+                    self.move_to_workspace(&w, n);
+                }
+            }
+            Action::ToggleTiling => self.toggle_tiling(),
+            Action::Lock => self.lock(),
+            Action::LockKey(sym, ch) => self.lock_key(sym, ch),
+            Action::ToggleFloating => {
+                if let Some(w) = self.focused_window() {
+                    self.toggle_floating(&w);
+                }
+            }
             Action::SwitchVt(vt) => {
                 if let Some(tty) = self.tty.as_mut() {
                     tty.change_vt(vt);
@@ -135,8 +159,12 @@ impl OziWm {
         let Some(pointer) = self.seat.get_pointer() else {
             return;
         };
-        // Over our own frame the client gets no pointer focus.
-        let under = if self.frame_hit(location).is_some() { None } else { self.surface_under(location) };
+        // Over our own frame (or on the lock screen) no client gets the pointer.
+        let under = if self.lock.is_some() || self.frame_hit(location).is_some() {
+            None
+        } else {
+            self.surface_under(location)
+        };
         let serial = SERIAL_COUNTER.next_serial();
         pointer.motion(self, under, &MotionEvent { location, serial, time });
         pointer.frame(self);
@@ -145,6 +173,9 @@ impl OziWm {
 
     fn on_button(&mut self, button: u32, state: ButtonState, time: u32) {
         self.super_alone = false;
+        if self.lock.is_some() {
+            return;
+        }
         let Some(pointer) = self.seat.get_pointer() else {
             return;
         };
@@ -258,6 +289,9 @@ impl OziWm {
     }
 
     fn on_axis<I: InputBackend>(&mut self, event: &I::PointerAxisEvent) {
+        if self.lock.is_some() {
+            return;
+        }
         let Some(pointer) = self.seat.get_pointer() else {
             return;
         };

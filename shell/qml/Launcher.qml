@@ -175,6 +175,7 @@ Window {
                 spacing: 14
                 Repeater {
                     model: [
+                        { kind: "lock", label: "Kilitle", action: "lock" },
                         { kind: "suspend", label: "Uyku", action: "suspend" },
                         { kind: "logout", label: "Oturumu kapat", action: "logout" },
                         { kind: "reboot", label: "Yeniden başlat", action: "reboot" },
@@ -182,7 +183,7 @@ Window {
                     ]
                     Rectangle {
                         required property var modelData
-                        width: 150; height: 46; radius: 23
+                        width: 128; height: 46; radius: 23
                         color: powerMouse.containsMouse ? Qt.alpha(modelData.action === "poweroff" ? "#FF556E" : launcher.c.accent, 0.18) : launcher.c.control
                         border.width: 1
                         border.color: powerMouse.containsMouse ? (modelData.action === "poweroff" ? "#FF556E" : launcher.c.accent) : Qt.alpha(launcher.c.muted, 0.25)

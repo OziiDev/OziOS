@@ -11,6 +11,14 @@ pub enum Action {
     /// Ctrl+Alt+F1..F12: go to another console.
     SwitchVt(i32),
     ToggleLauncher,
+    /// 0-based workspace.
+    Workspace(usize),
+    MoveToWorkspace(usize),
+    ToggleTiling,
+    ToggleFloating,
+    Lock,
+    /// A key typed on the lock screen.
+    LockKey(Keysym, Option<char>),
 }
 
 /// The modifiers that matter for shortcuts.
@@ -47,6 +55,13 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
         (false, Keysym::q) => Action::CloseFocused,
         (false, Keysym::Tab) => Action::CycleFocus,
         (false, Keysym::space) | (false, Keysym::a) => Action::ToggleLauncher,
+        (false, Keysym::t) => Action::ToggleTiling,
+        (false, Keysym::l) => Action::Lock,
+        (false, Keysym::f) => Action::ToggleFloating,
+        (shift, k) if (Keysym::_1.raw()..=Keysym::_4.raw()).contains(&k.raw()) => {
+            let n = (k.raw() - Keysym::_1.raw()) as usize;
+            if shift { Action::MoveToWorkspace(n) } else { Action::Workspace(n) }
+        }
         (true, Keysym::Escape) => Action::Quit,
         _ => return None,
     };
@@ -89,6 +104,15 @@ mod tests {
     fn console_switch_keys() {
         assert_eq!(action_for(Mods::default(), Keysym::XF86_Switch_VT_3, false), Some(Action::SwitchVt(3)));
         assert_eq!(action_for(Mods::default(), Keysym::XF86_Switch_VT_12, false), Some(Action::SwitchVt(12)));
+    }
+
+    #[test]
+    fn workspaces_and_tiling() {
+        assert_eq!(action_for(SUPER, Keysym::_3, false), Some(Action::Workspace(2)));
+        let shifted = Mods { shift: true, ..SUPER };
+        assert_eq!(action_for(shifted, Keysym::_1, false), Some(Action::MoveToWorkspace(0)));
+        assert_eq!(action_for(SUPER, Keysym::_5, false), None);
+        assert_eq!(action_for(SUPER, Keysym::t, false), Some(Action::ToggleTiling));
     }
 
     #[test]

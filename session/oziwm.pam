@@ -1,0 +1,4 @@
+#%PAM-1.0
+# The oziwm lock screen checks the password like a console login.
+auth       include      login
+account    include      login

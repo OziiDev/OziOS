@@ -76,6 +76,11 @@ Canvas {
         case "suspend":
             g.beginPath(); g.arc(s / 2, s / 2, s * 0.34, Math.PI * 0.3, Math.PI * 1.7); g.arc(s * 0.62, s * 0.42, s * 0.26, Math.PI * 1.55, Math.PI * 0.45, true); g.stroke()
             break
+        case "lock":
+            g.strokeRect(s * 0.22, s * 0.45, s * 0.56, s * 0.42)
+            arc(s / 2, s * 0.45, s * 0.18, Math.PI, Math.PI * 2)
+            line([s * 0.32, s * 0.45, s * 0.32, s * 0.4]); line([s * 0.68, s * 0.45, s * 0.68, s * 0.4])
+            break
         case "search":
             arc(s * 0.42, s * 0.42, s * 0.28, 0, Math.PI * 2)
             line([s * 0.63, s * 0.63, s * 0.88, s * 0.88])

@@ -9,7 +9,7 @@ arch=(x86_64)
 license=(MIT)
 depends=(
   'ozios-settings>=0.3.0-2'
-  seatd libinput mesa libxkbcommon systemd-libs libdrm
+  seatd libinput mesa libxkbcommon systemd-libs libdrm pam
   python python-pyqt6 qt6-declarative layer-shell-qt
   ttf-overpass wireplumber networkmanager
 )
@@ -21,6 +21,7 @@ optdepends=(
   'konsole: the terminal Super+Return opens'
   'dolphin: the file manager Super+E opens'
 )
+backup=(etc/pam.d/oziwm)
 options=(!strip !debug !lto)
 
 build() {
@@ -42,6 +43,7 @@ package() {
   install -Dm755 "$src/session/ozi-session" "$pkgdir/usr/bin/ozi-session"
   install -Dm755 "$src/session/ozi-session-start" "$pkgdir/usr/lib/ozios/ozi-session-start"
   install -Dm644 "$src/session/ozios.desktop" "$pkgdir/usr/share/wayland-sessions/ozios.desktop"
+  install -Dm644 "$src/session/oziwm.pam" "$pkgdir/etc/pam.d/oziwm"
   install -d "$pkgdir/usr/share/ozios/shell/qml"
   install -m644 "$src"/shell/qml/*.qml "$pkgdir/usr/share/ozios/shell/qml/"
   install -Dm644 "$src/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"

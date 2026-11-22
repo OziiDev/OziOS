@@ -11,7 +11,7 @@ use smithay::{
                 memory::{MemoryRenderBuffer, MemoryRenderBufferRenderElement},
                 render_elements,
                 surface::{WaylandSurfaceRenderElement, WaylandSurfaceTexture},
-                utils::RescaleRenderElement,
+                utils::{Relocate, RelocateRenderElement, RescaleRenderElement},
                 AsRenderElements, Element, Id, Kind, RenderElement, UnderlyingStorage,
             },
             gles::{
@@ -38,6 +38,7 @@ use crate::{
 pub struct Shaders {
     frame: GlesPixelProgram,
     rounded: GlesTexProgram,
+    lock: GlesPixelProgram,
 }
 
 impl Shaders {
@@ -71,7 +72,19 @@ impl Shaders {
                 UniformName::new("ozi_round_top", _1f),
             ],
         )?;
-        Ok(Shaders { frame, rounded })
+        let lock = renderer.compile_custom_pixel_shader(
+            include_str!("shaders/lock.frag"),
+            &[
+                UniformName::new("ozi_time", _1f),
+                UniformName::new("ozi_ink", _3f),
+                UniformName::new("ozi_c1", _3f),
+                UniformName::new("ozi_c2", _3f),
+                UniformName::new("ozi_field", _4f),
+                UniformName::new("ozi_state", _1f),
+                UniformName::new("ozi_shake", _1f),
+            ],
+        )?;
+        Ok(Shaders { frame, rounded, lock })
     }
 }
 
@@ -80,6 +93,8 @@ pub struct WindowLook {
     pub active: Fade,
     pub opening: Option<Opening>,
     pub hover: Option<Button>,
+    /// Where the frame was when it last moved: it flows from there to its new place.
+    pub morph: Option<(Rect, Instant)>,
     frame: Option<PixelShaderElement>,
     title: Option<CachedTitle>,
 }
@@ -95,6 +110,7 @@ impl WindowLook {
             active: Fade::new(0.0),
             opening: Some(Opening { start: now }),
             hover: None,
+            morph: None,
             frame: None,
             title: None,
         }
@@ -227,6 +243,7 @@ render_elements! {
     pub OziElement<=GlesRenderer>;
     Part=WindowPart,
     Scaled=RescaleRenderElement<WindowPart>,
+    Moved=RelocateRenderElement<RescaleRenderElement<WindowPart>>,
 }
 
 pub fn is_server_side(window: &Window) -> bool {
@@ -396,6 +413,25 @@ pub fn window_elements(
     let mut out = Vec::new();
     let mut animating = false;
 
+    // Switching workspaces: the arriving windows slide in from the side and fade up.
+    let (slide, slide_alpha) = match state.ws_switch {
+        Some((start, dir)) if style.animation_speed > 0.0 => {
+            let t = now.saturating_duration_since(start).as_secs_f64() / (0.28 / style.animation_speed);
+            if t >= 1.0 {
+                state.ws_switch = None;
+                (0.0, 1.0)
+            } else {
+                let e = crate::anim::ease_out_cubic(t);
+                animating = true;
+                (dir as f64 * (1.0 - e) * 120.0, e as f32)
+            }
+        }
+        _ => {
+            state.ws_switch = None;
+            (0.0, 1.0)
+        }
+    };
+
     let windows: Vec<Window> = state.space.elements().rev().cloned().collect();
     let live: Vec<u64> = windows.iter().map(window_id).collect();
     state.looks.retain(|id, _| live.contains(id));
@@ -422,7 +458,7 @@ pub fn window_elements(
         }
         animating |= opening.is_some();
         let (zoom, alpha) = opening.unwrap_or((1.0, 1.0));
-        let alpha = alpha as f32;
+        let alpha = alpha as f32 * slide_alpha;
 
         let mut parts: Vec<WindowPart> = Vec::new();
 
@@ -464,17 +500,46 @@ pub fn window_elements(
         animating |= glowing;
         parts.push(WindowPart::Frame(frame_element(look, shaders, &style, &frame, origin, active, time, alpha)));
 
-        if (zoom - 1.0).abs() > 1e-3 {
-            let outer = frame.outer();
-            let centre = (Point::<i32, Logical>::from((outer.x + outer.w / 2, outer.y + outer.h / 2)) - origin)
-                .to_physical_precise_round(scale);
-            out.extend(
-                parts
-                    .into_iter()
-                    .map(|p| OziElement::Scaled(RescaleRenderElement::from_element(p, centre, zoom))),
-            );
-        } else {
+        // How this window is moved and stretched this frame: flowing to a new
+        // place (maximise, tiling), growing in as it opens, sliding with its workspace.
+        let outer = frame.outer();
+        let morph_len = 0.30 / speed.max(0.01);
+        let morph = look.morph.and_then(|(from, start)| {
+            let t = now.saturating_duration_since(start).as_secs_f64() / morph_len;
+            (t < 1.0 && from != outer).then(|| crate::layout::lerp(from, outer, crate::anim::ease_out_cubic(t)))
+        });
+        if morph.is_none() {
+            look.morph = None;
+        }
+        animating |= morph.is_some();
+        let (mut origin_pt, mut sx, mut sy, mut dx, mut dy): (Point<i32, Logical>, f64, f64, f64, f64) = (
+            Point::<i32, Logical>::from((outer.x + outer.w / 2, outer.y + outer.h / 2)),
+            zoom,
+            zoom,
+            0.0,
+            0.0,
+        );
+        if let Some((ix, iy, iw, ih)) = morph {
+            origin_pt = (outer.x, outer.y).into();
+            sx = iw / outer.w.max(1) as f64;
+            sy = ih / outer.h.max(1) as f64;
+            dx = ix - outer.x as f64;
+            dy = iy - outer.y as f64;
+        }
+        dx += slide;
+        let identity = (sx - 1.0).abs() < 1e-3 && (sy - 1.0).abs() < 1e-3 && dx.abs() < 0.5 && dy.abs() < 0.5;
+        if identity {
             out.extend(parts.into_iter().map(OziElement::Part));
+        } else {
+            let o = (origin_pt - origin).to_physical_precise_round(scale);
+            let offset = Point::<f64, Logical>::from((dx, dy)).to_physical(scale).to_i32_round();
+            out.extend(parts.into_iter().map(|p| {
+                OziElement::Moved(RelocateRenderElement::from_element(
+                    RescaleRenderElement::from_element(p, o, Scale::from((sx, sy))),
+                    offset,
+                    Relocate::Relative,
+                ))
+            }));
         }
     }
     (out, animating)
@@ -515,7 +580,12 @@ pub fn output_elements(
 ) -> (Vec<OziElement>, bool) {
     use smithay::wayland::shell::wlr_layer::Layer;
     let scale = output.current_scale().fractional_scale();
-    let origin = state.space.output_geometry(output).map(|g| g.loc).unwrap_or_default();
+    let geo = state.space.output_geometry(output).unwrap_or_default();
+    let origin = geo.loc;
+    if state.lock.is_some() {
+        // Locked: nothing but the lock screen, which keeps moving gently.
+        return (state.lock_elements(renderer, &shaders.lock, (geo.size.w, geo.size.h), scale, now), true);
+    }
     let mut out = layer_elements(output, renderer, scale, &[Layer::Overlay, Layer::Top]);
     let (windows, animating) = window_elements(state, renderer, shaders, origin, scale, now);
     out.extend(windows);

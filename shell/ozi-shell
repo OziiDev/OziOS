@@ -65,7 +65,8 @@ if "--launcher" in sys.argv[1:]:
 os.environ.setdefault("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell")
 os.environ.setdefault("QT_QPA_PLATFORM", "wayland")
 
-from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot  # noqa: E402
+from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtClassInfo, pyqtProperty, pyqtSignal, pyqtSlot  # noqa: E402
+from PyQt6.QtDBus import QDBusAbstractAdaptor, QDBusConnection, QDBusMessage  # noqa: E402
 from PyQt6.QtGui import QGuiApplication, QIcon  # noqa: E402
 from PyQt6.QtQml import QQmlApplicationEngine  # noqa: E402
 
@@ -82,6 +83,7 @@ class Shell(QObject):
     def __init__(self):
         super().__init__()
         self._windows = []
+        self._workspaces = [{"index": i, "active": i == 1, "windows": 0, "tiling": False} for i in range(1, 5)]
         self._apps = shell.applications()
         self._by_id = {a["id"]: a for a in self._apps}
         self._status = {"volume": {"available": False, "percent": 0, "muted": False},
@@ -134,13 +136,24 @@ class Shell(QObject):
         windows = ask({"get": "windows"})
         if isinstance(windows, list):
             self._windows = windows
-            self.windowsChanged.emit()
+        workspaces = ask({"get": "workspaces"})
+        if isinstance(workspaces, list):
+            self._workspaces = workspaces
+        self.windowsChanged.emit()
 
     # ---- properties -------------------------------------------------------
 
     @pyqtProperty("QVariantList", notify=windowsChanged)
     def windows(self):
         return self._windows
+
+    @pyqtProperty("QVariantList", notify=windowsChanged)
+    def workspaces(self):
+        return self._workspaces
+
+    @pyqtSlot(int)
+    def switchWorkspace(self, index):
+        ask({"do": "workspace", "index": index})
 
     @pyqtProperty("QVariantList", notify=windowsChanged)
     def dock(self):
@@ -259,10 +272,15 @@ class Shell(QObject):
             "reboot": ["systemctl", "reboot"],
             "poweroff": ["systemctl", "poweroff"],
             "suspend": ["systemctl", "suspend"],
+            "lock": None,
         }
-        if action == "logout":
+        if action == "lock":
+            ask({"do": "lock"})
+        elif action == "logout":
             ask({"do": "quit"})
-        elif action in commands:
+        elif commands.get(action):
+            if action == "suspend":
+                ask({"do": "lock"})  # wake up to the lock screen
             subprocess.Popen(commands[action], start_new_session=True)
 
     @pyqtSlot(str, result=str)
@@ -275,6 +293,124 @@ class Shell(QObject):
         return "image://icon/" + name
 
 
+NOTIFY_XML = '''
+<interface name="org.freedesktop.Notifications">
+  <method name="GetCapabilities"><arg type="as" direction="out"/></method>
+  <method name="Notify">
+    <arg type="s" direction="in"/><arg type="u" direction="in"/><arg type="s" direction="in"/>
+    <arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="as" direction="in"/>
+    <arg type="a{sv}" direction="in"/><arg type="i" direction="in"/><arg type="u" direction="out"/>
+  </method>
+  <method name="CloseNotification"><arg type="u" direction="in"/></method>
+  <method name="GetServerInformation">
+    <arg type="s" direction="out"/><arg type="s" direction="out"/>
+    <arg type="s" direction="out"/><arg type="s" direction="out"/>
+  </method>
+  <signal name="NotificationClosed"><arg type="u"/><arg type="u"/></signal>
+  <signal name="ActionInvoked"><arg type="u"/><arg type="s"/></signal>
+</interface>
+'''
+
+
+@pyqtClassInfo("D-Bus Interface", "org.freedesktop.Notifications")
+@pyqtClassInfo("D-Bus Introspection", NOTIFY_XML)
+class NotificationAdaptor(QDBusAbstractAdaptor):
+    """org.freedesktop.Notifications on the session bus, for every program."""
+    NotificationClosed = pyqtSignal("uint", "uint")
+    ActionInvoked = pyqtSignal("uint", str)
+
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.owner = owner
+        self.setAutoRelaySignals(True)
+
+    @pyqtSlot(result="QStringList")
+    def GetCapabilities(self):
+        return ["body", "body-markup", "actions", "icon-static"]
+
+    @pyqtSlot(QDBusMessage)
+    def GetServerInformation(self, message):
+        message.setDelayedReply(True)
+        QDBusConnection.sessionBus().send(message.createReply(["OziOS", "OziOS", "0.4", "1.2"]))
+
+    @pyqtSlot(str, "uint", str, str, str, "QStringList", "QVariantMap", int, result="uint")
+    def Notify(self, app_name, replaces_id, app_icon, summary, body, actions, hints, timeout):
+        return self.owner.add(app_name, replaces_id, app_icon, summary, body, list(actions), dict(hints), timeout)
+
+    @pyqtSlot("uint")
+    def CloseNotification(self, nid):
+        self.owner.dismiss(nid, 3)
+
+
+class Notifications(QObject):
+    """The popups on screen and what QML needs to draw them."""
+    changed = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self._items = []
+        self._next = 1
+        self._quiet = False
+        self.adaptor = NotificationAdaptor(self)
+        bus = QDBusConnection.sessionBus()
+        self.registered = bus.registerObject("/org/freedesktop/Notifications", self) and \
+            bus.registerService("org.freedesktop.Notifications")
+        if not self.registered:
+            print("ozi-shell: another notification server is running; popups stay with it", file=sys.stderr)
+
+    def add(self, app, replaces, icon, summary, body, actions, hints, timeout):
+        nid = replaces if replaces else self._next
+        if not replaces:
+            self._next += 1
+        urgency = int(hints.get("urgency", 1)) if str(hints.get("urgency", 1)).isdigit() else 1
+        if timeout < 0:
+            timeout = 0 if urgency == 2 else 6000
+        icon = icon or str(hints.get("image-path") or hints.get("image_path") or "") \
+            or str(hints.get("desktop-entry") or "") or "dialog-information"
+        item = {"id": nid, "app": app, "icon": icon,
+                "summary": summary, "body": body, "timeout": timeout, "critical": urgency == 2,
+                "actions": [{"key": actions[i], "label": actions[i + 1]} for i in range(0, len(actions) - 1, 2)]}
+        self._items = [i for i in self._items if i["id"] != nid] + [item]
+        if self._quiet and not item["critical"]:
+            self._items = [i for i in self._items if i["id"] != nid]
+        self._items = self._items[-5:]
+        self.changed.emit()
+        return nid
+
+    def dismiss(self, nid, reason):
+        before = len(self._items)
+        self._items = [i for i in self._items if i["id"] != nid]
+        if len(self._items) != before:
+            self.adaptor.NotificationClosed.emit(nid, reason)
+            self.changed.emit()
+
+    @pyqtProperty("QVariantList", notify=changed)
+    def items(self):
+        return self._items
+
+    @pyqtProperty(bool, notify=changed)
+    def quiet(self):
+        return self._quiet
+
+    @pyqtSlot(bool)
+    def setQuiet(self, quiet):
+        self._quiet = quiet
+        self.changed.emit()
+
+    @pyqtSlot(int)
+    def expire(self, nid):
+        self.dismiss(nid, 1)
+
+    @pyqtSlot(int)
+    def close(self, nid):
+        self.dismiss(nid, 2)
+
+    @pyqtSlot(int, str)
+    def invoke(self, nid, key):
+        self.adaptor.ActionInvoked.emit(nid, key)
+        self.dismiss(nid, 2)
+
+
 def main():
     app = QGuiApplication(sys.argv)
     app.setApplicationName("ozi-shell")
@@ -285,6 +421,8 @@ def main():
     engine = QQmlApplicationEngine()
     engine.addImageProvider("icon", IconProvider())
     engine.rootContext().setContextProperty("Shell", backend)
+    notifications = Notifications()
+    engine.rootContext().setContextProperty("Notes", notifications)
     qml = next((d for d in QML_DIRS if os.path.exists(os.path.join(d, "Main.qml"))), None)
     if not qml:
         sys.exit("ozi-shell: QML files not found")

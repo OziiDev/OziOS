@@ -59,10 +59,15 @@ pub fn fit(font: &FontVec, px: f32, text: &str, max_width: f32) -> String {
 
 /// Draw `text` in `color` (0..1 RGB) at `scale` times the normal size.
 pub fn render(font: &FontVec, text: &str, color: [f32; 3], scale: f32) -> Option<Rendered> {
+    render_px(font, text, color, TEXT_PX * scale)
+}
+
+/// Draw `text` at a given pixel size.
+pub fn render_px(font: &FontVec, text: &str, color: [f32; 3], size: f32) -> Option<Rendered> {
     if text.is_empty() {
         return None;
     }
-    let px = PxScale::from(TEXT_PX * scale);
+    let px = PxScale::from(size);
     let scaled = font.as_scaled(px);
     let width = advance_of(&scaled, text).ceil() as i32 + 2;
     let height = (scaled.ascent() - scaled.descent()).ceil() as i32 + 2;

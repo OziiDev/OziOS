@@ -20,6 +20,12 @@ Window {
     LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone
 
     readonly property var locale: Qt.locale("tr_TR")
+    Gradient {
+        id: activeGradient
+        orientation: Gradient.Horizontal
+        GradientStop { position: 0; color: bar.c.accent }
+        GradientStop { position: 1; color: bar.c.accent2 }
+    }
     property date now: new Date()
     Timer { interval: 1000; repeat: true; running: true; onTriggered: bar.now = new Date() }
 
@@ -47,6 +53,32 @@ Window {
                 rotation: ozi.containsMouse ? 45 : 0
                 Behavior on rotation { NumberAnimation { duration: bar.shell.ms(260); easing.type: Easing.OutBack } }
                 Rectangle { anchors.centerIn: parent; width: 8; height: 8; radius: 2; color: bar.c.ink }
+            }
+            // Workspaces: the one in use is a pill in the theme's colours,
+            // ones with windows are filled dots, a tiled one has a small square.
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                Repeater {
+                    model: Shell.workspaces
+                    Rectangle {
+                        required property var modelData
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: modelData.active ? 26 : 10; height: 10; radius: 5
+                        color: modelData.active ? bar.c.accent : modelData.windows > 0 ? Qt.alpha(bar.c.text, 0.75) : "transparent"
+                        border.width: modelData.active || modelData.windows > 0 ? 0 : 1.5
+                        border.color: Qt.alpha(bar.c.muted, 0.8)
+                        gradient: modelData.active ? activeGradient : null
+                        Behavior on width { NumberAnimation { duration: bar.shell.ms(240); easing.type: Easing.OutBack } }
+                        Rectangle {
+                            visible: modelData.tiling
+                            anchors.centerIn: parent
+                            width: 4; height: 4; radius: 1
+                            color: bar.c.ink
+                        }
+                        MouseArea { anchors.fill: parent; anchors.margins: -4; onClicked: Shell.switchWorkspace(parent.modelData.index) }
+                    }
+                }
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter

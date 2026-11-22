@@ -51,7 +51,18 @@ impl XdgShellHandler for OziWm {
             .position(|w| w.toplevel().is_some_and(|t| t == &surface))
         {
             let window = self.minimized.remove(i);
+            self.forget_window(window_id(&window));
             ipc::emit_closed(self, window_id(&window));
+            return;
+        }
+        if let Some(i) = self
+            .hidden
+            .iter()
+            .position(|(w, _)| w.toplevel().is_some_and(|t| t == &surface))
+        {
+            let id = window_id(&self.hidden[i].0);
+            self.forget_window(id);
+            ipc::emit_closed(self, id);
             return;
         }
         let Some(window) = self.window_for_surface(surface.wl_surface()) else {
@@ -60,6 +71,7 @@ impl XdgShellHandler for OziWm {
         let was_focused = self.focused_window().as_ref() == Some(&window);
         let id = window_id(&window);
         self.space.unmap_elem(&window);
+        self.forget_window(id);
         ipc::emit_closed(self, id);
         if was_focused {
             let next = self.space.elements().last().cloned();

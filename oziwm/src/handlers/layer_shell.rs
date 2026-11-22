@@ -127,6 +127,9 @@ impl OziWm {
     }
 
     pub fn focus_layer(&mut self, surface: &WlSurface) {
+        if self.lock.is_some() {
+            return;
+        }
         let Some(keyboard) = self.seat.get_keyboard() else {
             return;
         };
