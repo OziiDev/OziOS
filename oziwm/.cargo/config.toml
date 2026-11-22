@@ -1,0 +1,7 @@
+# The build machine is a 2-core/4-thread laptop that once overheated: keep one thread free.
+[build]
+jobs = 3
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]

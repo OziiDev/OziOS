@@ -1,0 +1,36 @@
+[package]
+name = "oziwm"
+version = "0.4.0-dev"
+edition = "2024"
+license = "MIT"
+description = "OziOS window manager (Wayland compositor)"
+rust-version = "1.90"
+
+[dependencies]
+smithay = { version = "0.7.0", default-features = false, features = [
+    "wayland_frontend",
+    "desktop",
+    "backend_winit",
+    "renderer_gl",
+    "backend_drm",
+    "backend_gbm",
+    "backend_gbm_has_create_with_modifiers2",
+    "backend_libinput",
+    "backend_udev",
+    "backend_session_libseat",
+    "renderer_multi",
+] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde_json = "1"
+ab_glyph = "0.2"
+xcursor = "0.3"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+lto = "thin"
