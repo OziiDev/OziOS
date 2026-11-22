@@ -95,7 +95,10 @@ pub struct WindowLook {
     pub hover: Option<Button>,
     /// Where the frame was when it last moved: it flows from there to its new place.
     pub morph: Option<(Rect, Instant)>,
+    /// Since when the window has the focus; its glow flows for a while, then rests.
+    focused_since: Option<Instant>,
     frame: Option<PixelShaderElement>,
+    frame_signature: Option<Vec<f32>>,
     title: Option<CachedTitle>,
 }
 
@@ -111,13 +114,18 @@ impl WindowLook {
             opening: Some(Opening { start: now }),
             hover: None,
             morph: None,
+            focused_since: None,
             frame: None,
+            frame_signature: None,
             title: None,
         }
     }
 }
 
 pub type Looks = HashMap<u64, WindowLook>;
+
+/// How long the focus glow keeps flowing before it rests.
+const FLOW_SECONDS: f32 = 6.0;
 
 struct CachedTitle {
     text: String,
@@ -319,10 +327,20 @@ fn frame_element(
         return PixelShaderElement::new(shaders.frame.clone(), area, None, alpha, uniforms, Kind::Unspecified);
     }
     
+    // Only touch the element when something it draws changed: an unchanged
+    // element adds no damage, so a moving pointer does not redraw every frame.
+    let signature = vec![
+        area.loc.x as f32, area.loc.y as f32, area.size.w as f32, area.size.h as f32,
+        style.corner_radius, frame.title_height() as f32, active, style.glow, time, hover,
+        theme.accent[0], theme.accent[1], theme.accent[2], theme.accent2[0], theme.raised[0], theme.muted[0],
+    ];
     match look.frame.as_mut() {
         Some(element) => {
-            element.resize(area, None);
-            element.update_uniforms(uniforms);
+            if look.frame_signature.as_ref() != Some(&signature) {
+                element.resize(area, None);
+                element.update_uniforms(uniforms);
+                look.frame_signature = Some(signature);
+            }
             element.clone()
         }
         None => {
@@ -496,9 +514,23 @@ pub fn window_elements(
             }));
         }
 
-        let glowing = active > 0.0 && style.glow > 0.0;
-        animating |= glowing;
-        parts.push(WindowPart::Frame(frame_element(look, shaders, &style, &frame, origin, active, time, alpha)));
+        // The glow flows for a few seconds after the window gets the focus, then
+        // rests where it is: an idle desktop draws nothing at all.
+        let is_focused = Some(id) == focused;
+        if is_focused && look.focused_since.is_none() {
+            look.focused_since = Some(now);
+        } else if !is_focused {
+            look.focused_since = None;
+        }
+        let flow_for = FLOW_SECONDS / speed.max(0.01) as f32;
+        let flowing_for = look
+            .focused_since
+            .map(|t| now.saturating_duration_since(t).as_secs_f32())
+            .unwrap_or(flow_for);
+        let frame_time = (id as f32) * 1.7 + flowing_for.min(flow_for);
+        animating |= is_focused && style.glow > 0.0 && speed > 0.0 && flowing_for < flow_for;
+        let _ = time;
+        parts.push(WindowPart::Frame(frame_element(look, shaders, &style, &frame, origin, active, frame_time, alpha)));
 
         // How this window is moved and stretched this frame: flowing to a new
         // place (maximise, tiling), growing in as it opens, sliding with its workspace.
@@ -584,7 +616,7 @@ pub fn output_elements(
     let origin = geo.loc;
     if state.lock.is_some() {
         // Locked: nothing but the lock screen, which keeps moving gently.
-        return (state.lock_elements(renderer, &shaders.lock, (geo.size.w, geo.size.h), scale, now), true);
+        return state.lock_elements(renderer, &shaders.lock, (geo.size.w, geo.size.h), scale, now);
     }
     let mut out = layer_elements(output, renderer, scale, &[Layer::Overlay, Layer::Top]);
     let (windows, animating) = window_elements(state, renderer, shaders, origin, scale, now);

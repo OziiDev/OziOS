@@ -18,9 +18,16 @@ Window {
     Behavior on color { ColorAnimation { duration: 600 } }
 
     property real clock: 0
+    // Nobody sees the wallpaper move behind windows: it only moves on an empty desktop.
+    readonly property bool covered: {
+        const active = Shell.workspaces.find(w => w.active)
+        const index = active ? active.index : 1
+        return Shell.windows.some(w => !w.minimized && w.workspace === index)
+    }
+    readonly property bool moving: win.shell.speed > 0 && !covered
     Timer {
         interval: 40; repeat: true
-        running: win.shell.speed > 0
+        running: win.moving
         onTriggered: win.clock += 0.04
     }
 
@@ -47,7 +54,7 @@ Window {
         height: width
         lineColor: win.c.accent
         dotColor: win.c.text
-        running: win.shell.speed > 0
+        running: win.moving
         opacity: 0.55
     }
 }

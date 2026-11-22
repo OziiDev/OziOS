@@ -19,6 +19,7 @@ pub enum Action {
     Lock,
     /// A key typed on the lock screen.
     LockKey(Keysym, Option<char>),
+    Screenshot,
 }
 
 /// The modifiers that matter for shortcuts.
@@ -44,6 +45,9 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
     let raw = sym.raw();
     if (Keysym::XF86_Switch_VT_1.raw()..=Keysym::XF86_Switch_VT_12.raw()).contains(&raw) {
         return Some(Action::SwitchVt((raw - Keysym::XF86_Switch_VT_1.raw()) as i32 + 1));
+    }
+    if sym == Keysym::Print && !mods.alt && !mods.ctrl {
+        return Some(Action::Screenshot);
     }
     let main = if nested { mods.alt && !mods.logo } else { mods.logo };
     if !main || mods.ctrl {

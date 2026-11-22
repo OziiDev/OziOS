@@ -203,13 +203,13 @@ Window {
                     Row {
                         width: parent.width
                         Text { text: modelData.label; color: panel.c.text; font.pixelSize: 13; width: parent.width - valueText.width }
-                        Text { id: valueText; text: modelData.fmt(panel.look[modelData.key]); color: panel.c.muted; font.pixelSize: 12 }
+                        Text { id: valueText; text: modelData.fmt(panel.look[modelData.key] ?? modelData.from); color: panel.c.muted; font.pixelSize: 12 }
                     }
                     OziSlider {
                         c: panel.c
                         width: parent.width
                         from: modelData.from; to: modelData.to; stepSize: modelData.step
-                        value: panel.look[modelData.key]
+                        value: panel.look[modelData.key] ?? modelData.from
                         onMoved: (v) => Shell.setLook(modelData.key, v)
                     }
                 }

@@ -57,17 +57,27 @@ pub struct Lock {
     typed: String,
     pub phase: Phase,
     wrong_at: Option<Instant>,
+    /// Last key or the moment of locking: the lights move for a while after it, then rest.
+    woke: Instant,
     background: Option<PixelShaderElement>,
     texts: Vec<(String, f32, [f32; 3], MemoryRenderBuffer, (i32, i32))>,
 }
 
 impl Lock {
     fn new() -> Self {
-        Lock { typed: String::new(), phase: Phase::Typing, wrong_at: None, background: None, texts: Vec::new() }
+        Lock {
+            typed: String::new(),
+            phase: Phase::Typing,
+            wrong_at: None,
+            woke: Instant::now(),
+            background: None,
+            texts: Vec::new(),
+        }
     }
 
     /// What one key does on the lock screen. Returns true when Enter asks to check.
     pub fn key(&mut self, sym: Keysym, ch: Option<char>) -> bool {
+        self.woke = Instant::now();
         if self.phase == Phase::Checking {
             return false;
         }
@@ -254,7 +264,7 @@ impl OziWm {
         self.needs_redraw = true;
     }
 
-    /// The lock screen for one output, top-most first.
+    /// The lock screen for one output, top-most first, and whether it is still moving.
     pub fn lock_elements(
         &mut self,
         renderer: &mut GlesRenderer,
@@ -262,12 +272,17 @@ impl OziWm {
         output_size: (i32, i32),
         scale: f64,
         now: Instant,
-    ) -> Vec<OziElement> {
+    ) -> (Vec<OziElement>, bool) {
         let theme = self.look.theme;
-        let time = now.duration_since(self.start_time).as_secs_f32();
         let Some(lock) = self.lock.as_mut() else {
-            return Vec::new();
+            return (Vec::new(), false);
         };
+        // The lights drift for half a minute after a key, then hold still.
+        const MOVING: Duration = Duration::from_secs(30);
+        let awake_for = now.saturating_duration_since(lock.woke);
+        let shown = if awake_for < MOVING { now } else { lock.woke + MOVING };
+        let time = shown.duration_since(self.start_time).as_secs_f32();
+        let mut moving = awake_for < MOVING || lock.phase == Phase::Checking;
         let (w, h) = output_size;
         let field = (w / 2 - 170, h / 2 + 60, 340, 52);
         let shake = lock
@@ -275,6 +290,7 @@ impl OziWm {
             .map(|t| (now.duration_since(t).as_secs_f32() / 0.5).min(1.0))
             .filter(|s| *s < 1.0)
             .unwrap_or(0.0);
+        moving |= shake > 0.0;
         let phase = match lock.phase {
             Phase::Typing => 0.0f32,
             Phase::Checking => 1.0,
@@ -348,7 +364,7 @@ impl OziWm {
             }
         }
         out.push(OziElement::Part(WindowPart::Frame(background)));
-        out
+        (out, moving)
     }
 }
 

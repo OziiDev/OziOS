@@ -101,6 +101,7 @@ impl OziWm {
                 .and_then(|d| d.lock().ok().map(|d| d.initial_configure_sent))
                 .unwrap_or(true)
         });
+        let zone_before = layer_map_for_output(&output).non_exclusive_zone();
         let focus_now = {
             let mut map = layer_map_for_output(&output);
             map.arrange();
@@ -122,6 +123,10 @@ impl OziWm {
         // A launcher or lock screen asking for the keyboard gets it at once.
         if focus_now {
             self.focus_layer(surface);
+        }
+        // The bar or the dock took (or gave back) space: keep windows out of it.
+        if layer_map_for_output(&output).non_exclusive_zone() != zone_before {
+            self.fit_windows_into_work_area();
         }
         true
     }

@@ -30,6 +30,7 @@ pub enum Request {
     ToggleLauncher,
     ToggleTiling,
     Lock,
+    Screenshot(Option<String>),
     Quit,
     Subscribe(Vec<String>),
 }
@@ -64,6 +65,9 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("toggle-launcher") => Ok(Request::ToggleLauncher),
         Some("toggle-tiling") => Ok(Request::ToggleTiling),
         Some("lock") => Ok(Request::Lock),
+        Some("screenshot") => Ok(Request::Screenshot(
+            value.get("path").and_then(Value::as_str).map(String::from),
+        )),
         Some("workspace") => {
             let index = value
                 .get("index")
@@ -159,6 +163,7 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
                     .collect(),
             )),
             "workspaces" => ok(state.workspaces_json()),
+            "stats" => ok(state.stats.json()),
             other => error(format!("nothing called \"{other}\"")),
         },
         Request::Focus(id) => match state.window_by_id(id) {
@@ -194,6 +199,10 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
         Request::ReloadLook => {
             state.reload_look();
             ok(Value::Null)
+        }
+        Request::Screenshot(path) => {
+            let path = state.request_screenshot(path.map(std::path::PathBuf::from));
+            ok(json!(path.to_string_lossy()))
         }
         Request::Lock => {
             state.lock();

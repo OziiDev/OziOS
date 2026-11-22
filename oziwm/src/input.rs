@@ -137,6 +137,9 @@ impl OziWm {
             }
             Action::ToggleTiling => self.toggle_tiling(),
             Action::Lock => self.lock(),
+            Action::Screenshot => {
+                self.request_screenshot(None);
+            }
             Action::LockKey(sym, ch) => self.lock_key(sym, ch),
             Action::ToggleFloating => {
                 if let Some(w) = self.focused_window() {

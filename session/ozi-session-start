@@ -20,7 +20,9 @@ mkdir -p "$state"
 quick=0
 while [ "$quick" -lt 5 ]; do
     started=$(date +%s)
+    echo "$(date '+%F %T') ozi-shell starting" >> "$state/shell.log"
     ozi-shell 2>> "$state/shell.log"
+    echo "$(date '+%F %T') ozi-shell ended with status $?" >> "$state/shell.log"
     if [ $(( $(date +%s) - started )) -lt 10 ]; then
         quick=$((quick + 1))
     else

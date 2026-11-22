@@ -1,0 +1,18 @@
+#!/bin/sh
+# Run the OziOS desktop from this checkout on the console you are on.
+#
+#   Ctrl+Alt+F3, log in, then:  ~/Projeler/OziOS/tools/ozi-dev-session
+#
+# The usual desktop stays on its own console (Ctrl+Alt+F1 or F2). While this
+# runs, oziwm's socket and logs (~/.local/state/oziwm/) can be watched from
+# there. Super+Shift+Esc ends it and gives the console back.
+here=$(cd "$(dirname "$0")/.." && pwd)
+if [ ! -x "$here/oziwm/target/debug/oziwm" ]; then
+    echo "Build first: cd $here/oziwm && cargo build" >&2
+    exit 1
+fi
+export OZIWM_BIN="$here/oziwm/target/debug/oziwm"
+export OZI_SESSION_START="$here/session/ozi-session-start"
+# ozi-shell and its QML come from the checkout too.
+export PATH="$here/shell:$PATH"
+exec "$here/session/ozi-session"

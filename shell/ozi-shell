@@ -89,6 +89,11 @@ class Shell(QObject):
         self._status = {"volume": {"available": False, "percent": 0, "muted": False},
                         "battery": {"present": False}, "network": {"kind": "none", "name": ""}}
         self._look = shell.look()
+        self._pending_look = {}
+        self._look_timer = QTimer(self)
+        self._look_timer.setSingleShot(True)
+        self._look_timer.setInterval(50)
+        self._look_timer.timeout.connect(self._flush_look)
         self._statusReady.connect(self._set_status)
         self._event.connect(self._on_event)
         self._refresh_windows()
@@ -244,7 +249,18 @@ class Shell(QObject):
             return
         if key in ("corner_radius", "lock_after_minutes"):
             value = int(round(float(value)))
-        shell.write_config({key: value})
+        # The slider moves at once; the file and oziwm follow at most ~20 times a second.
+        self._look = dict(self._look, **{key: value})
+        self._pending_look[key] = value
+        if not self._look_timer.isActive():
+            self._look_timer.start()
+        self.lookChanged.emit()
+
+    def _flush_look(self):
+        if not self._pending_look:
+            return
+        shell.write_config(self._pending_look)
+        self._pending_look = {}
         self._look = shell.look()
         ask({"do": "reload-look"})
         self.lookChanged.emit()
@@ -415,6 +431,9 @@ class Notifications(QObject):
 
 def main():
     app = QGuiApplication(sys.argv)
+    # Hiding the launcher or the quick panel must not end the shell: Qt would
+    # quit when the "last window" closes, taking the bar, dock and wallpaper along.
+    app.setQuitOnLastWindowClosed(False)
     app.setApplicationName("ozi-shell")
     app.setDesktopFileName("ozi-shell")
     if not QIcon.themeName():

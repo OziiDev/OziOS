@@ -122,6 +122,9 @@ pub struct OziWm {
     pub idle_inhibit_state: smithay::wayland::idle_inhibit::IdleInhibitManagerState,
     /// Surfaces (a playing video, a game) asking the screen to stay awake.
     pub inhibitors: Vec<WlSurface>,
+    /// A screenshot to save after the next frame: where, and whether to tell the user.
+    pub pending_shot: Option<(PathBuf, bool)>,
+    pub stats: crate::shot::FrameStats,
 }
 
 impl OziWm {
@@ -196,6 +199,8 @@ impl OziWm {
             last_input: Instant::now(),
             idle_inhibit_state,
             inhibitors: Vec::new(),
+            pending_shot: None,
+            stats: crate::shot::FrameStats::default(),
         })
     }
 
@@ -366,13 +371,45 @@ impl OziWm {
         None
     }
 
+    /// Ask for a screenshot of the next frame.
+    pub fn request_screenshot(&mut self, path: Option<PathBuf>) -> PathBuf {
+        let announce = path.is_none();
+        let path = path.unwrap_or_else(|| crate::shot::pictures_dir().join(crate::shot::default_name()));
+        self.pending_shot = Some((path.clone(), announce));
+        self.needs_redraw = true;
+        path
+    }
+
+    pub fn finish_screenshot(&mut self, shot: (PathBuf, bool), pixels: Result<Vec<u8>, String>, size: (u32, u32)) {
+        let (path, announce) = shot;
+        let saved = pixels.and_then(|rgba| crate::shot::write_png(&path, &rgba, size.0, size.1));
+        match saved {
+            Ok(()) => {
+                tracing::info!(path = %path.display(), "screenshot saved");
+                if announce {
+                    let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                    self.spawn(&[
+                        "notify-send".into(),
+                        "-a".into(),
+                        "OziOS".into(),
+                        "-i".into(),
+                        path.to_string_lossy().to_string(),
+                        "Ekran görüntüsü alındı".into(),
+                        format!("Resimler klasörüne kaydedildi: {name}"),
+                    ]);
+                }
+            }
+            Err(err) => tracing::warn!(%err, "screenshot failed"),
+        }
+    }
+
     pub fn reload_look(&mut self) {
         self.look = theme::load();
         for look in self.looks.values_mut() {
             look.forget_title();
         }
         self.needs_redraw = true;
-        tracing::info!(theme = self.look.theme.id, "look reloaded");
+        tracing::debug!(theme = self.look.theme.id, "look reloaded");
     }
 
     pub fn minimize(&mut self, window: &Window) {

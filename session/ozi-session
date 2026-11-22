@@ -14,7 +14,12 @@ if [ -e /usr/lib/qt6/plugins/platformthemes/KDEPlasmaPlatformTheme6.so ]; then
     export QT_QPA_PLATFORMTHEME=kde
 fi
 
+# tools/ozi-dev-session sets these to run a checkout instead of the package.
+oziwm="${OZIWM_BIN:-oziwm}"
+start="${OZI_SESSION_START:-/usr/lib/ozios/ozi-session-start}"
+
 state="${XDG_STATE_HOME:-$HOME/.local/state}/oziwm"
 mkdir -p "$state"
 [ -f "$state/oziwm.log" ] && mv -f "$state/oziwm.log" "$state/oziwm.previous.log"
-exec oziwm --tty -c /usr/lib/ozios/ozi-session-start > "$state/oziwm.log" 2>&1
+[ -f "$state/shell.log" ] && mv -f "$state/shell.log" "$state/shell.previous.log"
+exec "$oziwm" --tty -c "$start" > "$state/oziwm.log" 2>&1

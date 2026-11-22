@@ -13,6 +13,7 @@ mod layout;
 mod lock;
 mod placement;
 mod render;
+mod shot;
 mod state;
 mod theme;
 mod title;

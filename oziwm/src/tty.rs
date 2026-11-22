@@ -402,8 +402,10 @@ pub fn render_all(state: &mut OziWm) {
             Vec::new()
         };
         let (scene, animating) = render::output_elements(state, &mut tty.renderer, &tty.shaders, &output, now);
-        elements.extend(scene);
         still_moving |= animating;
+        let cursor_count = elements.len();
+        elements.extend(scene);
+        let started = Instant::now();
 
         let Some(screen) = tty.screens.get_mut(&crtc) else {
             continue;
@@ -418,6 +420,17 @@ pub fn render_all(state: &mut OziWm) {
             },
             Ok(_) => {}
             Err(err) => tracing::warn!(?err, "rendering failed"),
+        }
+        let took = started.elapsed().as_secs_f32() * 1000.0;
+        state.stats.record(took);
+        if took > 20.0 {
+            tracing::warn!(output = %output.name(), ms = took, "slow frame");
+        }
+        // A screenshot of this screen without the pointer.
+        if let Some(shot) = state.pending_shot.take() {
+            let size = output.current_mode().map(|m| m.size).unwrap_or_default();
+            let result = crate::shot::capture(&mut tty.renderer, &elements[cursor_count..], size, scale);
+            state.finish_screenshot(shot, result, (size.w as u32, size.h as u32));
         }
 
         let elapsed = state.start_time.elapsed();

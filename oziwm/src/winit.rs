@@ -64,11 +64,15 @@ pub fn init_winit(
         WinitEvent::Redraw => {
             let size = backend.window_size();
             let age = backend.buffer_age().unwrap_or(0);
+            let started = Instant::now();
+            let mut drawn = Vec::new();
             let damage = match backend.bind() {
                 Ok((renderer, mut framebuffer)) => {
                     let (elements, _animating) =
                         render::output_elements(state, renderer, &shaders, &output, Instant::now());
-                    match damage_tracker.render_output(renderer, &mut framebuffer, age, &elements, BACKGROUND) {
+                    let result = damage_tracker.render_output(renderer, &mut framebuffer, age, &elements, BACKGROUND);
+                    drawn = elements;
+                    match result {
                         Ok(result) => result.damage.cloned(),
                         Err(err) => {
                             tracing::warn!(?err, "rendering failed");
@@ -90,6 +94,13 @@ pub fn init_winit(
             if let Err(err) = submit {
                 tracing::warn!(?err, "could not show the frame");
             }
+            state.stats.record(started.elapsed().as_secs_f32() * 1000.0);
+            if let Some(shot) = state.pending_shot.take() {
+                let scale = output.current_scale().fractional_scale();
+                let result = crate::shot::capture(backend.renderer(), &drawn, size, scale);
+                state.finish_screenshot(shot, result, (size.w as u32, size.h as u32));
+            }
+            drop(drawn);
 
             let elapsed = state.start_time.elapsed();
             for window in state.space.elements() {

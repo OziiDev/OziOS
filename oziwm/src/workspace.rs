@@ -193,6 +193,40 @@ impl OziWm {
         }
     }
 
+    /// Move (and if needed shrink) floating windows so their frames are inside the
+    /// work area; tiled workspaces are laid out again.
+    pub fn fit_windows_into_work_area(&mut self) {
+        if self.tiling[self.active_ws] {
+            self.retile();
+            return;
+        }
+        let area = self.work_area();
+        let windows: Vec<Window> = self.space.elements().cloned().collect();
+        for window in windows {
+            if has_state(&window, XdgState::Fullscreen) {
+                continue;
+            }
+            let Some(frame) = render::frame_of(self, &window) else {
+                continue;
+            };
+            let outer = frame.outer();
+            let w = outer.w.min(area.size.w);
+            let h = outer.h.min(area.size.h);
+            let x = outer.x.clamp(area.loc.x, area.loc.x + area.size.w - w);
+            let y = outer.y.clamp(area.loc.y, area.loc.y + area.size.h - h);
+            if (x, y, w, h) != (outer.x, outer.y, outer.w, outer.h) {
+                let maximized = has_state(&window, XdgState::Maximized);
+                self.place_window(&window, Rect::new(x, y, w, h), false);
+                if maximized {
+                    if let Some(t) = window.toplevel() {
+                        t.with_pending_state(|s| s.states.set(XdgState::Maximized));
+                        t.send_pending_configure();
+                    }
+                }
+            }
+        }
+    }
+
     /// A new window joins the tiling order of its workspace.
     pub fn track_new_window(&mut self, window: &Window) {
         set_workspace(window, self.active_ws);
