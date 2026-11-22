@@ -39,10 +39,11 @@ def parse_desktop_entry(text, lang="tr_TR"):
         return None
     if entry.get("NoDisplay", "false").lower() == "true" or entry.get("Hidden", "false").lower() == "true":
         return None
-    only = entry.get("OnlyShowIn", "")
-    if only and "OziOS" not in only.split(";"):
+    desktops = ("OziOS", "KDE")
+    only = [d for d in entry.get("OnlyShowIn", "").split(";") if d]
+    if only and not any(d in only for d in desktops):
         return None
-    if "OziOS" in entry.get("NotShowIn", "").split(";"):
+    if any(d in entry.get("NotShowIn", "").split(";") for d in desktops):
         return None
     exec_line = entry.get("Exec", "")
     if not exec_line:
@@ -301,7 +302,7 @@ ACCENT2 = {
 }
 
 LOOK_DEFAULTS = {"theme": "cyan", "glow": 1.0, "animation_speed": 1.0, "corner_radius": 12,
-                 "lock_after_minutes": 10}
+                 "lock_after_minutes": 10, "wallpaper": "tesseract"}
 
 
 def _hex(rgb):
@@ -332,6 +333,8 @@ def look(environ=os.environ):
         data["animation_speed"] = max(0.0, min(3.0, float(data["animation_speed"])))
         data["corner_radius"] = max(0, min(24, int(data["corner_radius"])))
         data["lock_after_minutes"] = max(0, min(1440, int(data["lock_after_minutes"])))
+        if not isinstance(data["wallpaper"], str) or not data["wallpaper"]:
+            data["wallpaper"] = "tesseract"
     except (TypeError, ValueError):
         data = dict(LOOK_DEFAULTS)
     return data
@@ -340,3 +343,264 @@ def look(environ=os.environ):
 def theme_ids():
     from . import themes
     return [t.id for t in themes.THEMES]
+
+
+# ---- radios, brightness, power ------------------------------------------
+
+def _split_terse(line):
+    """nmcli -t fields: split on ':' that is not escaped, unescape the rest."""
+    return [p.replace("\\:", ":").replace("\\\\", "\\") for p in re.split(r"(?<!\\):", line)]
+
+
+def parse_nmcli_radio(text):
+    """`nmcli -t radio` -> {"wifi_hw": bool, "wifi": bool}."""
+    parts = (text or "").strip().split(":")
+    if len(parts) < 2:
+        return {"wifi_hw": False, "wifi": False}
+    return {"wifi_hw": parts[0] == "enabled", "wifi": parts[1] == "enabled"}
+
+
+def parse_wifi_list(text):
+    """`nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY dev wifi list` -> networks,
+    one per name, the strongest signal kept, the one in use first."""
+    best = {}
+    for line in (text or "").splitlines():
+        parts = _split_terse(line)
+        if len(parts) < 4 or not parts[1]:
+            continue
+        in_use, ssid, signal, security = parts[0] == "*", parts[1], parts[2], parts[3]
+        try:
+            signal = int(signal)
+        except ValueError:
+            signal = 0
+        secure = bool(security.strip()) and security.strip() != "--"
+        old = best.get(ssid)
+        if old is None or signal > old["signal"] or in_use:
+            best[ssid] = {"ssid": ssid, "signal": max(signal, old["signal"] if old else 0),
+                          "secure": secure, "active": in_use or bool(old and old["active"])}
+    return sorted(best.values(), key=lambda n: (not n["active"], -n["signal"], n["ssid"].casefold()))
+
+
+def parse_bt_powered(text):
+    return bool(re.search(r"^\s*Powered:\s*yes", text or "", re.M))
+
+
+def parse_bt_devices(text):
+    """`bluetoothctl devices Paired` -> [(mac, name)]."""
+    out = []
+    for line in (text or "").splitlines():
+        m = re.match(r"Device\s+([0-9A-F:]{17})\s+(.*)", line.strip())
+        if m:
+            out.append((m.group(1), m.group(2)))
+    return out
+
+
+def brightness_percent(current, maximum):
+    if maximum <= 0:
+        return 0
+    return max(0, min(100, round(current * 100 / maximum)))
+
+
+def brightness_value(percent, maximum):
+    """Never fully dark: 1% is the floor, so the screen cannot be lost."""
+    percent = max(1, min(100, int(percent)))
+    return max(1, round(maximum * percent / 100))
+
+
+def wifi():
+    radio = parse_nmcli_radio(_run(["nmcli", "-t", "radio"]))
+    return dict(radio, available=_run(["nmcli", "-v"]) is not None)
+
+
+def wifi_networks():
+    _run(["nmcli", "dev", "wifi", "rescan"], timeout=4)
+    return parse_wifi_list(_run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "dev", "wifi", "list"], timeout=6))
+
+
+def set_wifi(on):
+    _run(["nmcli", "radio", "wifi", "on" if on else "off"])
+    return wifi()
+
+
+def connect_wifi(ssid, password=""):
+    """Use a saved connection if there is one, else connect (with a password if given)."""
+    saved = (_run(["nmcli", "-t", "-f", "NAME", "connection", "show"]) or "").splitlines()
+    if ssid in saved and not password:
+        argv = ["nmcli", "connection", "up", "id", ssid]
+    else:
+        argv = ["nmcli", "dev", "wifi", "connect", ssid] + (["password", password] if password else [])
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=40)
+    except (OSError, subprocess.SubprocessError) as err:
+        return {"ok": False, "message": str(err)}
+    message = (done.stdout + done.stderr).strip()
+    needs = done.returncode != 0 and bool(re.search(r"secrets were required|password|802-11-wireless-security", message, re.I))
+    return {"ok": done.returncode == 0, "needs_password": needs, "message": message.splitlines()[-1] if message else ""}
+
+
+def bluetooth():
+    show = _run(["bluetoothctl", "show"], timeout=3)
+    if show is None or "No default controller" in show or not show.strip():
+        return {"available": False, "powered": False, "devices": []}
+    powered = parse_bt_powered(show)
+    devices = []
+    for mac, name in parse_bt_devices(_run(["bluetoothctl", "devices", "Paired"], timeout=3))[:8]:
+        info = _run(["bluetoothctl", "info", mac], timeout=3) or ""
+        devices.append({"mac": mac, "name": name, "connected": bool(re.search(r"Connected:\s*yes", info))})
+    return {"available": True, "powered": powered, "devices": devices}
+
+
+def set_bluetooth(on):
+    _run(["bluetoothctl", "power", "on" if on else "off"], timeout=5)
+    return bluetooth()
+
+
+def bluetooth_device(mac, connect):
+    if not re.fullmatch(r"[0-9A-F:]{17}", mac or ""):
+        return bluetooth()
+    _run(["bluetoothctl", "connect" if connect else "disconnect", mac], timeout=15)
+    return bluetooth()
+
+
+def airplane(state_wifi=None, state_bt=None):
+    w = state_wifi if state_wifi is not None else wifi()
+    b = state_bt if state_bt is not None else bluetooth()
+    return not w.get("wifi") and not (b.get("available") and b.get("powered"))
+
+
+def set_airplane(on):
+    _run(["nmcli", "radio", "all", "off" if on else "on"])
+    _run(["bluetoothctl", "power", "off" if on else "on"], timeout=5)
+    return {"wifi": wifi(), "bluetooth": bluetooth()}
+
+
+def _backlight(root="/sys/class/backlight"):
+    try:
+        names = sorted(os.listdir(root))
+    except OSError:
+        return None
+    # Prefer the panel's own controller over firmware/vendor ones.
+    names.sort(key=lambda n: (not n.startswith(("intel", "amdgpu", "nvidia")), n))
+    for name in names:
+        try:
+            with open(os.path.join(root, name, "brightness")) as f:
+                cur = int(f.read())
+            with open(os.path.join(root, name, "max_brightness")) as f:
+                top = int(f.read())
+        except (OSError, ValueError):
+            continue
+        return name, cur, top
+    return None
+
+
+def brightness(root="/sys/class/backlight"):
+    found = _backlight(root)
+    if not found:
+        return {"available": False, "percent": 100}
+    _, cur, top = found
+    return {"available": True, "percent": brightness_percent(cur, top)}
+
+
+def set_brightness(percent):
+    """Through logind, which lets the person at the seat change it without root."""
+    found = _backlight()
+    if not found:
+        return brightness()
+    name, _, top = found
+    _run(["busctl", "call", "org.freedesktop.login1", "/org/freedesktop/login1/session/auto",
+          "org.freedesktop.login1.Session", "SetBrightness", "ssu", "backlight", name,
+          str(brightness_value(percent, top))])
+    return brightness()
+
+
+POWER_PROFILES = ("power-saver", "balanced", "performance")
+
+
+def power_profile():
+    out = (_run(["powerprofilesctl", "get"]) or "").strip()
+    return out if out in POWER_PROFILES else ""
+
+
+def set_power_profile(name):
+    if name in POWER_PROFILES:
+        _run(["powerprofilesctl", "set", name])
+    return power_profile()
+
+
+def media(action):
+    """Play/pause, next, previous on the first media player found (MPRIS)."""
+    method = {"play-pause": "PlayPause", "next": "Next", "previous": "Previous"}.get(action)
+    if not method:
+        return False
+    names = _run(["busctl", "--user", "list", "--no-legend"]) or ""
+    players = [l.split()[0] for l in names.splitlines() if l.startswith("org.mpris.MediaPlayer2.")]
+    if not players:
+        return False
+    _run(["busctl", "--user", "call", players[0], "/org/mpris/MediaPlayer2",
+          "org.mpris.MediaPlayer2.Player", method])
+    return True
+
+
+def full_status():
+    """Everything the bar and the quick panel show."""
+    w, b = wifi(), bluetooth()
+    return dict(status(), wifi=w, bluetooth=b, airplane=airplane(w, b),
+                brightness=brightness(), power=power_profile())
+
+
+# ---- wallpapers ---------------------------------------------------------
+
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".svg")
+
+
+def wallpaper_dirs(environ=os.environ):
+    home = environ.get("HOME", "/root")
+    pictures = os.path.join(home, "Resimler")
+    try:
+        with open(os.path.join(environ.get("XDG_CONFIG_HOME") or os.path.join(home, ".config"), "user-dirs.dirs")) as f:
+            m = re.search(r'^XDG_PICTURES_DIR="(.*)"', f.read(), re.M)
+            if m:
+                pictures = m.group(1).replace("$HOME", home)
+    except OSError:
+        pass
+    return [
+        ("OziOS", "/usr/share/ozios/wallpapers"),
+        ("OziOS", os.path.join(os.path.dirname(__file__), "..", "..", "branding", "wallpapers")),
+        ("Sistem", "/usr/share/wallpapers"),
+        ("Resimlerim", os.path.join(pictures, "Duvar kağıtları")),
+        ("Resimlerim", pictures),
+    ]
+
+
+def wallpapers(environ=os.environ, limit=200):
+    """Every picture that can be a wallpaper: OziOS's own first, then the
+    system's (KDE and CachyOS packages), then the user's Pictures."""
+    found, seen = [], set()
+    for group, root in wallpaper_dirs(environ):
+        if not os.path.isdir(root):
+            continue
+        depth0 = root.rstrip("/").count("/")
+        for dirpath, dirnames, files in os.walk(root):
+            # KDE packages keep sizes under contents/images: take the biggest only.
+            if dirpath.count("/") - depth0 > 4:
+                dirnames[:] = []
+                continue
+            dirnames.sort()
+            pictures = sorted(f for f in files if f.lower().endswith(IMAGE_EXT))
+            if "contents/images" in dirpath.replace("\\", "/") and pictures:
+                pictures = [max(pictures, key=lambda f: os.path.getsize(os.path.join(dirpath, f)))]
+            for name in pictures:
+                path = os.path.realpath(os.path.join(dirpath, name))
+                low = (dirpath + "/" + name).casefold()
+                if path in seen or "screenshot" in low or "ekran görüntü" in low:
+                    continue
+                seen.add(path)
+                title = os.path.splitext(name)[0]
+                if "contents/images" in dirpath:
+                    title = os.path.basename(dirpath.split("/contents/")[0])
+                    if dirpath.rstrip("/").endswith("images_dark"):
+                        title += " (koyu)"
+                found.append({"path": path, "title": title.replace("-", " ").replace("_", " "), "group": group})
+                if len(found) >= limit:
+                    return found
+    return found

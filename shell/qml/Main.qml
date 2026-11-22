@@ -16,9 +16,12 @@ QtObject {
     property Launcher launcher: Launcher { shell: root }
     property QuickPanel panel: QuickPanel { shell: root }
     property Notifications notes: Notifications { shell: root }
+    property Osd osd: Osd { shell: root }
 
     property Connections events: Connections {
         target: Shell
         function onLauncherRequested() { root.launcher.toggle() }
+        function onPanelRequested() { root.panel.toggle() }
+        function onOsd(kind, value) { root.osd.popup(kind, value) }
     }
 }

@@ -6,4 +6,4 @@ Comment[tr]=OziOS masaüstü: oziwm ve ozi-shell
 Exec=ozi-session
 TryExec=oziwm
 Type=Application
-DesktopNames=OziOS
+DesktopNames=OziOS;KDE

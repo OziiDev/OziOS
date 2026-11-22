@@ -2,8 +2,9 @@ import QtQuick
 import QtQuick.Window
 import org.kde.layershell 1.0 as LS
 
-// The OziOS wallpaper on the background layer: ink, a breathing glow in the
-// theme's two colours and the turning tesseract. One 25 fps clock drives it all.
+// The OziOS wallpaper on the background layer. "tesseract": ink, a breathing
+// glow in the theme's two colours and the turning tesseract, one 25 fps clock
+// driving it all. Anything else is a picture, cross-faded when it changes.
 Window {
     id: win
     property var shell
@@ -25,7 +26,9 @@ Window {
         const index = active ? active.index : 1
         return Shell.windows.some(w => !w.minimized && w.workspace === index)
     }
-    readonly property bool moving: win.shell.speed > 0 && !covered
+    readonly property string chosen: Shell.look.wallpaper || "tesseract"
+    readonly property bool live: chosen === "tesseract"
+    readonly property bool moving: live && win.shell.speed > 0 && !covered
     Timer {
         interval: 40; repeat: true
         running: win.moving
@@ -34,8 +37,10 @@ Window {
 
     // Two soft lights that drift slowly.
     Repeater {
+        id: lights
         model: 2
         Rectangle {
+            visible: win.live
             readonly property real phase: index * Math.PI
             width: win.width * 0.9; height: width; radius: width / 2
             x: win.width * (0.15 + 0.25 * index) + Math.cos(win.clock * 0.07 + phase) * win.width * 0.06 - width / 4
@@ -50,6 +55,7 @@ Window {
     }
 
     Tesseract {
+        visible: win.live
         anchors.centerIn: parent
         width: Math.min(win.width, win.height) * 0.62
         height: width
@@ -57,5 +63,33 @@ Window {
         dotColor: win.c.text
         running: win.moving
         opacity: 0.55
+    }
+
+    // A picture: the new one fades in over the old.
+    property int front: 0
+    function showPicture(path) {
+        const next = front === 0 ? pictureB : pictureA
+        next.source = path ? "file://" + path : ""
+        front = front === 0 ? 1 : 0
+    }
+    onChosenChanged: showPicture(live ? "" : chosen)
+    Component.onCompleted: showPicture(live ? "" : chosen)
+    Image {
+        id: pictureA
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectCrop
+        sourceSize: Qt.size(win.width, win.height)
+        asynchronous: true
+        opacity: win.front === 0 && !win.live && status === Image.Ready ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: win.shell.ms(500) } }
+    }
+    Image {
+        id: pictureB
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectCrop
+        sourceSize: Qt.size(win.width, win.height)
+        asynchronous: true
+        opacity: win.front === 1 && !win.live && status === Image.Ready ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: win.shell.ms(500) } }
     }
 }

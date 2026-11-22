@@ -28,7 +28,10 @@ pub enum Request {
     /// Read ~/.config/ozios/desktop.json again (theme, glow, corners, speed).
     ReloadLook,
     ToggleLauncher,
+    TogglePanel,
     ToggleTiling,
+    /// Pretend a laptop key was pressed (for testing ozi-shell's handling).
+    Key(String),
     Lock,
     Screenshot(Option<String>),
     Quit,
@@ -63,7 +66,11 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("quit") => Ok(Request::Quit),
         Some("reload-look") => Ok(Request::ReloadLook),
         Some("toggle-launcher") => Ok(Request::ToggleLauncher),
+        Some("toggle-panel") => Ok(Request::TogglePanel),
         Some("toggle-tiling") => Ok(Request::ToggleTiling),
+        Some("key") => Ok(Request::Key(
+            value.get("key").and_then(Value::as_str).unwrap_or_default().to_string(),
+        )),
         Some("lock") => Ok(Request::Lock),
         Some("screenshot") => Ok(Request::Screenshot(
             value.get("path").and_then(Value::as_str).map(String::from),
@@ -208,8 +215,16 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
             state.lock();
             ok(Value::Null)
         }
+        Request::Key(key) => {
+            emit_key(state, &key);
+            ok(Value::Null)
+        }
         Request::ToggleTiling => {
             state.toggle_tiling();
+            ok(Value::Null)
+        }
+        Request::TogglePanel => {
+            emit_panel(state);
             ok(Value::Null)
         }
         Request::ToggleLauncher => {
@@ -262,6 +277,15 @@ pub fn emit_workspace(state: &mut OziWm, index: usize) {
 
 pub fn emit_locked(state: &mut OziWm, locked: bool) {
     emit(state, "shell", json!({ "event": "locked", "locked": locked }));
+}
+
+/// A laptop key for ozi-shell to act on (and show its gauge for).
+pub fn emit_key(state: &mut OziWm, key: &str) {
+    emit(state, "shell", json!({ "event": "key", "key": key }));
+}
+
+pub fn emit_panel(state: &mut OziWm) {
+    emit(state, "shell", json!({ "event": "panel" }));
 }
 
 /// Ask ozi-shell to open or close the launcher.

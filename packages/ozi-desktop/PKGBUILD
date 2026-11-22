@@ -12,6 +12,8 @@ depends=(
   seatd libinput mesa libxkbcommon systemd-libs libdrm pam
   python python-pyqt6 qt6-declarative layer-shell-qt
   ttf-overpass wireplumber networkmanager
+  xdg-desktop-portal-kde xdg-desktop-portal-gtk bluez-utils power-profiles-daemon
+  qt6-svg cachyos-wallpapers
 )
 makedepends=(rust cargo clang mold)
 optdepends=(
@@ -44,6 +46,9 @@ package() {
   install -Dm755 "$src/session/ozi-session-start" "$pkgdir/usr/lib/ozios/ozi-session-start"
   install -Dm644 "$src/session/ozios.desktop" "$pkgdir/usr/share/wayland-sessions/ozios.desktop"
   install -Dm644 "$src/session/oziwm.pam" "$pkgdir/etc/pam.d/oziwm"
+  install -Dm644 "$src/session/ozios-portals.conf" "$pkgdir/usr/share/xdg-desktop-portal/ozios-portals.conf"
+  install -d "$pkgdir/usr/share/ozios/wallpapers"
+  install -m644 "$src"/branding/wallpapers/*.svg "$pkgdir/usr/share/ozios/wallpapers/"
   install -d "$pkgdir/usr/share/ozios/shell/qml"
   install -m644 "$src"/shell/qml/*.qml "$pkgdir/usr/share/ozios/shell/qml/"
   install -Dm644 "$src/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"

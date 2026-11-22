@@ -81,10 +81,26 @@ Window {
                     }
                 }
             }
+            // While a program starts (some take seconds): a turning ring and its name.
+            Item {
+                visible: !!Shell.starting.name
+                width: 14; height: 14
+                anchors.verticalCenter: parent.verticalCenter
+                Rectangle {
+                    anchors.fill: parent; radius: 7
+                    color: "transparent"; border.width: 2; border.color: Qt.alpha(bar.c.accent, 0.25)
+                }
+                Rectangle {
+                    width: 5; height: 5; radius: 2.5; color: bar.c.accent
+                    x: 7 + Math.cos(spin.angle) * 5 - 2.5; y: 7 + Math.sin(spin.angle) * 5 - 2.5
+                }
+                QtObject { id: spin; property real angle: 0 }
+                NumberAnimation { target: spin; property: "angle"; from: 0; to: Math.PI * 2; duration: 900; loops: Animation.Infinite; running: !!Shell.starting.name }
+            }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Shell.activeTitle || "OziOS"
-                color: bar.c.text
+                text: Shell.starting.name ? Shell.starting.name + " açılıyor…" : (Shell.activeTitle || "OziOS")
+                color: Shell.starting.name ? bar.c.accent : bar.c.text
                 font.pixelSize: 13; font.weight: Font.DemiBold
                 elide: Text.ElideRight
                 width: Math.min(implicitWidth, bar.width * 0.28)

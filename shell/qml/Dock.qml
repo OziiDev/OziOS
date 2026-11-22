@@ -14,7 +14,10 @@ Window {
     visible: true
     color: "transparent"
     width: shelf.width + 40
-    height: 92
+    // Taller only while the pointer is on it, so the names above the icons
+    // fit inside the window instead of being cut off; at rest it covers
+    // nothing more than the shelf.
+    height: pointerX >= 0 ? 136 : 92
     LS.Window.scope: "ozi-dock"
     LS.Window.layer: LS.Window.LayerTop
     LS.Window.anchors: LS.Window.AnchorBottom
@@ -118,7 +121,8 @@ Window {
                 // Name above the icon while the pointer is on it.
                 Rectangle {
                     visible: mouse.containsMouse
-                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 18 }
+                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 14 }
+                    z: 10
                     width: tip.implicitWidth + 16; height: 24; radius: 12
                     color: dock.c.ink; border.color: Qt.alpha(dock.c.accent, 0.4)
                     Text { id: tip; anchors.centerIn: parent; text: item.modelData.name; color: dock.c.text; font.pixelSize: 12 }

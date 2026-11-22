@@ -2,14 +2,17 @@ import QtQuick
 import QtQuick.Window
 import org.kde.layershell 1.0 as LS
 
-// Quick settings, from the right island. Sound, connection, battery, and the
-// look of the whole desktop: theme, glow, corners and motion change every
-// window frame live while the sliders move.
+// Quick settings, from the right island. Two pages:
+//   Hızlı    Wi-Fi (with the networks), Bluetooth (with the devices), airplane
+//            mode, do not disturb, power profile, sound and brightness.
+//   Görünüm  theme, glow, corners, motion, idle lock and the wallpaper; every
+//            window frame follows while the sliders move.
 Window {
     id: panel
     property var shell
     readonly property var c: shell.c
     readonly property var look: Shell.look
+    readonly property var s: Shell.status
 
     visible: false
     color: "transparent"
@@ -24,8 +27,10 @@ Window {
     LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityOnDemand
 
     property bool open: false
+    property string page: "quick"      // quick | look
+    property string drawer: ""         // "" | wifi | bluetooth
     function toggle() { open ? close() : show() }
-    function show() { Shell.refreshStatus(); visible = true; open = true; card.forceActiveFocus() }
+    function show() { Shell.refreshStatus(); drawer = ""; visible = true; open = true; card.forceActiveFocus() }
     function close() { open = false; hideTimer.restart() }
     Timer { id: hideTimer; interval: panel.shell.ms(200); onTriggered: if (!panel.open) panel.visible = false }
 
@@ -34,188 +39,352 @@ Window {
     Rectangle {
         id: card
         focus: true
-        Keys.onEscapePressed: panel.close()
+        Keys.onEscapePressed: panel.drawer ? panel.drawer = "" : panel.close()
         anchors { right: parent.right; top: parent.top; rightMargin: 10; topMargin: 50 }
-        width: 360
-        height: content.implicitHeight + 40
+        width: 372
+        height: Math.min(panel.height - 64, flick.contentHeight + 76)
         radius: 24
         color: Qt.alpha(panel.c.raised, 0.97)
         border.width: 1
         border.color: Qt.alpha(panel.c.accent, 0.35)
+        clip: true
         opacity: panel.open ? 1 : 0
         transform: Translate { y: panel.open ? 0 : -14; Behavior on y { NumberAnimation { duration: panel.shell.ms(260); easing.type: Easing.OutCubic } } }
         Behavior on opacity { NumberAnimation { duration: panel.shell.ms(180) } }
+        Behavior on height { NumberAnimation { duration: panel.shell.ms(200); easing.type: Easing.OutCubic } }
         MouseArea { anchors.fill: parent }
 
-        Column {
-            id: content
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
-            spacing: 16
-            readonly property var s: Shell.status
-
-            // Connection and battery.
-            Row {
-                spacing: 10
-                Rectangle {
-                    width: 152; height: 54; radius: 16
-                    color: content.s.network.kind === "none" ? panel.c.control : Qt.alpha(panel.c.accent, 0.16)
-                    border.width: 1; border.color: Qt.alpha(panel.c.accent, content.s.network.kind === "none" ? 0.15 : 0.5)
-                    Row {
-                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
-                        spacing: 10
-                        Glyph { kind: content.s.network.kind === "none" ? "offline" : content.s.network.kind; color: panel.c.text; size: 18 }
-                        Column {
-                            Text { text: content.s.network.kind === "wired" ? "Kablolu" : content.s.network.kind === "wifi" ? "Wi-Fi" : "Bağlı değil"; color: panel.c.text; font.pixelSize: 13; font.weight: Font.DemiBold }
-                            Text { text: content.s.network.name || "—"; color: panel.c.muted; font.pixelSize: 11; width: 96; elide: Text.ElideRight }
-                        }
-                    }
-                }
-                Rectangle {
-                    visible: content.s.battery.present === true
-                    width: 152; height: 54; radius: 16
-                    color: panel.c.control
-                    Row {
-                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
-                        spacing: 10
-                        Glyph { kind: content.s.battery.charging ? "charging" : "battery"; level: (content.s.battery.percent || 0) / 100; color: panel.c.text; size: 18 }
-                        Column {
-                            Text { text: (content.s.battery.percent || 0) + "%"; color: panel.c.text; font.pixelSize: 13; font.weight: Font.DemiBold }
-                            Text { text: content.s.battery.charging ? "Şarj oluyor" : "Pil"; color: panel.c.muted; font.pixelSize: 11 }
-                        }
-                    }
-                }
-            }
-
-            // Sound.
-            Row {
-                visible: content.s.volume.available
-                width: parent.width
-                spacing: 12
-                Rectangle {
-                    width: 34; height: 34; radius: 17
-                    color: content.s.volume.muted ? Qt.alpha("#FF556E", 0.2) : panel.c.control
-                    Glyph { anchors.centerIn: parent; kind: content.s.volume.muted ? "muted" : "volume"; level: content.s.volume.percent / 100; color: panel.c.text }
-                    MouseArea { anchors.fill: parent; onClicked: Shell.toggleMute() }
-                }
-                OziSlider {
-                    c: panel.c
-                    width: parent.width - 34 - 12 - 44
-                    anchors.verticalCenter: parent.verticalCenter
-                    from: 0; to: 100; stepSize: 1
-                    value: content.s.volume.percent
-                    onMoved: (v) => Shell.setVolume(v)
-                }
-                Text { width: 32; text: content.s.volume.percent + "%"; color: panel.c.muted; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            // Do not disturb: only critical notifications get through.
-            Rectangle {
-                width: parent.width; height: 44; radius: 14
-                color: Notes.quiet ? Qt.alpha(panel.c.accent, 0.16) : panel.c.control
-                border.width: 1; border.color: Qt.alpha(panel.c.accent, Notes.quiet ? 0.5 : 0.12)
-                Text { anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
-                       text: "Rahatsız etme"; color: panel.c.text; font.pixelSize: 13 }
-                Rectangle {
-                    anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    width: 40; height: 22; radius: 11
-                    color: Notes.quiet ? panel.c.accent : Qt.alpha(panel.c.muted, 0.35)
-                    Rectangle {
-                        width: 18; height: 18; radius: 9; color: panel.c.text
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: Notes.quiet ? parent.width - width - 2 : 2
-                        Behavior on x { NumberAnimation { duration: panel.shell.ms(160); easing.type: Easing.OutCubic } }
-                    }
-                }
-                MouseArea { anchors.fill: parent; onClicked: Notes.setQuiet(!Notes.quiet) }
-            }
-
-            Rectangle { width: parent.width; height: 1; color: Qt.alpha(panel.c.muted, 0.2) }
-
-            // Look: a live preview of a window frame, then the controls.
-            Text { text: "Görünüm"; color: panel.c.text; font.pixelSize: 15; font.weight: Font.Bold }
-
-            Item {
-                width: parent.width; height: 92
-                Rectangle {
-                    id: preview
-                    anchors.centerIn: parent
-                    width: 190; height: 70
-                    radius: panel.look.corner_radius
-                    color: panel.c.ink
-                    border.width: 2
-                    border.color: panel.c.accent
-                    // The glow, as a few soft rings.
-                    Repeater {
-                        model: 4
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: preview.width + (index + 1) * 6; height: preview.height + (index + 1) * 6
-                            radius: preview.radius + (index + 1) * 3
-                            color: "transparent"
-                            border.width: 3
-                            border.color: index % 2 ? panel.c.accent2 : panel.c.accent
-                            opacity: panel.look.glow * 0.18 * (1 - index / 4)
-                        }
-                    }
-                    Rectangle {
-                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 2 }
-                        height: 20; radius: Math.max(0, parent.radius - 2)
-                        color: panel.c.raised
-                        Row {
-                            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                            spacing: 5
-                            Repeater { model: ["#FFBE5A", "#3CE6A0", "#FF556E"]; Rectangle { width: 8; height: 8; radius: 4; color: modelData } }
-                        }
-                    }
-                }
-            }
-
-            // Themes: each dot shows its two glow colours.
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 12
-                Repeater {
-                    model: Shell.themes
-                    Rectangle {
-                        required property var modelData
-                        readonly property bool chosen: modelData.id === panel.look.theme
-                        width: 34; height: 34; radius: 17
-                        border.width: chosen ? 3 : 1
-                        border.color: chosen ? panel.c.text : Qt.alpha(panel.c.muted, 0.4)
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: modelData.accent }
-                            GradientStop { position: 1.0; color: modelData.accent2 }
-                        }
-                        scale: themeMouse.containsMouse ? 1.15 : 1
-                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
-                        MouseArea { id: themeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Shell.setLook("theme", parent.modelData.id) }
-                    }
-                }
-            }
-
+        // Page switch.
+        Row {
+            id: tabs
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
+            spacing: 8
             Repeater {
-                model: [
-                    { key: "glow", label: "Işıltı", from: 0, to: 2, step: 0.05, fmt: (v) => v === 0 ? "kapalı" : Math.round(v * 100) + "%" },
-                    { key: "corner_radius", label: "Köşeler", from: 0, to: 24, step: 1, fmt: (v) => v + " px" },
-                    { key: "animation_speed", label: "Hareket", from: 0, to: 2, step: 0.1, fmt: (v) => v === 0 ? "kapalı" : v.toFixed(1) + "×" },
-                    { key: "lock_after_minutes", label: "Boşta kilitle", from: 0, to: 60, step: 5, fmt: (v) => v === 0 ? "hiçbir zaman" : v + " dk" },
-                ]
-                Column {
+                model: [{ id: "quick", label: "Hızlı ayarlar" }, { id: "look", label: "Görünüm" }]
+                Rectangle {
                     required property var modelData
-                    width: content.width
-                    spacing: 4
-                    Row {
-                        width: parent.width
-                        Text { text: modelData.label; color: panel.c.text; font.pixelSize: 13; width: parent.width - valueText.width }
-                        Text { id: valueText; text: modelData.fmt(panel.look[modelData.key] ?? modelData.from); color: panel.c.muted; font.pixelSize: 12 }
+                    readonly property bool chosen: panel.page === modelData.id
+                    width: (tabs.width - 8) / 2; height: 36; radius: 18
+                    color: chosen ? Qt.alpha(panel.c.accent, 0.18) : "transparent"
+                    border.width: 1
+                    border.color: chosen ? Qt.alpha(panel.c.accent, 0.6) : Qt.alpha(panel.c.muted, 0.2)
+                    Text { anchors.centerIn: parent; text: modelData.label; color: chosen ? panel.c.text : panel.c.muted; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    MouseArea { anchors.fill: parent; onClicked: { panel.page = parent.modelData.id; panel.drawer = "" } }
+                }
+            }
+        }
+
+        Flickable {
+            id: flick
+            anchors { left: parent.left; right: parent.right; top: tabs.bottom; bottom: parent.bottom; topMargin: 14; leftMargin: 18; rightMargin: 18; bottomMargin: 14 }
+            contentHeight: (panel.page === "quick" ? quickPage.implicitHeight : lookPage.implicitHeight)
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            // ---------------------------------------------------------- quick
+            Column {
+                id: quickPage
+                visible: panel.page === "quick"
+                width: flick.width
+                spacing: 12
+
+                Grid {
+                    columns: 2
+                    columnSpacing: 10; rowSpacing: 10
+                    readonly property real tileWidth: (quickPage.width - 10) / 2
+
+                    Tile {
+                        c: panel.c; width: parent.tileWidth
+                        glyph: panel.s.wifi.wifi ? "wifi" : "offline"
+                        title: "Wi-Fi"
+                        subtitle: !panel.s.wifi.wifi ? "Kapalı" : (panel.s.network.kind === "wifi" ? panel.s.network.name : (panel.s.network.kind === "wired" ? "Kablolu bağlı" : "Bağlı değil"))
+                        on: panel.s.wifi.wifi === true
+                        more: true
+                        onToggled: Shell.setWifi(!panel.s.wifi.wifi)
+                        onOpened: { panel.drawer = panel.drawer === "wifi" ? "" : "wifi"; if (panel.drawer) Shell.scanNetworks() }
                     }
-                    OziSlider {
-                        c: panel.c
-                        width: parent.width
-                        from: modelData.from; to: modelData.to; stepSize: modelData.step
-                        value: panel.look[modelData.key] ?? modelData.from
-                        onMoved: (v) => Shell.setLook(modelData.key, v)
+                    Tile {
+                        c: panel.c; width: parent.tileWidth
+                        visible: panel.s.bluetooth.available === true
+                        glyph: "bluetooth"
+                        title: "Bluetooth"
+                        subtitle: !panel.s.bluetooth.powered ? "Kapalı" : (panel.s.bluetooth.devices.filter(d => d.connected).map(d => d.name)[0] || "Açık")
+                        on: panel.s.bluetooth.powered === true
+                        more: true
+                        onToggled: Shell.setBluetooth(!panel.s.bluetooth.powered)
+                        onOpened: panel.drawer = panel.drawer === "bluetooth" ? "" : "bluetooth"
+                    }
+                    Tile {
+                        c: panel.c; width: parent.tileWidth
+                        glyph: "airplane"
+                        title: "Uçak modu"
+                        subtitle: panel.s.airplane ? "Açık" : "Kapalı"
+                        on: panel.s.airplane === true
+                        onToggled: Shell.setAirplane(!panel.s.airplane)
+                    }
+                    Tile {
+                        c: panel.c; width: parent.tileWidth
+                        glyph: "moon"
+                        title: "Rahatsız etme"
+                        subtitle: Notes.quiet ? "Yalnız acil olanlar" : "Kapalı"
+                        on: Notes.quiet
+                        onToggled: Notes.setQuiet(!Notes.quiet)
+                    }
+                    Tile {
+                        c: panel.c; width: parent.tileWidth
+                        visible: panel.s.power !== ""
+                        glyph: "bolt"
+                        title: "Güç"
+                        subtitle: ({ "power-saver": "Tasarruf", "balanced": "Dengeli", "performance": "Performans" })[panel.s.power] || ""
+                        on: panel.s.power === "performance"
+                        onToggled: {
+                            const order = ["power-saver", "balanced", "performance"]
+                            Shell.setPowerProfile(order[(order.indexOf(panel.s.power) + 1) % 3])
+                        }
+                    }
+                    Tile {
+                        c: panel.c; width: parent.tileWidth
+                        visible: panel.s.battery.present === true
+                        glyph: panel.s.battery.charging ? "charging" : "battery"
+                        level: (panel.s.battery.percent || 0) / 100
+                        title: (panel.s.battery.percent || 0) + "%"
+                        subtitle: panel.s.battery.charging ? "Şarj oluyor" : "Pil"
+                        on: false
+                    }
+                }
+
+                // Wi-Fi networks.
+                Column {
+                    visible: panel.drawer === "wifi"
+                    width: parent.width
+                    spacing: 6
+                    Text { text: Shell.networks.length ? "Ağlar" : "Ağlar aranıyor…"; color: panel.c.muted; font.pixelSize: 12 }
+                    Repeater {
+                        model: Shell.networks
+                        Rectangle {
+                            id: net
+                            required property var modelData
+                            property bool asking: false
+                            width: quickPage.width; height: asking ? 92 : 42; radius: 12
+                            color: modelData.active ? Qt.alpha(panel.c.accent, 0.16) : (netMouse.containsMouse ? panel.c.control : "transparent")
+                            Glyph { kind: "wifi"; color: panel.c.text; size: 15; anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 13 } }
+                            Text {
+                                anchors { left: parent.left; leftMargin: 38; top: parent.top; topMargin: 12; right: parent.right; rightMargin: 70 }
+                                text: net.modelData.ssid; color: panel.c.text; font.pixelSize: 13; elide: Text.ElideRight
+                            }
+                            Text {
+                                anchors { right: parent.right; rightMargin: 12; top: parent.top; topMargin: 13 }
+                                text: (net.modelData.secure ? "🔒 " : "") + net.modelData.signal + "%"; color: panel.c.muted; font.pixelSize: 11
+                            }
+                            MouseArea {
+                                id: netMouse
+                                anchors { left: parent.left; right: parent.right; top: parent.top }
+                                height: 42; hoverEnabled: true
+                                onClicked: if (!net.modelData.active) Shell.connectWifi(net.modelData.ssid, "")
+                            }
+                            // Asked for a password: a field right under the network.
+                            Rectangle {
+                                visible: net.asking
+                                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
+                                height: 38; radius: 10
+                                color: panel.c.ink; border.width: 1; border.color: Qt.alpha(panel.c.accent, 0.5)
+                                TextInput {
+                                    id: pass
+                                    anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    echoMode: TextInput.Password
+                                    color: panel.c.text; font.pixelSize: 13
+                                    onAccepted: { Shell.connectWifi(net.modelData.ssid, text); text = ""; net.asking = false }
+                                    Text { visible: !pass.text; anchors.verticalCenter: parent.verticalCenter; text: "Parola, sonra Enter"; color: panel.c.muted; font.pixelSize: 12 }
+                                }
+                            }
+                            Connections {
+                                target: Shell
+                                function onWifiResult(ssid, ok, needsPassword, message) {
+                                    if (ssid === net.modelData.ssid && needsPassword) { net.asking = true; pass.forceActiveFocus() }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Bluetooth devices.
+                Column {
+                    visible: panel.drawer === "bluetooth"
+                    width: parent.width
+                    spacing: 6
+                    Text { text: panel.s.bluetooth.devices.length ? "Eşleşmiş cihazlar" : "Eşleşmiş cihaz yok"; color: panel.c.muted; font.pixelSize: 12 }
+                    Repeater {
+                        model: panel.s.bluetooth.devices
+                        Rectangle {
+                            required property var modelData
+                            width: quickPage.width; height: 42; radius: 12
+                            color: modelData.connected ? Qt.alpha(panel.c.accent, 0.16) : (devMouse.containsMouse ? panel.c.control : "transparent")
+                            Text { anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter } text: parent.modelData.name; color: panel.c.text; font.pixelSize: 13 }
+                            Text { anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter } text: parent.modelData.connected ? "Bağlı" : "Bağlan"; color: parent.modelData.connected ? panel.c.accent : panel.c.muted; font.pixelSize: 12 }
+                            MouseArea { id: devMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Shell.bluetoothDevice(parent.modelData.mac, !parent.modelData.connected) }
+                        }
+                    }
+                    Rectangle {
+                        width: quickPage.width; height: 38; radius: 12; color: panel.c.control
+                        Text { anchors.centerIn: parent; text: "Yeni cihaz eşleştir…"; color: panel.c.text; font.pixelSize: 12 }
+                        MouseArea { anchors.fill: parent; onClicked: { panel.close(); Shell.openSettings("kcm_bluetooth") } }
+                    }
+                }
+
+                // Sound and brightness.
+                Repeater {
+                    model: [
+                        { id: "volume", show: panel.s.volume.available, glyph: panel.s.volume.muted ? "muted" : "volume", value: panel.s.volume.percent, max: 100 },
+                        { id: "brightness", show: panel.s.brightness.available, glyph: "sun", value: panel.s.brightness.percent, max: 100 },
+                    ]
+                    Row {
+                        required property var modelData
+                        visible: modelData.show === true
+                        width: quickPage.width
+                        spacing: 12
+                        Rectangle {
+                            width: 34; height: 34; radius: 17
+                            color: parent.modelData.id === "volume" && panel.s.volume.muted ? Qt.alpha("#FF556E", 0.2) : panel.c.control
+                            Glyph { anchors.centerIn: parent; kind: parent.parent.modelData.glyph; level: parent.parent.modelData.value / 100; color: panel.c.text }
+                            MouseArea { anchors.fill: parent; onClicked: if (parent.parent.modelData.id === "volume") Shell.toggleMute() }
+                        }
+                        OziSlider {
+                            c: panel.c
+                            width: parent.width - 34 - 12 - 44
+                            anchors.verticalCenter: parent.verticalCenter
+                            from: parent.modelData.id === "brightness" ? 1 : 0; to: 100; stepSize: 1
+                            value: parent.modelData.value
+                            onMoved: (v) => parent.modelData.id === "volume" ? Shell.setVolume(v) : Shell.setBrightness(v)
+                        }
+                        Text { width: 32; text: parent.modelData.value + "%"; color: panel.c.muted; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+
+                Rectangle {
+                    width: quickPage.width; height: 38; radius: 12; color: panel.c.control
+                    Text { anchors.centerIn: parent; text: "Tüm ayarlar"; color: panel.c.text; font.pixelSize: 12 }
+                    MouseArea { anchors.fill: parent; onClicked: { panel.close(); Shell.openSettings("") } }
+                }
+            }
+
+            // ----------------------------------------------------------- look
+            Column {
+                id: lookPage
+                visible: panel.page === "look"
+                width: flick.width
+                spacing: 14
+
+                Item {
+                    width: parent.width; height: 92
+                    Rectangle {
+                        id: preview
+                        anchors.centerIn: parent
+                        width: 190; height: 70
+                        radius: panel.look.corner_radius
+                        color: panel.c.ink
+                        border.width: 2
+                        border.color: panel.c.accent
+                        Repeater {
+                            model: 4
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: preview.width + (index + 1) * 6; height: preview.height + (index + 1) * 6
+                                radius: preview.radius + (index + 1) * 3
+                                color: "transparent"
+                                border.width: 3
+                                border.color: index % 2 ? panel.c.accent2 : panel.c.accent
+                                opacity: panel.look.glow * 0.18 * (1 - index / 4)
+                            }
+                        }
+                        Rectangle {
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 2 }
+                            height: 20; radius: Math.max(0, parent.radius - 2)
+                            color: panel.c.raised
+                            Row {
+                                anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                                spacing: 5
+                                Repeater { model: ["#FFBE5A", "#3CE6A0", "#FF556E"]; Rectangle { width: 8; height: 8; radius: 4; color: modelData } }
+                            }
+                        }
+                    }
+                }
+
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 12
+                    Repeater {
+                        model: Shell.themes
+                        Rectangle {
+                            required property var modelData
+                            readonly property bool chosen: modelData.id === panel.look.theme
+                            width: 34; height: 34; radius: 17
+                            border.width: chosen ? 3 : 1
+                            border.color: chosen ? panel.c.text : Qt.alpha(panel.c.muted, 0.4)
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: modelData.accent }
+                                GradientStop { position: 1.0; color: modelData.accent2 }
+                            }
+                            scale: themeMouse.containsMouse ? 1.15 : 1
+                            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+                            MouseArea { id: themeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Shell.setLook("theme", parent.modelData.id) }
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: [
+                        { key: "glow", label: "Işıltı", from: 0, to: 2, step: 0.05, fmt: (v) => v === 0 ? "kapalı" : Math.round(v * 100) + "%" },
+                        { key: "corner_radius", label: "Köşeler", from: 0, to: 24, step: 1, fmt: (v) => v + " px" },
+                        { key: "animation_speed", label: "Hareket", from: 0, to: 2, step: 0.1, fmt: (v) => v === 0 ? "kapalı" : v.toFixed(1) + "×" },
+                        { key: "lock_after_minutes", label: "Boşta kilitle", from: 0, to: 60, step: 5, fmt: (v) => v === 0 ? "hiçbir zaman" : v + " dk" },
+                    ]
+                    Column {
+                        required property var modelData
+                        width: lookPage.width
+                        spacing: 4
+                        Row {
+                            width: parent.width
+                            Text { text: modelData.label; color: panel.c.text; font.pixelSize: 13; width: parent.width - valueText.width }
+                            Text { id: valueText; text: modelData.fmt(panel.look[modelData.key] ?? modelData.from); color: panel.c.muted; font.pixelSize: 12 }
+                        }
+                        OziSlider {
+                            c: panel.c
+                            width: parent.width
+                            from: modelData.from; to: modelData.to; stepSize: modelData.step
+                            value: panel.look[modelData.key] ?? modelData.from
+                            onMoved: (v) => Shell.setLook(modelData.key, v)
+                        }
+                    }
+                }
+
+                // Wallpapers: the moving tesseract first, then every picture found.
+                Text { text: "Duvar kâğıdı"; color: panel.c.text; font.pixelSize: 15; font.weight: Font.Bold }
+                Grid {
+                    columns: 3
+                    spacing: 8
+                    Repeater {
+                        model: [{ path: "tesseract", title: "Canlı tesseract" }].concat(Shell.wallpapers)
+                        Rectangle {
+                            required property var modelData
+                            readonly property bool chosen: panel.look.wallpaper === modelData.path
+                            width: (lookPage.width - 16) / 3; height: width * 9 / 16; radius: 10
+                            color: panel.c.ink
+                            border.width: chosen ? 2 : 1
+                            border.color: chosen ? panel.c.accent : Qt.alpha(panel.c.muted, 0.25)
+                            clip: true
+                            Image {
+                                anchors { fill: parent; margins: 2 }
+                                visible: parent.modelData.path !== "tesseract"
+                                source: visible ? "file://" + parent.modelData.path : ""
+                                sourceSize: Qt.size(240, 135)
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                            }
+                            Glyph { visible: parent.modelData.path === "tesseract"; anchors.centerIn: parent; kind: "cube"; color: panel.c.accent; size: 26 }
+                            MouseArea { anchors.fill: parent; onClicked: Shell.setLook("wallpaper", parent.modelData.path) }
+                        }
                     }
                 }
             }

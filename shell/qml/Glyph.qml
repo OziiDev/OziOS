@@ -81,6 +81,45 @@ Canvas {
             arc(s / 2, s * 0.45, s * 0.18, Math.PI, Math.PI * 2)
             line([s * 0.32, s * 0.45, s * 0.32, s * 0.4]); line([s * 0.68, s * 0.45, s * 0.68, s * 0.4])
             break
+        case "bluetooth":
+            line([s * 0.3, s * 0.3, s * 0.7, s * 0.68, s * 0.5, s * 0.86, s * 0.5, s * 0.14, s * 0.7, s * 0.32, s * 0.3, s * 0.7])
+            break
+        case "airplane":
+            g.beginPath()
+            g.moveTo(s * 0.5, s * 0.08); g.lineTo(s * 0.56, s * 0.42); g.lineTo(s * 0.92, s * 0.6); g.lineTo(s * 0.92, s * 0.68)
+            g.lineTo(s * 0.56, s * 0.58); g.lineTo(s * 0.56, s * 0.8); g.lineTo(s * 0.66, s * 0.9); g.lineTo(s * 0.34, s * 0.9)
+            g.lineTo(s * 0.44, s * 0.8); g.lineTo(s * 0.44, s * 0.58); g.lineTo(s * 0.08, s * 0.68); g.lineTo(s * 0.08, s * 0.6)
+            g.lineTo(s * 0.44, s * 0.42); g.closePath(); g.fill()
+            break
+        case "moon":
+            g.beginPath(); g.arc(s * 0.48, s * 0.52, s * 0.34, 0, Math.PI * 2); g.fill()
+            g.globalCompositeOperation = "destination-out"
+            g.beginPath(); g.arc(s * 0.66, s * 0.36, s * 0.3, 0, Math.PI * 2); g.fill()
+            g.globalCompositeOperation = "source-over"
+            break
+        case "bolt":
+            g.beginPath(); g.moveTo(s * 0.58, s * 0.06); g.lineTo(s * 0.2, s * 0.56); g.lineTo(s * 0.48, s * 0.56)
+            g.lineTo(s * 0.4, s * 0.94); g.lineTo(s * 0.8, s * 0.42); g.lineTo(s * 0.52, s * 0.42); g.closePath(); g.fill()
+            break
+        case "sun":
+            g.beginPath(); g.arc(s / 2, s / 2, s * 0.18, 0, Math.PI * 2); g.fill()
+            for (let i = 0; i < 8; i++) {
+                const a = i * Math.PI / 4
+                line([s / 2 + Math.cos(a) * s * 0.3, s / 2 + Math.sin(a) * s * 0.3, s / 2 + Math.cos(a) * s * 0.42, s / 2 + Math.sin(a) * s * 0.42])
+            }
+            break
+        case "cube":
+            g.strokeRect(s * 0.12, s * 0.12, s * 0.76, s * 0.76)
+            g.strokeRect(s * 0.32, s * 0.32, s * 0.36, s * 0.36)
+            line([s * 0.12, s * 0.12, s * 0.32, s * 0.32]); line([s * 0.88, s * 0.12, s * 0.68, s * 0.32])
+            line([s * 0.12, s * 0.88, s * 0.32, s * 0.68]); line([s * 0.88, s * 0.88, s * 0.68, s * 0.68])
+            break
+        case "mic":
+            g.strokeRect(s * 0.38, s * 0.1, s * 0.24, s * 0.46)
+            arc(s / 2, s * 0.46, s * 0.26, 0, Math.PI)
+            line([s / 2, s * 0.72, s / 2, s * 0.9])
+            line([s * 0.15, s * 0.85, s * 0.85, s * 0.15])
+            break
         case "search":
             arc(s * 0.42, s * 0.42, s * 0.28, 0, Math.PI * 2)
             line([s * 0.63, s * 0.63, s * 0.88, s * 0.88])

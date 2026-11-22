@@ -88,10 +88,10 @@ impl OziWm {
             // Locked: every key goes to the lock screen, except console switching.
             if wm.lock.is_some() {
                 if state == KeyState::Pressed {
-                    let vt = bindings::action_for(Mods::default(), handle.modified_sym(), nested)
-                        .filter(|a| matches!(a, Action::SwitchVt(_)));
+                    // Consoles, sound and brightness keep working on the lock screen.
+                    let special = bindings::special_key(handle.modified_sym());
                     let key = Action::LockKey(handle.modified_sym(), handle.modified_sym().key_char());
-                    return FilterResult::Intercept(Some(vt.unwrap_or(key)));
+                    return FilterResult::Intercept(Some(special.unwrap_or(key)));
                 }
                 return FilterResult::Intercept(None);
             }
@@ -105,9 +105,8 @@ impl OziWm {
             }
             let mods = Mods { logo: mods.logo, alt: mods.alt, ctrl: mods.ctrl, shift: mods.shift };
             let sym = handle.raw_latin_sym_or_raw_current_sym().unwrap_or(handle.modified_sym());
-            let vt = bindings::action_for(mods, handle.modified_sym(), nested)
-                .filter(|a| matches!(a, Action::SwitchVt(_)));
-            match vt.or_else(|| bindings::action_for(mods, sym, nested)) {
+            let special = bindings::special_key(handle.modified_sym());
+            match special.or_else(|| bindings::action_for(mods, sym, nested)) {
                 Some(action) => {
                     wm.suppressed_keys.push(code);
                     FilterResult::Intercept(Some(action))
@@ -129,6 +128,7 @@ impl OziWm {
             Action::CycleFocus => self.cycle_focus(),
             Action::Quit => self.loop_signal.stop(),
             Action::ToggleLauncher => crate::ipc::emit_launcher(self),
+            Action::TogglePanel => crate::ipc::emit_panel(self),
             Action::Workspace(n) => self.switch_workspace(n),
             Action::MoveToWorkspace(n) => {
                 if let Some(w) = self.focused_window() {
@@ -137,6 +137,7 @@ impl OziWm {
             }
             Action::ToggleTiling => self.toggle_tiling(),
             Action::Lock => self.lock(),
+            Action::Key(name) => crate::ipc::emit_key(self, name),
             Action::Screenshot => {
                 self.request_screenshot(None);
             }

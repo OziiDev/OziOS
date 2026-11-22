@@ -11,6 +11,7 @@ pub enum Action {
     /// Ctrl+Alt+F1..F12: go to another console.
     SwitchVt(i32),
     ToggleLauncher,
+    TogglePanel,
     /// 0-based workspace.
     Workspace(usize),
     MoveToWorkspace(usize),
@@ -20,6 +21,31 @@ pub enum Action {
     /// A key typed on the lock screen.
     LockKey(Keysym, Option<char>),
     Screenshot,
+    /// A hardware key ozi-shell handles (sound, brightness, media, radios).
+    Key(&'static str),
+}
+
+/// Keys that work the same with any modifiers: consoles and the laptop's
+/// special keys. `sym` is the key as typed (not the Latin-layout one).
+pub fn special_key(sym: Keysym) -> Option<Action> {
+    let raw = sym.raw();
+    if (Keysym::XF86_Switch_VT_1.raw()..=Keysym::XF86_Switch_VT_12.raw()).contains(&raw) {
+        return Some(Action::SwitchVt((raw - Keysym::XF86_Switch_VT_1.raw()) as i32 + 1));
+    }
+    let name = match sym {
+        Keysym::XF86_AudioRaiseVolume => "volume-up",
+        Keysym::XF86_AudioLowerVolume => "volume-down",
+        Keysym::XF86_AudioMute => "mute",
+        Keysym::XF86_AudioMicMute => "mic-mute",
+        Keysym::XF86_MonBrightnessUp => "brightness-up",
+        Keysym::XF86_MonBrightnessDown => "brightness-down",
+        Keysym::XF86_AudioPlay | Keysym::XF86_AudioPause => "play-pause",
+        Keysym::XF86_AudioNext => "next",
+        Keysym::XF86_AudioPrev => "previous",
+        Keysym::XF86_WLAN | Keysym::XF86_RFKill => "airplane",
+        _ => return None,
+    };
+    Some(Action::Key(name))
 }
 
 /// The modifiers that matter for shortcuts.
@@ -61,6 +87,7 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
         (false, Keysym::space) | (false, Keysym::a) => Action::ToggleLauncher,
         (false, Keysym::t) => Action::ToggleTiling,
         (false, Keysym::l) => Action::Lock,
+        (false, Keysym::s) => Action::TogglePanel,
         (false, Keysym::f) => Action::ToggleFloating,
         (shift, k) if (Keysym::_1.raw()..=Keysym::_4.raw()).contains(&k.raw()) => {
             let n = (k.raw() - Keysym::_1.raw()) as usize;
@@ -117,6 +144,14 @@ mod tests {
         assert_eq!(action_for(shifted, Keysym::_1, false), Some(Action::MoveToWorkspace(0)));
         assert_eq!(action_for(SUPER, Keysym::_5, false), None);
         assert_eq!(action_for(SUPER, Keysym::t, false), Some(Action::ToggleTiling));
+    }
+
+    #[test]
+    fn laptop_keys() {
+        assert_eq!(special_key(Keysym::XF86_AudioRaiseVolume), Some(Action::Key("volume-up")));
+        assert_eq!(special_key(Keysym::XF86_MonBrightnessDown), Some(Action::Key("brightness-down")));
+        assert_eq!(special_key(Keysym::XF86_Switch_VT_2), Some(Action::SwitchVt(2)));
+        assert_eq!(special_key(Keysym::a), None);
     }
 
     #[test]

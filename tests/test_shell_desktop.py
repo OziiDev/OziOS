@@ -36,7 +36,9 @@ class DesktopEntries(unittest.TestCase):
 
     def test_hidden_and_foreign_entries_are_skipped(self):
         self.assertIsNone(shell.parse_desktop_entry(KONSOLE + "NoDisplay=true\n"))
-        self.assertIsNone(shell.parse_desktop_entry(KONSOLE + "OnlyShowIn=KDE;\n"))
+        self.assertIsNotNone(shell.parse_desktop_entry(KONSOLE + "OnlyShowIn=KDE;\n"))
+        self.assertIsNone(shell.parse_desktop_entry(KONSOLE + "OnlyShowIn=GNOME;\n"))
+        self.assertIsNone(shell.parse_desktop_entry(KONSOLE + "NotShowIn=KDE;\n"))
         self.assertIsNotNone(shell.parse_desktop_entry(KONSOLE + "OnlyShowIn=KDE;OziOS;\n"))
         self.assertIsNone(shell.parse_desktop_entry("[Desktop Entry]\nType=Link\nName=x\n"))
         self.assertIsNone(shell.parse_desktop_entry("garbage"))
@@ -166,6 +168,49 @@ class Look(unittest.TestCase):
             self.assertEqual(shell.look(env), shell.LOOK_DEFAULTS)
 
 
+class Radios(unittest.TestCase):
+    def test_radio(self):
+        self.assertEqual(shell.parse_nmcli_radio("enabled:disabled:missing:enabled\n"), {"wifi_hw": True, "wifi": False})
+        self.assertEqual(shell.parse_nmcli_radio(""), {"wifi_hw": False, "wifi": False})
+
+    def test_wifi_list(self):
+        text = " :Ozi:80:WPA2\n*:Ozi:100:WPA2\n ::29:WPA2\n :Kafe\\:2:60:\n :Komşu:40:WPA1 WPA2\n"
+        nets = shell.parse_wifi_list(text)
+        self.assertEqual([n["ssid"] for n in nets], ["Ozi", "Kafe:2", "Komşu"])
+        self.assertTrue(nets[0]["active"])
+        self.assertEqual(nets[0]["signal"], 100)
+        self.assertFalse(nets[1]["secure"])
+        self.assertTrue(nets[2]["secure"])
+
+    def test_bluetooth(self):
+        self.assertTrue(shell.parse_bt_powered("Controller X\n\tPowered: yes\n"))
+        self.assertFalse(shell.parse_bt_powered("\tPowered: no\n"))
+        devs = shell.parse_bt_devices("Device AA:BB:CC:DD:EE:FF Kulaklık\nnoise\n")
+        self.assertEqual(devs, [("AA:BB:CC:DD:EE:FF", "Kulaklık")])
+
+    def test_airplane(self):
+        self.assertTrue(shell.airplane({"wifi": False}, {"available": True, "powered": False}))
+        self.assertFalse(shell.airplane({"wifi": True}, {"available": False, "powered": False}))
+        self.assertTrue(shell.airplane({"wifi": False}, {"available": False, "powered": False}))
+
+    def test_brightness_never_black(self):
+        self.assertEqual(shell.brightness_percent(937, 937), 100)
+        self.assertEqual(shell.brightness_value(0, 937), 9)
+        self.assertEqual(shell.brightness_value(50, 937), 468)
+        self.assertEqual(shell.brightness_value(200, 937), 937)
+
+    def test_brightness_from_sysfs(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(shell.brightness(root), {"available": False, "percent": 100})
+            for name, cur in (("acpi_video0", "5"), ("intel_backlight", "468")):
+                os.makedirs(os.path.join(root, name))
+                with open(os.path.join(root, name, "brightness"), "w") as f:
+                    f.write(cur)
+                with open(os.path.join(root, name, "max_brightness"), "w") as f:
+                    f.write("937" if name.startswith("intel") else "10")
+            self.assertEqual(shell.brightness(root), {"available": True, "percent": 50})
+
+
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 
 
@@ -195,6 +240,14 @@ class Packaging(unittest.TestCase):
                 if line.startswith("import "):
                     module = line.split()[1]
                     self.assertIn(module, allowed, "%s imports %s" % (name, module))
+
+    def test_wallpapers_match_their_generator(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("mw", os.path.join(ROOT, "tools", "make-wallpapers.py"))
+        mw = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mw)
+        for name, make in mw.SCENES.items():
+            self.assertEqual(self.read("branding", "wallpapers", name), make(), name)
 
     def test_root_qml_is_not_named_after_the_backend(self):
         # A file called Shell.qml would hide the `Shell` context property.
