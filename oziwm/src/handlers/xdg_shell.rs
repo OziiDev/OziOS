@@ -45,6 +45,15 @@ impl XdgShellHandler for OziWm {
     fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
         self.unmapped
             .retain(|w| w.toplevel().is_some_and(|t| t != &surface));
+        if let Some(i) = self
+            .minimized
+            .iter()
+            .position(|w| w.toplevel().is_some_and(|t| t == &surface))
+        {
+            let window = self.minimized.remove(i);
+            ipc::emit_closed(self, window_id(&window));
+            return;
+        }
         let Some(window) = self.window_for_surface(surface.wl_surface()) else {
             return;
         };

@@ -4,7 +4,7 @@ use smithay::{
         KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent,
     },
     input::{
-        keyboard::FilterResult,
+        keyboard::{FilterResult, Keysym},
         pointer::{AxisFrame, ButtonEvent, Focus, GrabStartData, MotionEvent, RelativeMotionEvent},
     },
     utils::{Logical, Point, SERIAL_COUNTER},
@@ -76,6 +76,14 @@ impl OziWm {
         let nested = self.nested;
 
         let action = keyboard.input::<Option<Action>, _>(self, code, state, serial, time, |wm, mods, handle| {
+            // A Super tap on its own opens the launcher, like the Windows key.
+            let is_super = matches!(handle.modified_sym(), Keysym::Super_L | Keysym::Super_R);
+            if state == KeyState::Pressed {
+                wm.super_alone = is_super;
+            } else if is_super && wm.super_alone && !wm.nested {
+                wm.super_alone = false;
+                return FilterResult::Intercept(Some(Action::ToggleLauncher));
+            }
             if state == KeyState::Released {
                 // The press was a shortcut, so the program never saw it: hide the release too.
                 if let Some(i) = wm.suppressed_keys.iter().position(|k| *k == code) {
@@ -109,6 +117,7 @@ impl OziWm {
             Action::CloseFocused => self.close_focused(),
             Action::CycleFocus => self.cycle_focus(),
             Action::Quit => self.loop_signal.stop(),
+            Action::ToggleLauncher => crate::ipc::emit_launcher(self),
             Action::SwitchVt(vt) => {
                 if let Some(tty) = self.tty.as_mut() {
                     tty.change_vt(vt);
@@ -135,6 +144,7 @@ impl OziWm {
     }
 
     fn on_button(&mut self, button: u32, state: ButtonState, time: u32) {
+        self.super_alone = false;
         let Some(pointer) = self.seat.get_pointer() else {
             return;
         };

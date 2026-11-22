@@ -16,7 +16,7 @@ Qt 6.12, Rust 1.100, wlroots 0.20, quickshell 0.3.2 depoda.
 ```
  ┌───────────────────────────── oturum: "OziOS" (SDDM'de) ─────────────────────────────┐
  │                                                                                     │
- │  oziwm  (Rust, Smithay)            ozi-shell  (Quickshell / QML)      uygulamalar    │
+ │  oziwm  (Rust, Smithay)            ozi-shell  (PyQt6 + QML)          uygulamalar    │
  │  ─ ekran, girdi, pencereler        ─ üç ada, dock, başlatıcı          Dolphin,       │
  │  ─ çerçeveler, gölge, bulanıklık   ─ kontrol merkezi, bildirimler     Firefox,       │
  │  ─ animasyonlar, döşeme            ─ kilit ekranı, kapatma ekranı     ozi-look ...   │
@@ -48,23 +48,24 @@ Kurallar:
 - XWayland: `xwayland-satellite` (depoda 0.8.3) ayrı süreç olarak; Steam, eski programlar.
 - Yalnız Intel'de çizilir; NVIDIA oyunlar için `prime-run` ile kalır.
 
-### 1.2 Kabuk `ozi-shell`: Quickshell + QML
+### 1.2 Kabuk `ozi-shell`: PyQt6 + QML + layer-shell-qt
 
-Quickshell bir kabuk kütüphanesi (masaüstü değil): katman kabuğu (layer-shell), oturum
-kilidi (ext-session-lock), bildirim sunucusu, tepsi, MPRIS, PipeWire ses, UPower pil,
-pencere listesi hazır gelir. Bunları kendimiz yazmak her biri ayrı hata kaynağı olurdu.
-Sürümü paket bağımlılığında sabitlenir.
+İlk plan Quickshell'di. Yerine OziOS uygulamalarının zaten kullandığı yol seçildi:
+PyQt6 + QML, her pencere layer-shell-qt ile bir katman yüzeyi. Yeni bağımlılık yok,
+0.x bir API'ye bağlanılmıyor ve bütün mantık (uygulama listesi, arama, dock, ses,
+pil, ağ, görünüm ayarları) Qt'siz düz Python'da (`python/ozipkg/shell.py`), yani
+`unittest` ile her yerde denenebilir. Pencere listesi ve olaylar `oziwm.sock`'tan gelir.
 
-Var olan QML (dock, başlatıcı, saat + çalan şarkı, kontrol merkezi, çalışma alanları,
-kapatma ekranı, tesseract duvar kâğıdı) Plasma API'lerinden ayrılıp buraya taşınır.
-Bilgi `ozi --json` komutlarından ve `oziwm.sock`'tan gelir.
-
-Artı: Quickshell KWin'de de çalışır. Kabuk, pencere yöneticisi hazır olmadan şimdiki
-Plasma oturumunda (plasmashell kapalıyken) geliştirilip denenebilir: iki iş paralel yürür.
+Parçalar (`shell/qml/`): duvar kâğıdı (arka katman, dönen tesseract, iki renkli ışık),
+üst çubuk (üç ada: Ozi + öndeki pencere, saat, ağ/ses/pil), dock (sabitlenenler +
+çalışanlar, büyüyen simgeler), başlatıcı (Super'e tek basış, arama, güç), hızlı panel
+(ses, ağ, pil ve görünüm: tema, ışıltı, köşe, hareket; kaydırıcı oynarken bütün
+pencere çerçeveleri canlı değişir).
 
 ### 1.3 Kalanlar (yeniden yazılmayanlar)
 
-Giriş ekranı SDDM (OziOS teması var), dosya yöneticisi Dolphin, ayar arka uçları
+Giriş ekranı SDDM (OziOS teması var; "OziOS" oturumu `session/ozios.desktop`),
+dosya yöneticisi Dolphin, ayar arka uçları
 NetworkManager / PipeWire / BlueZ / power-profiles-daemon, portal: xdg-desktop-portal-gtk
 (dosya seçici) + kendi ekran görüntüsü/paylaşımı (Aşama 6). Plasma oturumu kurulu kalır:
 OziOS oturumu kararlı olana kadar yedek.
@@ -137,6 +138,6 @@ Her aşama kendi başına çalışan bir şeyle ve testlerle biter; bir sonrakin
 |---|---|
 | Ekran kilitlenir, kullanıcı masaüstsüz kalır | Plasma oturumu yerinde; OziOS oturumu "deneme" adıyla, varsayılan değil; TTY her zaman açık. |
 | Optimus / iki GPU karmaşası | Yalnız Intel'de çizim; NVIDIA'ya dokunulmaz. |
-| Quickshell 0.x API'si değişir | Sürüm sabit; kabuk testleri yükseltmede kırılırsa yükseltme bekler. |
+| Qt veya layer-shell-qt değişir | Kabuk yalnız Qt Quick ve layer-shell-qt QML modülünü kullanır; mantık Qt dışında. |
 | Derleme bilgisayarı ısıtır | 3 iş, `nice`; uzun derlemeler arka planda. |
 | İş çok büyük | Aşamalar kendi başına kullanılabilir; Aşama 5 (kabuk) KWin'de de çalıştığından tek başına bile kazanç. |

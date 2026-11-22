@@ -92,10 +92,14 @@ pub struct OziWm {
     /// Something changed since the last frame (real hardware only draws then).
     pub needs_redraw: bool,
     pub tty: Option<crate::tty::Tty>,
+    /// The X display xwayland-satellite serves, for old X11 programs (Steam, games).
+    pub x_display: Option<String>,
     pub session: Option<smithay::backend::session::libseat::LibSeatSession>,
 
     /// Keys whose press was eaten by a binding; their release is eaten too.
     pub suppressed_keys: Vec<Keycode>,
+    /// Super went down and nothing else happened yet: releasing it opens the launcher.
+    pub super_alone: bool,
     /// In a nested window the host desktop owns the Super key, so bindings use Alt.
     pub nested: bool,
     pub ipc_subscribers: Vec<ipc::Subscriber>,
@@ -156,8 +160,10 @@ impl OziWm {
             cursor_status: CursorImageStatus::default_named(),
             needs_redraw: true,
             tty: None,
+            x_display: None,
             session: None,
             suppressed_keys: Vec::new(),
+            super_alone: false,
             nested: true,
             ipc_subscribers: Vec::new(),
         })
@@ -210,6 +216,34 @@ impl OziWm {
         }
     }
 
+    /// X11 programs: run xwayland-satellite on a free display, if it is installed.
+    pub fn start_xwayland(&mut self) {
+        let found = std::env::var_os("PATH")
+            .map(|paths| std::env::split_paths(&paths).any(|d| d.join("xwayland-satellite").is_file()))
+            .unwrap_or(false);
+        if !found {
+            tracing::info!("xwayland-satellite not installed: X11 programs will not open");
+            return;
+        }
+        let Some(n) = (0..64).find(|n| {
+            !std::path::Path::new(&format!("/tmp/.X11-unix/X{n}")).exists()
+                && !std::path::Path::new(&format!("/tmp/.X{n}-lock")).exists()
+        }) else {
+            return;
+        };
+        let x_name = format!(":{n}");
+        let mut command = Command::new("xwayland-satellite");
+        command.arg(&x_name);
+        self.prepare_child(&mut command);
+        match command.spawn() {
+            Ok(_) => {
+                tracing::info!(x_display = %x_name, "X11 programs go through xwayland-satellite");
+                self.x_display = Some(x_name);
+            }
+            Err(err) => tracing::warn!(%err, "xwayland-satellite did not start"),
+        }
+    }
+
     /// Start a command line through `sh -c` (for `-c` arguments).
     pub fn spawn_shell(&self, line: &str) {
         self.spawn(&["sh".into(), "-c".into(), line.into()]);
@@ -221,8 +255,12 @@ impl OziWm {
             .env("OZIWM_SOCKET", &self.ipc_path)
             .env("XDG_SESSION_TYPE", "wayland")
             .env("QT_QPA_PLATFORM", "wayland")
-            .env("GDK_BACKEND", "wayland")
-            .env_remove("DISPLAY");
+            .env("GDK_BACKEND", "wayland,x11");
+        // Nested, the host's X display must not leak in; on hardware ours goes out.
+        match &self.x_display {
+            Some(display) => command.env("DISPLAY", display),
+            None => command.env_remove("DISPLAY"),
+        };
     }
 
     /// The client surface under a point: overlay and top layers (bar, dock,
@@ -295,6 +333,15 @@ impl OziWm {
             }
         }
         None
+    }
+
+    pub fn reload_look(&mut self) {
+        self.look = theme::load();
+        for look in self.looks.values_mut() {
+            look.forget_title();
+        }
+        self.needs_redraw = true;
+        tracing::info!(theme = self.look.theme.id, "look reloaded");
     }
 
     pub fn minimize(&mut self, window: &Window) {
@@ -402,9 +449,18 @@ impl OziWm {
     /// Put a new window on screen at a free spot and focus it.
     pub fn map_new_window(&mut self, window: Window) {
         let title = if render::is_server_side(&window) { deco::TITLE_HEIGHT } else { 0 };
-        let size = window.geometry().size;
-        let size = smithay::utils::Size::<i32, Logical>::from((size.w, size.h + title));
         let area = self.work_area();
+        // Too big for the screen (minus bar and dock): ask the client to fit.
+        let mut size = window.geometry().size;
+        let room = smithay::utils::Size::<i32, Logical>::from((area.size.w - 24, area.size.h - title - 24));
+        if size.w > room.w || size.h > room.h {
+            size = (size.w.min(room.w).max(200), size.h.min(room.h).max(120)).into();
+            if let Some(toplevel) = window.toplevel() {
+                toplevel.with_pending_state(|s| s.size = Some(size));
+                toplevel.send_pending_configure();
+            }
+        }
+        let size = smithay::utils::Size::<i32, Logical>::from((size.w, size.h + title));
         let taken: Vec<(i32, i32)> = self
             .space
             .elements()

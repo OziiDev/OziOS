@@ -1,0 +1,48 @@
+# The OziOS desktop: oziwm (Wayland compositor) and ozi-shell (bar, dock,
+# launcher, quick settings, wallpaper), with an "OziOS" login session.
+# Built from a checkout like ozios-settings: OZI_SRC points at it.
+pkgname=ozi-desktop
+pkgver=0.4.0beta1
+pkgrel=1
+pkgdesc="OziOS desktop: its own window manager and shell"
+arch=(x86_64)
+license=(MIT)
+depends=(
+  'ozios-settings>=0.3.0-2'
+  seatd libinput mesa libxkbcommon systemd-libs libdrm
+  python python-pyqt6 qt6-declarative layer-shell-qt
+  ttf-overpass wireplumber networkmanager
+)
+makedepends=(rust cargo clang mold)
+optdepends=(
+  'xwayland-satellite: run X11 programs (Steam, older games)'
+  'breeze: the default pointer theme'
+  'polkit-kde-agent: password prompts for administrator tasks'
+  'konsole: the terminal Super+Return opens'
+  'dolphin: the file manager Super+E opens'
+)
+options=(!strip !debug !lto)
+
+build() {
+  local src="${OZI_SRC:?OZI_SRC must point at the OziOS source tree}"
+  export CARGO_TARGET_DIR="$srcdir/target"
+  cargo build --release --locked --manifest-path "$src/oziwm/Cargo.toml"
+}
+
+check() {
+  local src="${OZI_SRC:?}"
+  export CARGO_TARGET_DIR="$srcdir/target"
+  cargo test --release --locked --manifest-path "$src/oziwm/Cargo.toml"
+}
+
+package() {
+  local src="${OZI_SRC:?}"
+  install -Dm755 "$srcdir/target/release/oziwm" "$pkgdir/usr/bin/oziwm"
+  install -Dm755 "$src/shell/ozi-shell" "$pkgdir/usr/bin/ozi-shell"
+  install -Dm755 "$src/session/ozi-session" "$pkgdir/usr/bin/ozi-session"
+  install -Dm755 "$src/session/ozi-session-start" "$pkgdir/usr/lib/ozios/ozi-session-start"
+  install -Dm644 "$src/session/ozios.desktop" "$pkgdir/usr/share/wayland-sessions/ozios.desktop"
+  install -d "$pkgdir/usr/share/ozios/shell/qml"
+  install -m644 "$src"/shell/qml/*.qml "$pkgdir/usr/share/ozios/shell/qml/"
+  install -Dm644 "$src/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

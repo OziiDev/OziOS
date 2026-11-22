@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=OziOS
+Name[tr]=OziOS
+Comment=The OziOS desktop: oziwm and ozi-shell
+Comment[tr]=OziOS masaüstü: oziwm ve ozi-shell
+Exec=ozi-session
+TryExec=oziwm
+Type=Application
+DesktopNames=OziOS

@@ -1,6 +1,6 @@
 pkgname=ozios-settings
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)

@@ -10,6 +10,7 @@ pub enum Action {
     Quit,
     /// Ctrl+Alt+F1..F12: go to another console.
     SwitchVt(i32),
+    ToggleLauncher,
 }
 
 /// The modifiers that matter for shortcuts.
@@ -45,6 +46,7 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
         (false, Keysym::e) => Action::Spawn(vec!["dolphin".into()]),
         (false, Keysym::q) => Action::CloseFocused,
         (false, Keysym::Tab) => Action::CycleFocus,
+        (false, Keysym::space) | (false, Keysym::a) => Action::ToggleLauncher,
         (true, Keysym::Escape) => Action::Quit,
         _ => return None,
     };

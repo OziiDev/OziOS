@@ -1,0 +1,30 @@
+#!/bin/sh
+# Runs inside oziwm once it is up: tell D-Bus and systemd where the session
+# lives, start the password prompt agent and keep ozi-shell alive.
+dbus-update-activation-environment --systemd \
+    WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP \
+    OZIWM_SOCKET QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE 2>/dev/null
+
+for agent in /usr/lib/polkit-kde-authentication-agent-1 \
+             /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; do
+    if [ -x "$agent" ]; then
+        "$agent" &
+        break
+    fi
+done
+
+state="${XDG_STATE_HOME:-$HOME/.local/state}/oziwm"
+mkdir -p "$state"
+# If the shell crashes it comes back; five quick crashes in a row and it rests,
+# so a broken shell cannot spin the processor.
+quick=0
+while [ "$quick" -lt 5 ]; do
+    started=$(date +%s)
+    ozi-shell 2>> "$state/shell.log"
+    if [ $(( $(date +%s) - started )) -lt 10 ]; then
+        quick=$((quick + 1))
+    else
+        quick=0
+    fi
+    sleep 1
+done

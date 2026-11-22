@@ -88,7 +88,7 @@ impl Frame {
     pub fn button_rect(&self, button: Button) -> Option<Rect> {
         let bar = self.title_bar()?;
         let index = BUTTONS.iter().position(|b| *b == button)? as i32;
-        let from_right = (BUTTONS.len() as i32 - 1 - index);
+        let from_right = BUTTONS.len() as i32 - 1 - index;
         let x = bar.x + bar.w - 14 - BUTTON - from_right * (BUTTON + BUTTON_GAP);
         let y = bar.y + (TITLE_HEIGHT - BUTTON) / 2;
         Some(Rect::new(x, y, BUTTON, BUTTON))

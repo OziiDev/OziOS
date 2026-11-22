@@ -97,6 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         winit::init_winit(&mut event_loop, &mut state)?;
     } else {
         tty::init_tty(&mut event_loop, &mut state)?;
+        state.start_xwayland();
     }
     tracing::info!(
         socket = ?state.socket_name,

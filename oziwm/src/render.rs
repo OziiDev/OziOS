@@ -85,6 +85,11 @@ pub struct WindowLook {
 }
 
 impl WindowLook {
+    /// Colours changed: draw the title again.
+    pub fn forget_title(&mut self) {
+        self.title = None;
+    }
+
     pub fn new(now: Instant) -> Self {
         WindowLook {
             active: Fade::new(0.0),

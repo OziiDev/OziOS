@@ -22,8 +22,12 @@ pub enum Request {
     Get(String),
     Focus(u64),
     Close(u64),
+    Minimize(u64),
     Spawn(Vec<String>),
     Workspace(u32),
+    /// Read ~/.config/ozios/desktop.json again (theme, glow, corners, speed).
+    ReloadLook,
+    ToggleLauncher,
     Quit,
     Subscribe(Vec<String>),
 }
@@ -52,7 +56,10 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
     match value.get("do").and_then(Value::as_str) {
         Some("focus") => Ok(Request::Focus(id()?)),
         Some("close") => Ok(Request::Close(id()?)),
+        Some("minimize") => Ok(Request::Minimize(id()?)),
         Some("quit") => Ok(Request::Quit),
+        Some("reload-look") => Ok(Request::ReloadLook),
+        Some("toggle-launcher") => Ok(Request::ToggleLauncher),
         Some("workspace") => {
             let index = value
                 .get("index")
@@ -108,6 +115,7 @@ pub fn window_json(state: &OziWm, window: &Window) -> Value {
         "title": title.unwrap_or_default(),
         "workspace": 1,
         "focused": focused,
+        "minimized": state.minimized.contains(window),
         "x": loc.x, "y": loc.y, "width": size.w, "height": size.h,
     })
 }
@@ -123,7 +131,12 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
         Request::Get(what) => match what.as_str() {
             "version" => ok(json!({ "version": env!("CARGO_PKG_VERSION") })),
             "windows" => ok(Value::Array(
-                state.space.elements().map(|w| window_json(state, w)).collect(),
+                state
+                    .space
+                    .elements()
+                    .chain(state.minimized.iter())
+                    .map(|w| window_json(state, w))
+                    .collect(),
             )),
             "outputs" => ok(Value::Array(
                 state
@@ -159,12 +172,27 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
             }
             None => error(format!("no window {id}")),
         },
+        Request::Minimize(id) => match state.window_by_id(id) {
+            Some(window) => {
+                state.minimize(&window);
+                ok(Value::Null)
+            }
+            None => error(format!("no window {id}")),
+        },
         Request::Spawn(command) => {
             state.spawn(&command);
             ok(Value::Null)
         }
         Request::Workspace(1) => ok(Value::Null),
         Request::Workspace(index) => error(format!("workspace {index} does not exist yet")),
+        Request::ReloadLook => {
+            state.reload_look();
+            ok(Value::Null)
+        }
+        Request::ToggleLauncher => {
+            emit_launcher(state);
+            ok(Value::Null)
+        }
         Request::Quit => {
             state.loop_signal.stop();
             ok(Value::Null)
@@ -202,6 +230,11 @@ pub fn emit_window(state: &mut OziWm, window: &Window, kind: &str) {
 
 pub fn emit_closed(state: &mut OziWm, id: u64) {
     emit(state, "windows", json!({ "event": "window-closed", "id": id }));
+}
+
+/// Ask ozi-shell to open or close the launcher.
+pub fn emit_launcher(state: &mut OziWm) {
+    emit(state, "shell", json!({ "event": "launcher" }));
 }
 
 pub fn emit_focus(state: &mut OziWm, id: Option<u64>) {
@@ -316,6 +349,8 @@ mod tests {
         );
         assert_eq!(parse(br#"{"do":"workspace","index":2}"#), Ok(Request::Workspace(2)));
         assert_eq!(parse(br#"{"do":"quit"}"#), Ok(Request::Quit));
+        assert_eq!(parse(br#"{"do":"reload-look"}"#), Ok(Request::ReloadLook));
+        assert_eq!(parse(br#"{"do":"toggle-launcher"}"#), Ok(Request::ToggleLauncher));
         assert_eq!(
             parse(br#"{"subscribe":["windows"]}"#),
             Ok(Request::Subscribe(vec!["windows".into()]))

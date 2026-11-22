@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+"""ozi-shell: the OziOS bar, dock, launcher, quick panel and wallpaper.
+
+Runs inside oziwm. Every window is a wlr-layer-shell surface (layer-shell-qt);
+the logic lives in ozipkg.shell, this file only carries it to QML.
+
+    ozi-shell                start the shell
+    ozi-shell --launcher     open or close the launcher of the running shell
+"""
+import json
+import os
+import socket
+import subprocess
+import sys
+import threading
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+# A checkout uses its own code; an installed shell finds /usr/lib/ozios/python.
+for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python"):
+    if os.path.isdir(os.path.join(root, "ozipkg")):
+        sys.path.insert(0, root)
+        break
+
+from ozipkg import shell  # noqa: E402
+
+QML_DIRS = (os.path.join(HERE, "qml"), "/usr/share/ozios/shell/qml")
+
+
+def wm_socket():
+    path = os.environ.get("OZIWM_SOCKET", "")
+    if path and os.path.exists(path):
+        return path
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    display = os.environ.get("WAYLAND_DISPLAY", "wayland-0")
+    return os.path.join(runtime, "oziwm-%s.sock" % display)
+
+
+FAILED = object()
+
+
+def ask(request, timeout=2.0, default=None):
+    """One request to oziwm, its "ok" value back; `default` when it failed."""
+    try:
+        with socket.socket(socket.AF_UNIX) as s:
+            s.settimeout(timeout)
+            s.connect(wm_socket())
+            s.sendall((json.dumps(request) + "\n").encode())
+            data = b""
+            while not data.endswith(b"\n"):
+                chunk = s.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        reply = json.loads(data.decode() or "null")
+        if isinstance(reply, dict) and "ok" in reply:
+            return reply["ok"]
+        return default
+    except (OSError, ValueError):
+        return default
+
+
+if "--launcher" in sys.argv[1:]:
+    sys.exit(1 if ask({"do": "toggle-launcher"}, default=FAILED) is FAILED else 0)
+
+os.environ.setdefault("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell")
+os.environ.setdefault("QT_QPA_PLATFORM", "wayland")
+
+from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtProperty, pyqtSignal, pyqtSlot  # noqa: E402
+from PyQt6.QtGui import QGuiApplication, QIcon  # noqa: E402
+from PyQt6.QtQml import QQmlApplicationEngine  # noqa: E402
+
+
+class Shell(QObject):
+    windowsChanged = pyqtSignal()
+    appsChanged = pyqtSignal()
+    statusChanged = pyqtSignal()
+    lookChanged = pyqtSignal()
+    launcherRequested = pyqtSignal()
+    _statusReady = pyqtSignal(dict)
+    _event = pyqtSignal(dict)
+
+    def __init__(self):
+        super().__init__()
+        self._windows = []
+        self._apps = shell.applications()
+        self._by_id = {a["id"]: a for a in self._apps}
+        self._status = {"volume": {"available": False, "percent": 0, "muted": False},
+                        "battery": {"present": False}, "network": {"kind": "none", "name": ""}}
+        self._look = shell.look()
+        self._statusReady.connect(self._set_status)
+        self._event.connect(self._on_event)
+        self._refresh_windows()
+        threading.Thread(target=self._listen, daemon=True).start()
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self.refreshStatus)
+        self._timer.start(4000)
+        self.refreshStatus()
+
+    # ---- events from oziwm ------------------------------------------------
+
+    def _listen(self):
+        """Subscribe and turn each event line into a Qt signal (thread-safe)."""
+        import time
+        while True:
+            try:
+                with socket.socket(socket.AF_UNIX) as s:
+                    s.connect(wm_socket())
+                    s.sendall(b'{"subscribe":["windows","shell"]}\n')
+                    buffer = b""
+                    while True:
+                        chunk = s.recv(65536)
+                        if not chunk:
+                            break
+                        buffer += chunk
+                        while b"\n" in buffer:
+                            line, buffer = buffer.split(b"\n", 1)
+                            try:
+                                message = json.loads(line)
+                            except ValueError:
+                                continue
+                            if isinstance(message, dict) and "event" in message:
+                                self._event.emit(message)
+            except OSError:
+                pass
+            time.sleep(1.0)
+
+    def _on_event(self, message):
+        if message.get("event") == "launcher":
+            self.launcherRequested.emit()
+        else:
+            self._refresh_windows()
+
+    def _refresh_windows(self):
+        windows = ask({"get": "windows"})
+        if isinstance(windows, list):
+            self._windows = windows
+            self.windowsChanged.emit()
+
+    # ---- properties -------------------------------------------------------
+
+    @pyqtProperty("QVariantList", notify=windowsChanged)
+    def windows(self):
+        return self._windows
+
+    @pyqtProperty("QVariantList", notify=windowsChanged)
+    def dock(self):
+        return shell.dock_items(self._by_id, shell.pins(self._by_id), self._windows)
+
+    @pyqtProperty(str, notify=windowsChanged)
+    def activeTitle(self):
+        return next((w.get("title", "") for w in self._windows if w.get("focused")), "")
+
+    @pyqtProperty("QVariantList", notify=appsChanged)
+    def apps(self):
+        return self._apps
+
+    @pyqtProperty("QVariantMap", notify=statusChanged)
+    def status(self):
+        return self._status
+
+    @pyqtProperty("QVariantMap", notify=lookChanged)
+    def look(self):
+        return self._look
+
+    @pyqtProperty("QVariantMap", notify=lookChanged)
+    def colors(self):
+        return shell.palette(self._look["theme"])
+
+    @pyqtProperty("QVariantList", constant=True)
+    def themes(self):
+        return [shell.palette(t) for t in shell.theme_ids()]
+
+    # ---- actions ----------------------------------------------------------
+
+    @pyqtSlot(str, result="QVariantList")
+    def search(self, query):
+        return shell.search(self._apps, query)
+
+    @pyqtSlot(str)
+    def launch(self, app_id):
+        app = self._by_id.get(app_id)
+        if not app:
+            return
+        argv = shell.command_for(app["exec"], app["terminal"])
+        try:
+            subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError:
+            pass
+
+    @pyqtSlot(str)
+    def activateDockItem(self, item_id):
+        """Click on a dock icon: start it, bring it up, or minimise it if it is in front."""
+        item = next((i for i in self.dock if i["id"] == item_id), None)
+        if not item:
+            return
+        if not item["windows"]:
+            self.launch(item_id)
+            return
+        if item["active"] and len(item["windows"]) == 1:
+            ask({"do": "minimize", "id": item["windows"][0]})
+            return
+        # Several windows: the next one in turn.
+        focused = next((w["id"] for w in self._windows if w.get("focused")), None)
+        ids = item["windows"]
+        target = ids[(ids.index(focused) + 1) % len(ids)] if focused in ids else ids[-1]
+        ask({"do": "focus", "id": target})
+
+    @pyqtSlot(str, bool)
+    def setPinned(self, app_id, pinned):
+        current = shell.pins(self._by_id)
+        if pinned and app_id not in current:
+            current.append(app_id)
+        if not pinned:
+            current = [p for p in current if p != app_id]
+        shell.write_config({"dock": current})
+        self.windowsChanged.emit()
+
+    @pyqtSlot(int)
+    def focusWindow(self, window_id):
+        ask({"do": "focus", "id": window_id})
+
+    @pyqtSlot(int)
+    def closeWindow(self, window_id):
+        ask({"do": "close", "id": window_id})
+
+    @pyqtSlot(str, "QVariant")
+    def setLook(self, key, value):
+        """Change one look setting; the compositor redraws every frame with it at once."""
+        if key not in shell.LOOK_DEFAULTS:
+            return
+        shell.write_config({key: value})
+        self._look = shell.look()
+        ask({"do": "reload-look"})
+        self.lookChanged.emit()
+
+    @pyqtSlot(int)
+    def setVolume(self, percent):
+        threading.Thread(target=lambda: self._statusReady.emit(dict(self._status, volume=shell.set_volume(percent))),
+                         daemon=True).start()
+
+    @pyqtSlot()
+    def toggleMute(self):
+        threading.Thread(target=lambda: self._statusReady.emit(dict(self._status, volume=shell.toggle_mute())),
+                         daemon=True).start()
+
+    @pyqtSlot()
+    def refreshStatus(self):
+        threading.Thread(target=lambda: self._statusReady.emit(shell.status()), daemon=True).start()
+
+    def _set_status(self, status):
+        self._status = status
+        self.statusChanged.emit()
+
+    @pyqtSlot(str)
+    def power(self, action):
+        commands = {
+            "logout": None,
+            "reboot": ["systemctl", "reboot"],
+            "poweroff": ["systemctl", "poweroff"],
+            "suspend": ["systemctl", "suspend"],
+        }
+        if action == "logout":
+            ask({"do": "quit"})
+        elif action in commands:
+            subprocess.Popen(commands[action], start_new_session=True)
+
+    @pyqtSlot(str, result=str)
+    def iconSource(self, name):
+        """image://icon/ for theme names, file:// for paths."""
+        if not name:
+            return "image://icon/application-x-executable"
+        if name.startswith("/"):
+            return QUrl.fromLocalFile(name).toString()
+        return "image://icon/" + name
+
+
+def main():
+    app = QGuiApplication(sys.argv)
+    app.setApplicationName("ozi-shell")
+    app.setDesktopFileName("ozi-shell")
+    if not QIcon.themeName():
+        QIcon.setThemeName("breeze-dark")
+    backend = Shell()
+    engine = QQmlApplicationEngine()
+    engine.addImageProvider("icon", IconProvider())
+    engine.rootContext().setContextProperty("Shell", backend)
+    qml = next((d for d in QML_DIRS if os.path.exists(os.path.join(d, "Main.qml"))), None)
+    if not qml:
+        sys.exit("ozi-shell: QML files not found")
+    engine.load(QUrl.fromLocalFile(os.path.join(qml, "Main.qml")))
+    if not engine.rootObjects():
+        sys.exit("ozi-shell: the QML did not load")
+    sys.exit(app.exec())
+
+
+from PyQt6.QtCore import QSize  # noqa: E402
+from PyQt6.QtQuick import QQuickImageProvider  # noqa: E402
+
+
+class IconProvider(QQuickImageProvider):
+    """Icons from the icon theme, by name."""
+
+    def __init__(self):
+        super().__init__(QQuickImageProvider.ImageType.Pixmap)
+
+    def requestPixmap(self, name, requested, size=None):
+        side = max(requested.width(), requested.height(), 64) if requested.isValid() else 64
+        icon = QIcon.fromTheme(name)
+        if icon.isNull():
+            icon = QIcon.fromTheme("application-x-executable")
+        pixmap = icon.pixmap(QSize(side, side))
+        return pixmap, pixmap.size()
+
+
+if __name__ == "__main__":
+    main()

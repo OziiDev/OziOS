@@ -1,0 +1,20 @@
+#!/bin/sh
+# Start an OziOS desktop session (what the login screen runs for "OziOS").
+export XDG_CURRENT_DESKTOP=OziOS
+export XDG_SESSION_DESKTOP=OziOS
+export XDG_SESSION_TYPE=wayland
+export QT_QPA_PLATFORM="wayland;xcb"
+export MOZ_ENABLE_WAYLAND=1
+export ELECTRON_OZONE_PLATFORM_HINT=auto
+export SDL_VIDEODRIVER="wayland,x11"
+export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
+export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+# KDE programs keep their own look when Plasma's Qt integration is installed.
+if [ -e /usr/lib/qt6/plugins/platformthemes/KDEPlasmaPlatformTheme6.so ]; then
+    export QT_QPA_PLATFORMTHEME=kde
+fi
+
+state="${XDG_STATE_HOME:-$HOME/.local/state}/oziwm"
+mkdir -p "$state"
+[ -f "$state/oziwm.log" ] && mv -f "$state/oziwm.log" "$state/oziwm.previous.log"
+exec oziwm --tty -c /usr/lib/ozios/ozi-session-start > "$state/oziwm.log" 2>&1
