@@ -127,6 +127,17 @@ sudo systemctl enable --now libvirtd.service
 sudo virsh -c "$conn" dominfo "$vm" >/dev/null 2>&1 && die "a guest named $vm already exists (remove it with: sudo virsh undefine $vm --nvram)"
 sudo virsh -c "$conn" net-autostart default >/dev/null 2>&1 || true
 sudo virsh -c "$conn" net-start default >/dev/null 2>&1 || true
+# A firewall that drops forwarded traffic leaves the guest without an address
+# and without the internet (ufw does by default): let the guest's bridge through.
+if command -v ufw >/dev/null && sudo ufw status 2>/dev/null | grep -q '^Status: active'; then
+  sudo ufw allow in on virbr0 >/dev/null
+  sudo ufw route allow in on virbr0 >/dev/null
+  sudo ufw route allow out on virbr0 >/dev/null
+fi
+if command -v firewall-cmd >/dev/null && sudo firewall-cmd --state >/dev/null 2>&1; then
+  sudo firewall-cmd --permanent --zone=libvirt --add-interface=virbr0 >/dev/null 2>&1 || true
+  sudo firewall-cmd --reload >/dev/null 2>&1 || true
+fi
 id -nG "$USER" | grep -qw libvirt || sudo usermod -aG libvirt "$USER"
 
 # QEMU runs as libvirt-qemu, which cannot look inside a USB stick or a home
