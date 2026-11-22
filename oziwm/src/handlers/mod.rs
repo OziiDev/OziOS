@@ -6,13 +6,14 @@ use std::os::unix::io::OwnedFd;
 
 use smithay::{
     delegate_data_device, delegate_output, delegate_primary_selection, delegate_seat,
-    delegate_dmabuf, delegate_xdg_decoration,
+    delegate_dmabuf, delegate_idle_inhibit, delegate_xdg_decoration,
     backend::allocator::dmabuf::Dmabuf,
     reexports::wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode as DecorationMode,
     input::{pointer::CursorImageStatus, Seat, SeatHandler, SeatState},
     reexports::wayland_server::{protocol::wl_surface::WlSurface, Resource},
     wayland::{
         dmabuf::{DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier},
+        idle_inhibit::IdleInhibitHandler,
         output::OutputHandler,
         shell::xdg::{decoration::XdgDecorationHandler, ToplevelSurface},
         selection::{
@@ -120,3 +121,15 @@ impl DmabufHandler for OziWm {
 }
 
 delegate_dmabuf!(OziWm);
+
+impl IdleInhibitHandler for OziWm {
+    fn inhibit(&mut self, surface: WlSurface) {
+        self.inhibitors.push(surface);
+    }
+
+    fn uninhibit(&mut self, surface: WlSurface) {
+        self.inhibitors.retain(|s| s != &surface);
+    }
+}
+
+delegate_idle_inhibit!(OziWm);

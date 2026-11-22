@@ -194,6 +194,7 @@ Window {
                     { key: "glow", label: "Işıltı", from: 0, to: 2, step: 0.05, fmt: (v) => v === 0 ? "kapalı" : Math.round(v * 100) + "%" },
                     { key: "corner_radius", label: "Köşeler", from: 0, to: 24, step: 1, fmt: (v) => v + " px" },
                     { key: "animation_speed", label: "Hareket", from: 0, to: 2, step: 0.1, fmt: (v) => v === 0 ? "kapalı" : v.toFixed(1) + "×" },
+                    { key: "lock_after_minutes", label: "Boşta kilitle", from: 0, to: 60, step: 5, fmt: (v) => v === 0 ? "hiçbir zaman" : v + " dk" },
                 ]
                 Column {
                     required property var modelData

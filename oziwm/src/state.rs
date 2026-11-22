@@ -117,6 +117,11 @@ pub struct OziWm {
     /// Some while the screen is locked.
     pub lock: Option<crate::lock::Lock>,
     pub lock_answers: Option<crate::lock::LockAnswers>,
+    /// Last keyboard or pointer event, for locking an idle screen.
+    pub last_input: Instant,
+    pub idle_inhibit_state: smithay::wayland::idle_inhibit::IdleInhibitManagerState,
+    /// Surfaces (a playing video, a game) asking the screen to stay awake.
+    pub inhibitors: Vec<WlSurface>,
 }
 
 impl OziWm {
@@ -134,6 +139,7 @@ impl OziWm {
         let primary_selection_state = PrimarySelectionState::new::<Self>(&dh);
         let xdg_decoration_state = XdgDecorationState::new::<Self>(&dh);
         let layer_shell_state = WlrLayerShellState::new::<Self>(&dh);
+        let idle_inhibit_state = smithay::wayland::idle_inhibit::IdleInhibitManagerState::new::<Self>(&dh);
 
         let mut seat_state = SeatState::new();
         let mut seat: Seat<Self> = seat_state.new_wl_seat(&dh, "seat0");
@@ -187,6 +193,9 @@ impl OziWm {
             ws_switch: None,
             lock: None,
             lock_answers: None,
+            last_input: Instant::now(),
+            idle_inhibit_state,
+            inhibitors: Vec::new(),
         })
     }
 

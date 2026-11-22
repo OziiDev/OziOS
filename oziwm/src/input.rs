@@ -24,6 +24,7 @@ use crate::{
 
 impl OziWm {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
+        self.last_input = Instant::now();
         match event {
             InputEvent::Keyboard { event } => self.on_key(event),
             InputEvent::PointerMotion { event } => {

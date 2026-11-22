@@ -46,11 +46,19 @@ pub struct Look {
     /// 0 turns animations off, 1 is normal, 2 is twice as fast.
     pub animation_speed: f64,
     pub corner_radius: f32,
+    /// Lock after this many minutes without input; 0 never.
+    pub lock_after_minutes: u32,
 }
 
 impl Default for Look {
     fn default() -> Self {
-        Look { theme: THEMES[0], glow: 1.0, animation_speed: 1.0, corner_radius: crate::deco::RADIUS }
+        Look {
+            theme: THEMES[0],
+            glow: 1.0,
+            animation_speed: 1.0,
+            corner_radius: crate::deco::RADIUS,
+            lock_after_minutes: 10,
+        }
     }
 }
 
@@ -83,6 +91,9 @@ pub fn parse(text: &str) -> Look {
     if let Some(radius) = value.get("corner_radius").and_then(Value::as_f64) {
         look.corner_radius = radius.clamp(0.0, 24.0) as f32;
     }
+    if let Some(minutes) = value.get("lock_after_minutes").and_then(Value::as_u64) {
+        look.lock_after_minutes = minutes.min(24 * 60) as u32;
+    }
     look
 }
 
@@ -109,6 +120,13 @@ mod tests {
         assert_eq!(look.glow, 2.0);
         assert_eq!(look.animation_speed, 0.0);
         assert_eq!(look.corner_radius, 8.0);
+    }
+
+    #[test]
+    fn idle_lock_minutes() {
+        assert_eq!(parse("{}").lock_after_minutes, 10);
+        assert_eq!(parse(r#"{"lock_after_minutes":0}"#).lock_after_minutes, 0);
+        assert_eq!(parse(r#"{"lock_after_minutes":99999}"#).lock_after_minutes, 1440);
     }
 
     #[test]

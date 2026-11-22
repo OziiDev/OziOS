@@ -242,6 +242,8 @@ class Shell(QObject):
         """Change one look setting; the compositor redraws every frame with it at once."""
         if key not in shell.LOOK_DEFAULTS:
             return
+        if key in ("corner_radius", "lock_after_minutes"):
+            value = int(round(float(value)))
         shell.write_config({key: value})
         self._look = shell.look()
         ask({"do": "reload-look"})

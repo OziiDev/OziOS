@@ -300,7 +300,8 @@ ACCENT2 = {
     "mint": (60, 140, 255), "rose": (160, 92, 255), "frost": (110, 80, 230),
 }
 
-LOOK_DEFAULTS = {"theme": "cyan", "glow": 1.0, "animation_speed": 1.0, "corner_radius": 12}
+LOOK_DEFAULTS = {"theme": "cyan", "glow": 1.0, "animation_speed": 1.0, "corner_radius": 12,
+                 "lock_after_minutes": 10}
 
 
 def _hex(rgb):
@@ -330,6 +331,7 @@ def look(environ=os.environ):
         data["glow"] = max(0.0, min(2.0, float(data["glow"])))
         data["animation_speed"] = max(0.0, min(3.0, float(data["animation_speed"])))
         data["corner_radius"] = max(0, min(24, int(data["corner_radius"])))
+        data["lock_after_minutes"] = max(0, min(1440, int(data["lock_after_minutes"])))
     except (TypeError, ValueError):
         data = dict(LOOK_DEFAULTS)
     return data

@@ -20,7 +20,7 @@ use smithay::{
         calloop::channel::{channel, Event, Sender},
         wayland_server::protocol::wl_surface::WlSurface,
     },
-    utils::{Logical, Point, Rectangle, Transform, SERIAL_COUNTER},
+    utils::{IsAlive, Logical, Point, Rectangle, Transform, SERIAL_COUNTER},
 };
 
 use crate::{
@@ -158,6 +158,26 @@ fn check(password: String, reply: Sender<bool>) {
 
 pub struct LockAnswers(pub Sender<bool>);
 
+/// Lock when nobody touched anything for the configured time, unless a
+/// visible program (a video, a game) asked the screen to stay awake.
+fn check_idle(state: &mut OziWm) {
+    let minutes = state.look.lock_after_minutes;
+    if minutes == 0 || state.lock.is_some() {
+        return;
+    }
+    state.inhibitors.retain(|s| s.alive());
+    let awake = state.inhibitors.iter().any(|s| {
+        state.space.elements().any(|w| w.toplevel().is_some_and(|t| t.wl_surface() == s))
+            || smithay::wayland::compositor::get_parent(s).is_some()
+    });
+    if awake {
+        return;
+    }
+    if state.last_input.elapsed() >= Duration::from_secs(minutes as u64 * 60) {
+        state.lock();
+    }
+}
+
 /// Listen for PAM answers; call once at start.
 pub fn init(state: &mut OziWm) -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = channel::<bool>();
@@ -167,6 +187,13 @@ pub fn init(state: &mut OziWm) -> Result<(), Box<dyn std::error::Error>> {
         }
     })?;
     state.lock_answers = Some(LockAnswers(tx));
+    state.loop_handle.insert_source(
+        smithay::reexports::calloop::timer::Timer::from_duration(Duration::from_secs(20)),
+        |_, _, state| {
+            check_idle(state);
+            smithay::reexports::calloop::timer::TimeoutAction::ToDuration(Duration::from_secs(20))
+        },
+    )?;
     Ok(())
 }
 
