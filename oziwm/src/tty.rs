@@ -73,6 +73,8 @@ pub struct Tty {
     shaders: Shaders,
     cursor: Cursor,
     screens: HashMap<crtc::Handle, Screen>,
+    /// Keyboards, to light their Caps/Num/Scroll Lock lights.
+    keyboards: Vec<libinput::Device>,
 }
 
 pub fn init_tty(
@@ -121,6 +123,7 @@ pub fn init_tty(
         shaders,
         cursor: Cursor::load(),
         screens: HashMap::new(),
+        keyboards: Vec::new(),
     };
     tty.scan_connectors(state);
     if tty.screens.is_empty() {
@@ -131,8 +134,22 @@ pub fn init_tty(
     let handle = event_loop.handle();
 
     handle.insert_source(input_backend, |mut event, _, state| {
-        if let InputEvent::DeviceAdded { device } = &mut event {
-            configure_device(device);
+        match &mut event {
+            InputEvent::DeviceAdded { device } => {
+                configure_device(device);
+                if device.has_capability(libinput::DeviceCapability::Keyboard) {
+                    if let Some(tty) = state.tty.as_mut() {
+                        tty.keyboards.push(device.clone());
+                    }
+                    state.update_leds();
+                }
+            }
+            InputEvent::DeviceRemoved { device } => {
+                if let Some(tty) = state.tty.as_mut() {
+                    tty.keyboards.retain(|k| k != device);
+                }
+            }
+            _ => {}
         }
         state.process_input_event(event);
         state.needs_redraw = true;
@@ -240,6 +257,13 @@ fn configure_device(device: &mut libinput::Device) {
 }
 
 impl Tty {
+    /// Show the lock states on every keyboard's lights.
+    pub fn set_leds(&mut self, leds: libinput::Led) {
+        for keyboard in &mut self.keyboards {
+            keyboard.led_update(leds);
+        }
+    }
+
     /// Light up every connected screen that has no output yet, and drop the
     /// ones that were unplugged. Screens are placed left to right.
     fn scan_connectors(&mut self, state: &mut OziWm) {

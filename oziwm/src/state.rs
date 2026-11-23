@@ -102,6 +102,9 @@ pub struct OziWm {
     pub suppressed_keys: Vec<Keycode>,
     /// Super went down and nothing else happened yet: releasing it opens the launcher.
     pub super_alone: bool,
+    /// Scroll Lock toggled by its key. Keymaps rarely drive its light, but many
+    /// keyboards switch their backlight with it.
+    pub scroll_lock: bool,
     /// In a nested window the host desktop owns the Super key, so bindings use Alt.
     pub nested: bool,
     pub ipc_subscribers: Vec<ipc::Subscriber>,
@@ -190,6 +193,7 @@ impl OziWm {
             session: None,
             suppressed_keys: Vec::new(),
             super_alone: false,
+            scroll_lock: false,
             nested: true,
             ipc_subscribers: Vec::new(),
             active_ws: 0,

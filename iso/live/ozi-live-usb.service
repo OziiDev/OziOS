@@ -1,0 +1,11 @@
+[Unit]
+Description=OziOS live: keep downloads on the USB stick
+After=local-fs.target systemd-udev-settle.service
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ozios/ozi-live-usb
+
+[Install]
+WantedBy=multi-user.target

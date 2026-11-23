@@ -44,6 +44,10 @@ impl SeatHandler for OziWm {
         self.needs_redraw = true;
     }
 
+    fn led_state_changed(&mut self, _seat: &Seat<Self>, _led_state: smithay::input::keyboard::LedState) {
+        self.update_leds();
+    }
+
     fn focus_changed(&mut self, seat: &Seat<Self>, focused: Option<&WlSurface>) {
         // Clipboard offers follow the keyboard, so only the focused client can read them.
         let dh = &self.display_handle;

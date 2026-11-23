@@ -1,0 +1,40 @@
+#!/bin/sh
+# OziOS live session: keep downloads on the USB stick the system started from,
+# so they are still there after a restart. Works on a Ventoy stick whose
+# ventoy/ventoy.json lets Linux mount it again (VTOY_LINUX_REMOUNT); on any
+# other medium it does nothing and downloads stay in memory.
+udevadm settle --timeout=10 2>/dev/null
+dev="$(blkid -L Ventoy 2>/dev/null)" || exit 0
+[ "$(blkid -o value -s TYPE "$dev")" = exfat ] || exit 0
+
+user=liveuser
+uid="$(id -u "$user" 2>/dev/null)" || exit 0
+gid="$(id -g "$user")"
+home="$(getent passwd "$user" | cut -d: -f6)"
+mnt="/run/media/$user/Ventoy"
+
+mkdir -p "$mnt"
+if ! mount -t exfat -o "uid=$uid,gid=$gid,fmask=0022,dmask=0022" "$dev" "$mnt"; then
+    rmdir "$mnt"
+    echo "the Ventoy partition can not be mounted; downloads stay in memory"
+    exit 0
+fi
+chown "$uid:$gid" "/run/media/$user" 2>/dev/null
+
+downloads="$mnt/OziOS İndirilenler"
+mkdir -p "$downloads"
+
+# The other folders are filled in by xdg-user-dirs at login; a download folder
+# that exists is kept.
+cfg="$home/.config/user-dirs.dirs"
+mkdir -p "$home/.config"
+touch "$cfg"
+sed -i '/^XDG_DOWNLOAD_DIR=/d' "$cfg"
+echo "XDG_DOWNLOAD_DIR=\"$downloads\"" >> "$cfg"
+chown "$uid:$gid" "$home/.config" "$cfg"
+# Programs that do not read user-dirs.dirs look in ~/Downloads.
+if [ ! -e "$home/Downloads" ] || [ -L "$home/Downloads" ]; then
+    ln -sfn "$downloads" "$home/Downloads"
+    chown -h "$uid:$gid" "$home/Downloads"
+fi
+echo "downloads go to $downloads"

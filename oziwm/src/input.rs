@@ -23,6 +23,18 @@ use crate::{
 };
 
 impl OziWm {
+    /// Put the Caps, Num and Scroll Lock states on the keyboards' lights.
+    pub fn update_leds(&mut self) {
+        let Some(keyboard) = self.seat.get_keyboard() else {
+            return;
+        };
+        let mut leds = keyboard.led_state();
+        leds.scroll = Some(leds.scroll.unwrap_or(false) || self.scroll_lock);
+        if let Some(tty) = self.tty.as_mut() {
+            tty.set_leds(leds.into());
+        }
+    }
+
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         self.last_input = Instant::now();
         match event {
@@ -75,6 +87,12 @@ impl OziWm {
         let code = event.key_code();
         let state = event.state();
         let nested = self.nested;
+
+        // Scroll Lock (evdev 70, xkb 78) lights its lamp; xkb keymaps leave that to us.
+        if state == KeyState::Pressed && code.raw() == 78 {
+            self.scroll_lock = !self.scroll_lock;
+            self.update_leds();
+        }
 
         let action = keyboard.input::<Option<Action>, _>(self, code, state, serial, time, |wm, mods, handle| {
             // A Super tap on its own opens the launcher, like the Windows key.

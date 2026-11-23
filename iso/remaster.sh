@@ -221,6 +221,11 @@ install -Dm644 "$repo/iso/live/pacman-init-nice.conf" "$root/etc/systemd/system/
 # The live session opens on the OziOS desktop instead of Plasma. Plasma stays
 # on the login screen for a machine where oziwm does not start.
 install -Dm644 "$repo/iso/live/sddm-ozios.conf" "$root/etc/sddm.conf.d/ozios-live.conf"
+# Started from a Ventoy stick, downloads are saved on the stick itself.
+install -Dm755 "$repo/iso/live/ozi-live-usb" "$root/usr/lib/ozios/ozi-live-usb"
+install -Dm644 "$repo/iso/live/ozi-live-usb.service" "$root/etc/systemd/system/ozi-live-usb.service"
+mkdir -p "$root/etc/systemd/system/multi-user.target.wants"
+ln -sf ../ozi-live-usb.service "$root/etc/systemd/system/multi-user.target.wants/ozi-live-usb.service"
 
 if [ "$edition" = edu ]; then
   step "Turkish defaults for the live session"
