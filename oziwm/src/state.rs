@@ -320,8 +320,9 @@ impl OziWm {
                 .surface_under(pos - layer_loc.to_f64(), WindowSurfaceType::ALL)
                 .map(|(s, p)| (s, (p + layer_loc).to_f64()))
         };
+        let fullscreen = self.fullscreen_on_top();
         in_layer(WlrLayer::Overlay)
-            .or_else(|| in_layer(WlrLayer::Top))
+            .or_else(|| if fullscreen { None } else { in_layer(WlrLayer::Top) })
             .or_else(|| {
                 self.space.element_under(pos).and_then(|(window, location)| {
                     window
@@ -338,7 +339,12 @@ impl OziWm {
         let output = self.space.outputs().next()?;
         let output_geo = self.space.output_geometry(output)?;
         let map = layer_map_for_output(output);
-        [WlrLayer::Overlay, WlrLayer::Top].into_iter().find_map(|layer| {
+        let layers: &[WlrLayer] = if self.fullscreen_on_top() {
+            &[WlrLayer::Overlay]
+        } else {
+            &[WlrLayer::Overlay, WlrLayer::Top]
+        };
+        layers.iter().copied().find_map(|layer| {
             map.layer_under(layer, pos - output_geo.loc.to_f64())
                 .filter(|l| l.can_receive_keyboard_focus())
                 .map(|l| l.wl_surface().clone())
@@ -534,6 +540,25 @@ impl OziWm {
 
     /// Put a new window on screen at a free spot and focus it.
     pub fn map_new_window(&mut self, window: Window) {
+        // Asked for fullscreen before it first showed (games often do): it gets
+        // the whole screen, not a frame shrunk to fit between bar and dock.
+        let fullscreen = window.toplevel().is_some_and(|t| {
+            t.with_pending_state(|s| {
+                s.states.contains(smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel::State::Fullscreen)
+            })
+        });
+        if fullscreen {
+            let screen = self.screen();
+            if let Some(toplevel) = window.toplevel() {
+                toplevel.with_pending_state(|s| s.size = Some(screen.size));
+                toplevel.send_pending_configure();
+            }
+            self.space.map_element(window.clone(), screen.loc, true);
+            self.track_new_window(&window);
+            ipc::emit_window(self, &window, "window-opened");
+            self.focus_window(Some(window));
+            return;
+        }
         let title = if render::is_server_side(&window) { deco::TITLE_HEIGHT } else { 0 };
         let area = self.work_area();
         // Too big for the screen (minus bar and dock): ask the client to fit.

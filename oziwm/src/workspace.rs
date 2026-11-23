@@ -67,6 +67,12 @@ fn has_state(window: &Window, state: XdgState) -> bool {
 }
 
 impl OziWm {
+    /// The top-most window is fullscreen: the bar and dock (the top layer) step
+    /// aside for it. Notifications and the volume display still show.
+    pub fn fullscreen_on_top(&self) -> bool {
+        self.space.elements().last().is_some_and(|w| has_state(w, XdgState::Fullscreen))
+    }
+
     pub fn switch_workspace(&mut self, to: usize) {
         if to >= WORKSPACES || to == self.active_ws {
             return;

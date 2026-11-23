@@ -260,14 +260,18 @@ pub fn is_server_side(window: &Window) -> bool {
         .is_some_and(|t| t.current_state().decoration_mode == Some(DecorationMode::ServerSide))
 }
 
+pub fn is_fullscreen(window: &Window) -> bool {
+    window.toplevel().is_some_and(|t| {
+        t.current_state()
+            .states
+            .contains(smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel::State::Fullscreen)
+    })
+}
+
 pub fn frame_of(state: &OziWm, window: &Window) -> Option<Frame> {
     let loc = state.space.element_location(window)?;
     let size = window.geometry().size;
-    let maximized_or_full = window.toplevel().is_some_and(|t| {
-        let s = t.current_state();
-        s.states.contains(smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel::State::Fullscreen)
-    });
-    let titled = is_server_side(window) && !maximized_or_full;
+    let titled = is_server_side(window) && !is_fullscreen(window);
     Some(Frame::new(Rect::new(loc.x, loc.y, size.w, size.h), titled))
 }
 
@@ -504,7 +508,14 @@ pub fn window_elements(
             .to_physical_precise_round(scale);
         let surfaces: Vec<WaylandSurfaceRenderElement<GlesRenderer>> =
             window.render_elements(renderer, render_loc, Scale::from(scale), alpha);
+        // Fullscreen (games, videos): square corners, no glowing edge, and the
+        // plain surface, which is also the cheapest to draw.
+        let fullscreen = is_fullscreen(&window);
         for surface in surfaces {
+            if fullscreen {
+                parts.push(WindowPart::Plain(surface));
+                continue;
+            }
             parts.push(WindowPart::Surface(RoundedSurface {
                 inner: surface,
                 program: shaders.rounded.clone(),
@@ -530,7 +541,9 @@ pub fn window_elements(
         let frame_time = (id as f32) * 1.7 + flowing_for.min(flow_for);
         animating |= is_focused && style.glow > 0.0 && speed > 0.0 && flowing_for < flow_for;
         let _ = time;
-        parts.push(WindowPart::Frame(frame_element(look, shaders, &style, &frame, origin, active, frame_time, alpha)));
+        if !fullscreen {
+            parts.push(WindowPart::Frame(frame_element(look, shaders, &style, &frame, origin, active, frame_time, alpha)));
+        }
 
         // How this window is moved and stretched this frame: flowing to a new
         // place (maximise, tiling), growing in as it opens, sliding with its workspace.
@@ -618,7 +631,10 @@ pub fn output_elements(
         // Locked: nothing but the lock screen, which keeps moving gently.
         return state.lock_elements(renderer, &shaders.lock, (geo.size.w, geo.size.h), scale, now);
     }
-    let mut out = layer_elements(output, renderer, scale, &[Layer::Overlay, Layer::Top]);
+    // A fullscreen window covers the bar and dock; overlays (notifications,
+    // the volume display, the launcher) still show above it.
+    let top: &[Layer] = if state.fullscreen_on_top() { &[Layer::Overlay] } else { &[Layer::Overlay, Layer::Top] };
+    let mut out = layer_elements(output, renderer, scale, top);
     let (windows, animating) = window_elements(state, renderer, shaders, origin, scale, now);
     out.extend(windows);
     out.extend(layer_elements(output, renderer, scale, &[Layer::Bottom, Layer::Background]));
