@@ -153,7 +153,12 @@ impl OziWm {
         let mut seat: Seat<Self> = seat_state.new_wl_seat(&dh, "seat0");
         let xkb = keyboard::system_layout();
         tracing::info!(layout = %xkb.layout, variant = %xkb.variant, "keyboard");
-        seat.add_keyboard(xkb.to_config(), 400, 30)?;
+        let keyboard_handle = seat.add_keyboard(xkb.to_config(), 400, 30)?;
+        if keyboard::numlock_at_start() {
+            let mut mods = keyboard_handle.modifier_state();
+            mods.num_lock = true;
+            keyboard_handle.set_modifier_state(mods);
+        }
         seat.add_pointer();
 
         let socket_name = Self::init_wayland_listener(display, event_loop)?;

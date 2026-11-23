@@ -46,6 +46,28 @@ pub fn system_layout() -> Layout {
     Layout { layout: "us".into(), variant: String::new(), options: None }
 }
 
+/// Whether Num Lock starts switched on. Plasma's setting (`[Keyboard]
+/// NumLock=` in kcminputrc: 0 on, 1 off, 2 leave) is followed; without one it is
+/// on, so the number pad types numbers (at a password prompt too).
+pub fn numlock_at_start() -> bool {
+    let path = std::env::var("HOME").map(|h| format!("{h}/.config/kcminputrc")).unwrap_or_default();
+    std::fs::read_to_string(path).ok().as_deref().map(parse_numlock).unwrap_or(true)
+}
+
+pub fn parse_numlock(text: &str) -> bool {
+    let mut in_keyboard = false;
+    for line in text.lines().map(str::trim) {
+        if line.starts_with('[') {
+            in_keyboard = line == "[Keyboard]";
+            continue;
+        }
+        if in_keyboard && let Some(("NumLock", value)) = line.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
+            return value != "1";
+        }
+    }
+    true
+}
+
 fn non_empty(s: &str) -> Option<String> {
     let s = s.trim();
     (!s.is_empty()).then(|| s.to_string())
@@ -132,6 +154,14 @@ mod tests {
     #[test]
     fn plasma_without_layouts_falls_through() {
         assert_eq!(parse_kxkbrc("[Layout]\nUse=false\n"), None);
+    }
+
+    #[test]
+    fn numlock_setting() {
+        assert!(parse_numlock(""));
+        assert!(parse_numlock("[Keyboard]\nNumLock=0\n"));
+        assert!(!parse_numlock("[Keyboard]\nNumLock=1\n"));
+        assert!(parse_numlock("[Mouse]\nNumLock=1\n"));
     }
 
     #[test]

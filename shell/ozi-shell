@@ -62,6 +62,9 @@ def ask(request, timeout=2.0, default=None):
 if "--launcher" in sys.argv[1:]:
     sys.exit(1 if ask({"do": "toggle-launcher"}, default=FAILED) is FAILED else 0)
 
+# The shell's own windows are layer surfaces. Programs it starts must not
+# inherit this, or Qt programs (Konsole, Dolphin...) open as layers, not windows.
+_own_layer_shell = "QT_WAYLAND_SHELL_INTEGRATION" not in os.environ
 os.environ.setdefault("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell")
 os.environ.setdefault("QT_QPA_PLATFORM", "wayland")
 
@@ -602,6 +605,9 @@ class Notifications(QObject):
 
 def main():
     app = QGuiApplication(sys.argv)
+    if _own_layer_shell:
+        # Read by Qt while the application started; programs started from here get a clean one.
+        os.environ.pop("QT_WAYLAND_SHELL_INTEGRATION", None)
     # Hiding the launcher or the quick panel must not end the shell: Qt would
     # quit when the "last window" closes, taking the bar, dock and wallpaper along.
     app.setQuitOnLastWindowClosed(False)
