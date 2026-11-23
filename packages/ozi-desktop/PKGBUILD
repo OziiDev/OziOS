@@ -3,7 +3,7 @@
 # Built from a checkout like ozios-settings: OZI_SRC points at it.
 pkgname=ozi-desktop
 pkgver=0.4.0beta2
-pkgrel=2
+pkgrel=3
 pkgdesc="OziOS desktop: its own window manager and shell"
 arch=(x86_64)
 license=(MIT)
