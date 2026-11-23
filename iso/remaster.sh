@@ -189,11 +189,20 @@ if [ -n "$add" ]; then
     done
     echo "the archive did not answer; installed the packages an earlier build left in the cache"
   fi
-  rm -rf "$root"/var/lib/pacman/sync/*
 fi
-# The desktop's runtime dependencies come from the repositories like the --add ones.
-"${pm[@]}" -S --needed seatd layer-shell-qt qt6-svg bluez-utils power-profiles-daemon xdg-desktop-portal-gtk xwayland-satellite cachyos-wallpapers ||
-  echo "some OziOS desktop dependencies could not be installed; the installed system will fetch them"
+# The desktop's runtime dependencies come from the same repositories as the
+# --add ones, so they match the image's libraries. This needs the package
+# lists that -Sy fetched, so they are only removed afterwards.
+desktop_deps="seatd layer-shell-qt qt6-svg bluez-utils power-profiles-daemon xdg-desktop-portal-gtk"
+# shellcheck disable=SC2086
+"${pm[@]}" -Sy --needed $desktop_deps || die "could not install the desktop's dependencies: $desktop_deps"
+"${pm[@]}" -S --needed xwayland-satellite || echo "xwayland-satellite is not there; X11 programs will need it installed later"
+# The wallpapers are CachyOS's own package, which the Arch Linux Archive does not
+# carry: take it from the repositories of the system we are running on. It is
+# only pictures, so it can not pull in libraries that do not match.
+pacman --root "$root" --gpgdir /etc/pacman.d/gnupg --cachedir "$work/pkgcache" --noconfirm --disable-download-timeout \
+  -Sy --needed cachyos-wallpapers || die "could not install cachyos-wallpapers"
+rm -rf "$root"/var/lib/pacman/sync/*
 "${pm[@]}" -U "$package" "$decoration_package" "$desktop_package" ${edu_package:+"$edu_package"}
 rm -f "$root"/opt/ozios/ozios-settings-*.pkg.tar.* "$root"/opt/ozios/ozios-edu-*.pkg.tar.* "$root"/opt/ozios/ozios-decoration-*.pkg.tar.* "$root"/opt/ozios/ozi-desktop-*.pkg.tar.*
 install -Dm644 "$package" "$root/opt/ozios/$(basename "$package")"
@@ -209,6 +218,9 @@ fi
 # The live system sets up its pacman keyring at boot, while the desktop starts;
 # that work only gets the processor time the desktop leaves over.
 install -Dm644 "$repo/iso/live/pacman-init-nice.conf" "$root/etc/systemd/system/pacman-init.service.d/ozios-nice.conf"
+# The live session opens on the OziOS desktop instead of Plasma. Plasma stays
+# on the login screen for a machine where oziwm does not start.
+install -Dm644 "$repo/iso/live/sddm-ozios.conf" "$root/etc/sddm.conf.d/ozios-live.conf"
 
 if [ "$edition" = edu ]; then
   step "Turkish defaults for the live session"
