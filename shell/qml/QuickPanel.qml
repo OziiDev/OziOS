@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Window
 import org.kde.layershell 1.0 as LS
 
-// Quick settings, from the right island. Two pages:
+// Quick settings, from the bar's status corner or its clock. Two pages:
 //   Hızlı    Wi-Fi (with the networks), Bluetooth (with the devices), airplane
 //            mode, do not disturb, power profile, tiling, sound and brightness.
-//   Görünüm  theme, glow, corners, motion, idle lock and the wallpaper; every
+//   Görünüm  theme, accent edge, corners, motion, idle lock and the wallpaper; every
 //            window frame follows while the sliders move.
 Window {
     id: panel
@@ -40,16 +40,16 @@ Window {
         id: card
         focus: true
         Keys.onEscapePressed: panel.drawer ? panel.drawer = "" : panel.close()
-        anchors { right: parent.right; top: parent.top; rightMargin: 10; topMargin: 50 }
-        width: 372
-        height: Math.min(panel.height - 64, flick.contentHeight + 76)
-        radius: 24
-        color: Qt.alpha(panel.c.raised, 0.97)
+        anchors { right: parent.right; top: parent.top; rightMargin: 8; topMargin: 42 }
+        width: 360
+        height: Math.min(panel.height - 56, flick.contentHeight + 74)
+        radius: 16
+        color: panel.c.raised
         border.width: 1
-        border.color: Qt.alpha(panel.c.accent, 0.35)
+        border.color: Qt.alpha(panel.c.text, 0.08)
         clip: true
         opacity: panel.open ? 1 : 0
-        transform: Translate { y: panel.open ? 0 : -14; Behavior on y { NumberAnimation { duration: panel.shell.ms(260); easing.type: Easing.OutCubic } } }
+        transform: Translate { y: panel.open ? 0 : -8; Behavior on y { NumberAnimation { duration: panel.shell.ms(180); easing.type: Easing.OutCubic } } }
         Behavior on opacity { NumberAnimation { duration: panel.shell.ms(180) } }
         Behavior on height { NumberAnimation { duration: panel.shell.ms(200); easing.type: Easing.OutCubic } }
         MouseArea { anchors.fill: parent }
@@ -58,16 +58,14 @@ Window {
         Row {
             id: tabs
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
-            spacing: 8
+            spacing: 4
             Repeater {
                 model: [{ id: "quick", label: "Hızlı ayarlar" }, { id: "look", label: "Görünüm" }]
                 Rectangle {
                     required property var modelData
                     readonly property bool chosen: panel.page === modelData.id
-                    width: (tabs.width - 8) / 2; height: 36; radius: 18
-                    color: chosen ? Qt.alpha(panel.c.accent, 0.18) : "transparent"
-                    border.width: 1
-                    border.color: chosen ? Qt.alpha(panel.c.accent, 0.6) : Qt.alpha(panel.c.muted, 0.2)
+                    width: (tabs.width - 4) / 2; height: 32; radius: 8
+                    color: chosen ? Qt.alpha(panel.c.text, 0.10) : "transparent"
                     Text { anchors.centerIn: parent; text: modelData.label; color: chosen ? panel.c.text : panel.c.muted; font.pixelSize: 13; font.weight: Font.DemiBold }
                     MouseArea { anchors.fill: parent; onClicked: { panel.page = parent.modelData.id; panel.drawer = "" } }
                 }
@@ -183,7 +181,7 @@ Window {
                             }
                             Text {
                                 anchors { right: parent.right; rightMargin: 12; top: parent.top; topMargin: 13 }
-                                text: (net.modelData.secure ? "🔒 " : "") + net.modelData.signal + "%"; color: panel.c.muted; font.pixelSize: 11
+                                text: (net.modelData.secure ? "Parolalı · " : "") + net.modelData.signal + "%"; color: panel.c.muted; font.pixelSize: 11
                             }
                             MouseArea {
                                 id: netMouse
@@ -196,7 +194,7 @@ Window {
                                 visible: net.asking
                                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
                                 height: 38; radius: 10
-                                color: panel.c.ink; border.width: 1; border.color: Qt.alpha(panel.c.accent, 0.5)
+                                color: Qt.alpha(panel.c.text, 0.06); border.width: 1; border.color: Qt.alpha(panel.c.accent, 0.7)
                                 TextInput {
                                     id: pass
                                     anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
@@ -254,7 +252,7 @@ Window {
                         spacing: 12
                         Rectangle {
                             width: 34; height: 34; radius: 17
-                            color: parent.modelData.id === "volume" && panel.s.volume.muted ? Qt.alpha("#FF556E", 0.2) : panel.c.control
+                            color: parent.modelData.id === "volume" && panel.s.volume.muted ? Qt.alpha(panel.c.danger, 0.2) : panel.c.control
                             Glyph { anchors.centerIn: parent; kind: parent.parent.modelData.glyph; level: parent.parent.modelData.value / 100; color: panel.c.text }
                             MouseArea { anchors.fill: parent; onClicked: if (parent.parent.modelData.id === "volume") Shell.toggleMute() }
                         }
@@ -284,6 +282,7 @@ Window {
                 width: flick.width
                 spacing: 14
 
+                // How a window looks with these settings.
                 Item {
                     width: parent.width; height: 92
                     Rectangle {
@@ -292,28 +291,18 @@ Window {
                         width: 190; height: 70
                         radius: panel.look.corner_radius
                         color: panel.c.ink
-                        border.width: 2
-                        border.color: panel.c.accent
-                        Repeater {
-                            model: 4
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: preview.width + (index + 1) * 6; height: preview.height + (index + 1) * 6
-                                radius: preview.radius + (index + 1) * 3
-                                color: "transparent"
-                                border.width: 3
-                                border.color: index % 2 ? panel.c.accent2 : panel.c.accent
-                                opacity: panel.look.glow * 0.18 * (1 - index / 4)
-                            }
-                        }
+                        border.width: 1
+                        border.color: Qt.tint(Qt.alpha(panel.c.text, 0.16), Qt.alpha(panel.c.accent, panel.look.glow * 0.6))
                         Rectangle {
-                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 2 }
-                            height: 20; radius: Math.max(0, parent.radius - 2)
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
+                            height: 20; radius: Math.max(0, parent.radius - 1)
                             color: panel.c.raised
                             Row {
                                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                                spacing: 5
-                                Repeater { model: ["#FFBE5A", "#3CE6A0", "#FF556E"]; Rectangle { width: 8; height: 8; radius: 4; color: modelData } }
+                                spacing: 9
+                                Glyph { kind: "minimize"; color: panel.c.muted; size: 8 }
+                                Glyph { kind: "maximize"; color: panel.c.muted; size: 8 }
+                                Glyph { kind: "close"; color: panel.c.muted; size: 8 }
                             }
                         }
                     }
@@ -327,16 +316,16 @@ Window {
                         Rectangle {
                             required property var modelData
                             readonly property bool chosen: modelData.id === panel.look.theme
-                            width: 34; height: 34; radius: 17
-                            border.width: chosen ? 3 : 1
-                            border.color: chosen ? panel.c.text : Qt.alpha(panel.c.muted, 0.4)
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: modelData.accent }
-                                GradientStop { position: 1.0; color: modelData.accent2 }
+                            width: 30; height: 30; radius: 15
+                            color: modelData.accent
+                            border.width: chosen ? 2 : 0
+                            border.color: panel.c.text
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 12; height: 12; radius: 6
+                                color: parent.modelData.ink
+                                visible: parent.chosen
                             }
-                            scale: themeMouse.containsMouse ? 1.15 : 1
-                            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
                             MouseArea { id: themeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Shell.setLook("theme", parent.modelData.id) }
                         }
                     }
@@ -344,8 +333,8 @@ Window {
 
                 Repeater {
                     model: [
-                        { key: "glow", label: "Işıltı", from: 0, to: 2, step: 0.05, fmt: (v) => v === 0 ? "kapalı" : Math.round(v * 100) + "%" },
-                        { key: "corner_radius", label: "Köşeler", from: 0, to: 24, step: 1, fmt: (v) => v + " px" },
+                        { key: "glow", label: "Renkli kenar", from: 0, to: 1, step: 0.05, fmt: (v) => v === 0 ? "kapalı" : Math.round(v * 100) + "%" },
+                        { key: "corner_radius", label: "Köşeler", from: 0, to: 16, step: 1, fmt: (v) => v + " px" },
                         { key: "animation_speed", label: "Hareket", from: 0, to: 2, step: 0.1, fmt: (v) => v === 0 ? "kapalı" : v.toFixed(1) + "×" },
                         { key: "lock_after_minutes", label: "Boşta kilitle", from: 0, to: 60, step: 5, fmt: (v) => v === 0 ? "hiçbir zaman" : v + " dk" },
                     ]
@@ -381,7 +370,7 @@ Window {
                             width: (lookPage.width - 16) / 3; height: width * 9 / 16; radius: 10
                             color: panel.c.ink
                             border.width: chosen ? 2 : 1
-                            border.color: chosen ? panel.c.accent : Qt.alpha(panel.c.muted, 0.25)
+                            border.color: chosen ? panel.c.accent : Qt.alpha(panel.c.text, 0.10)
                             clip: true
                             Image {
                                 anchors { fill: parent; margins: 2 }

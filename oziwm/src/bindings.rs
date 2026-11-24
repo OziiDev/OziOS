@@ -16,7 +16,6 @@ pub enum Action {
     ToggleClipboard,
     /// Alt+Tab / Super+Tab (back with Shift), and letting go of the modifier.
     SwitchStep { back: bool },
-    SwitchFinish,
     SwitchCancel,
     Snap(crate::snap::Snap),
     /// Super+Down: give a snapped or maximized window its size back, or minimize.

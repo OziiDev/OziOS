@@ -39,6 +39,8 @@ pub enum Request {
     /// Forget one text, or (None) all of them.
     ClipboardRemove(Option<usize>),
     ToggleClipboard,
+    /// Drive Alt+Tab without a keyboard: "next", "previous", "finish" or "cancel".
+    Switcher(String),
     Quit,
     Subscribe(Vec<String>),
 }
@@ -74,6 +76,9 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("toggle-panel") => Ok(Request::TogglePanel),
         Some("toggle-tiling") => Ok(Request::ToggleTiling),
         Some("toggle-clipboard") => Ok(Request::ToggleClipboard),
+        Some("switcher") => Ok(Request::Switcher(
+            value.get("step").and_then(Value::as_str).unwrap_or("next").to_string(),
+        )),
         Some("clipboard-use") => Ok(Request::ClipboardUse(
             value.get("index").and_then(Value::as_u64).ok_or("\"index\" (a number) is missing")? as usize,
         )),
@@ -250,6 +255,15 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
         }
         Request::ClipboardRemove(index) => {
             state.clipboard_remove(index);
+            ok(Value::Null)
+        }
+        Request::Switcher(step) => {
+            match step.as_str() {
+                "next" => state.switcher_step(false),
+                "previous" => state.switcher_step(true),
+                "finish" => state.switcher_finish(),
+                _ => state.switcher_cancel(),
+            }
             ok(Value::Null)
         }
         Request::ToggleClipboard => {

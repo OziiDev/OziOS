@@ -83,6 +83,11 @@ class Shell(QObject):
     panelRequested = pyqtSignal()
     startingChanged = pyqtSignal()
     networksChanged = pyqtSignal()
+    # Alt+Tab: the windows offered (most recent first) and the one chosen; empty when done.
+    switcherChanged = pyqtSignal()
+    clipboardChanged = pyqtSignal()
+    clipboardRequested = pyqtSignal()
+    areaShotRequested = pyqtSignal()
     # A key changed sound or brightness: show the little gauge (kind, percent).
     osd = pyqtSignal(str, int)
     wifiResult = pyqtSignal(str, bool, bool, str)   # ssid, ok, needs password, message
@@ -116,6 +121,8 @@ class Shell(QObject):
         self._watcher.directoryChanged.connect(self._config_changed)
         self._starting = {}
         self._networks = []
+        self._switcher = {"ids": [], "index": 0}
+        self._clipboard = []
         self._statusReady.connect(self._set_status)
         self._partReady.connect(self._set_part)
         self._osdReady.connect(self.osd)
@@ -163,6 +170,19 @@ class Shell(QObject):
             self.panelRequested.emit()
         elif event == "key":
             self._key(message.get("key", ""))
+        elif event == "switcher":
+            self._switcher = {"ids": list(message.get("ids", [])), "index": int(message.get("index", 0))}
+            self.switcherChanged.emit()
+        elif event == "switcher-end":
+            self._switcher = {"ids": [], "index": 0}
+            self.switcherChanged.emit()
+        elif event == "clipboard":
+            self._load_clipboard()
+            self.clipboardRequested.emit()
+        elif event == "clipboard-changed":
+            self._load_clipboard()
+        elif event == "screenshot-area":
+            self.areaShotRequested.emit()
         else:
             self._refresh_windows()
 
@@ -214,7 +234,82 @@ class Shell(QObject):
             self._workspaces = workspaces
         self.windowsChanged.emit()
 
+    def _load_clipboard(self):
+        items = ask({"get": "clipboard"})
+        self._clipboard = items if isinstance(items, list) else []
+        self.clipboardChanged.emit()
+
     # ---- properties -------------------------------------------------------
+
+    @pyqtProperty("QVariantList", notify=switcherChanged)
+    def switcherWindows(self):
+        """The Alt+Tab list: each window with its app's name and icon."""
+        by_id = {w.get("id"): w for w in self._windows}
+        out = []
+        for wid in self._switcher["ids"]:
+            w = by_id.get(wid)
+            if w is None:
+                continue
+            app = shell.match_app(self._by_id, w.get("app_id", "")) or {}
+            out.append({"id": wid, "title": w.get("title") or app.get("name", ""),
+                        "name": app.get("name") or w.get("app_id", ""), "icon": app.get("icon", "")})
+        return out
+
+    @pyqtProperty(int, notify=switcherChanged)
+    def switcherIndex(self):
+        return self._switcher["index"]
+
+    @pyqtProperty("QVariantList", notify=clipboardChanged)
+    def clipboard(self):
+        return self._clipboard
+
+    @pyqtSlot(int)
+    def useClip(self, index):
+        ask({"do": "clipboard-use", "index": index})
+
+    @pyqtSlot(int)
+    def forgetClip(self, index):
+        ask({"do": "clipboard-remove", "index": index} if index >= 0 else {"do": "clipboard-remove"})
+
+    @pyqtSlot(int, int, int, int, result=str)
+    def saveArea(self, x, y, w, h):
+        """Save part of the screen to Pictures (and the clipboard); its path, or ""."""
+        import tempfile
+        from PyQt6.QtGui import QImage
+        if w < 4 or h < 4:
+            return ""
+        tmp = os.path.join(tempfile.gettempdir(), "ozi-area-%d.png" % os.getpid())
+        if ask({"do": "screenshot", "path": tmp}, timeout=5.0) is None and not os.path.exists(tmp):
+            return ""
+        image = QImage(tmp)
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        if image.isNull():
+            return ""
+        # The screenshot is in device pixels; the selection in logical ones.
+        scale = image.width() / max(1, self._screen_width())
+        part = image.copy(round(x * scale), round(y * scale), round(w * scale), round(h * scale))
+        path = shell.screenshot_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if not part.save(path, "PNG"):
+            return ""
+        QGuiApplication.clipboard().setImage(part)
+        try:
+            subprocess.Popen(["notify-send", "-a", "OziOS", "-i", path, "Ekran görüntüsü alındı",
+                              "Resimler klasörüne kaydedildi ve panoya kopyalandı."],
+                             start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError:
+            pass
+        return path
+
+    def _screen_width(self):
+        outputs = ask({"get": "outputs"})
+        if isinstance(outputs, list) and outputs:
+            return int(outputs[0].get("width", 0)) or 1
+        screen = QGuiApplication.primaryScreen()
+        return screen.geometry().width() if screen else 1
 
     @pyqtProperty("QVariantList", notify=windowsChanged)
     def windows(self):
@@ -617,6 +712,8 @@ def main():
         QIcon.setThemeName("breeze-dark")
     backend = Shell()
     engine = QQmlApplicationEngine()
+    # QML mistakes go to the shell log (~/.local/state/oziwm/shell.log).
+    engine.warnings.connect(lambda warnings: [print("qml:", w.toString(), file=sys.stderr) for w in warnings])
     engine.addImageProvider("icon", IconProvider())
     engine.rootContext().setContextProperty("Shell", backend)
     notifications = Notifications()

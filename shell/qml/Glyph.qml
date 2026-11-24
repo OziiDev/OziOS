@@ -125,6 +125,35 @@ Canvas {
             line([s / 2, s * 0.72, s / 2, s * 0.9])
             line([s * 0.15, s * 0.85, s * 0.85, s * 0.15])
             break
+        case "apps":
+            for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+                g.beginPath(); g.arc(s * (0.2 + 0.3 * i), s * (0.2 + 0.3 * j), s * 0.085, 0, Math.PI * 2); g.fill()
+            }
+            break
+        case "clipboard":
+            g.strokeRect(s * 0.2, s * 0.18, s * 0.6, s * 0.7)
+            g.fillRect(s * 0.36, s * 0.1, s * 0.28, s * 0.14)
+            line([s * 0.32, s * 0.45, s * 0.68, s * 0.45]); line([s * 0.32, s * 0.62, s * 0.58, s * 0.62])
+            break
+        case "trash":
+            line([s * 0.18, s * 0.26, s * 0.82, s * 0.26]); line([s * 0.4, s * 0.26, s * 0.42, s * 0.14, s * 0.58, s * 0.14, s * 0.6, s * 0.26])
+            line([s * 0.26, s * 0.26, s * 0.3, s * 0.88, s * 0.7, s * 0.88, s * 0.74, s * 0.26])
+            break
+        case "chevron-left":
+            line([s * 0.62, s * 0.2, s * 0.34, s * 0.5, s * 0.62, s * 0.8])
+            break
+        case "chevron-right":
+            line([s * 0.38, s * 0.2, s * 0.66, s * 0.5, s * 0.38, s * 0.8])
+            break
+        case "minimize":
+            line([s * 0.15, s * 0.5, s * 0.85, s * 0.5])
+            break
+        case "maximize":
+            g.strokeRect(s * 0.18, s * 0.18, s * 0.64, s * 0.64)
+            break
+        case "close":
+            line([s * 0.2, s * 0.2, s * 0.8, s * 0.8]); line([s * 0.8, s * 0.2, s * 0.2, s * 0.8])
+            break
         case "search":
             arc(s * 0.42, s * 0.42, s * 0.28, 0, Math.PI * 2)
             line([s * 0.63, s * 0.63, s * 0.88, s * 0.88])

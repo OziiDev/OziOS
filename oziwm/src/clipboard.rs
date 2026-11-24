@@ -75,6 +75,7 @@ impl OziWm {
 
     /// A program set the clipboard: read its text in the background.
     pub fn clipboard_offered(&mut self, ty: SelectionTarget, source: Option<SelectionSource>, seat: &Seat<OziWm>) {
+        tracing::debug!(?ty, has_source = source.is_some(), "selection offered");
         if ty != SelectionTarget::Clipboard {
             return;
         }
@@ -87,18 +88,24 @@ impl OziWm {
         let Some(sender) = self.clipboard.sender.clone() else {
             return;
         };
-        let Ok((mut reader, writer)) = std::io::pipe() else {
-            return;
-        };
-        if request_data_device_client_selection(seat, mime, OwnedFd::from(writer)).is_err() {
-            return;
-        }
-        std::thread::spawn(move || {
-            let mut bytes = Vec::new();
-            let _ = (&mut reader).take(MAX_BYTES as u64 + 1).read_to_end(&mut bytes);
-            if let Ok(text) = String::from_utf8(bytes) {
-                let _ = sender.send(text);
+        // Smithay tells us before it stores the new selection: ask for it once
+        // this event is handled, or we would read the previous one.
+        let seat = seat.clone();
+        self.loop_handle.insert_idle(move |_state| {
+            let Ok((mut reader, writer)) = std::io::pipe() else {
+                return;
+            };
+            if let Err(err) = request_data_device_client_selection(&seat, mime, OwnedFd::from(writer)) {
+                tracing::debug!(?err, "could not read the clipboard");
+                return;
             }
+            std::thread::spawn(move || {
+                let mut bytes = Vec::new();
+                let _ = (&mut reader).take(MAX_BYTES as u64 + 1).read_to_end(&mut bytes);
+                if let Ok(text) = String::from_utf8(bytes) {
+                    let _ = sender.send(text);
+                }
+            });
         });
     }
 

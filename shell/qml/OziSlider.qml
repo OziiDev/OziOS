@@ -1,6 +1,6 @@
 import QtQuick
 
-// A slider in the OziOS look: a track that fills with the two theme colours.
+// A slider in the OziOS look: a thin track that fills with the accent.
 Item {
     id: slider
     property var c
@@ -16,24 +16,20 @@ Item {
     Rectangle {
         id: track
         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-        height: 6; radius: 3
-        color: Qt.alpha(slider.c.muted, 0.25)
+        height: 4; radius: 2
+        color: Qt.alpha(slider.c.text, 0.14)
         Rectangle {
             width: Math.max(height, parent.width * slider.ratio)
-            height: parent.height; radius: 3
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: slider.c.accent }
-                GradientStop { position: 1; color: slider.c.accent2 }
-            }
+            height: parent.height; radius: 2
+            color: slider.c.accent
         }
     }
     Rectangle {
         x: track.width * slider.ratio - width / 2
         anchors.verticalCenter: parent.verticalCenter
-        width: area.pressed ? 20 : 16; height: width; radius: width / 2
-        color: slider.c.text
-        border.width: 2; border.color: slider.c.accent
+        width: area.pressed ? 18 : 16; height: width; radius: width / 2
+        color: "white"
+        border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.18)
         Behavior on width { NumberAnimation { duration: 120 } }
     }
     MouseArea {

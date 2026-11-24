@@ -225,7 +225,6 @@ impl OziWm {
             Action::TogglePanel => crate::ipc::emit_panel(self),
             Action::ToggleClipboard => crate::ipc::emit(self, "shell", serde_json::json!({ "event": "clipboard" })),
             Action::SwitchStep { back } => self.switcher_step(back),
-            Action::SwitchFinish => self.switcher_finish(),
             Action::SwitchCancel => self.switcher_cancel(),
             Action::Snap(snap) => self.snap_focused(snap),
             Action::Shrink => self.shrink_focused(),

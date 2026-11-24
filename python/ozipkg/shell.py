@@ -318,6 +318,8 @@ def palette(theme_id):
         "ink": _hex(theme.ink), "raised": _hex(theme.raised), "control": _hex(theme.control),
         "text": _hex(theme.text), "muted": _hex(theme.muted),
         "accent": _hex(theme.accent), "accent2": _hex(ACCENT2.get(theme.id, theme.accent_alt)),
+        # Text on an accent-filled surface, and the one colour for warnings and closing.
+        "onAccent": _hex(theme.on_accent or theme.ink), "danger": "#E5484D",
     }
 
 
@@ -604,3 +606,26 @@ def wallpapers(environ=os.environ, limit=200):
                 if len(found) >= limit:
                     return found
     return found
+
+
+def pictures_dir(environ=os.environ):
+    """The user's Pictures folder from user-dirs.dirs ("Resimler" on a Turkish system)."""
+    home = environ.get("HOME", os.path.expanduser("~"))
+    config = environ.get("XDG_CONFIG_HOME") or os.path.join(home, ".config")
+    try:
+        with open(os.path.join(config, "user-dirs.dirs"), encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("XDG_PICTURES_DIR="):
+                    value = line.split("=", 1)[1].strip().strip('"')
+                    return value.replace("$HOME", home)
+    except OSError:
+        pass
+    return os.path.join(home, "Resimler")
+
+
+def screenshot_path(environ=os.environ, now=None):
+    """Where a new screenshot goes, named like oziwm names its own."""
+    import time
+    stamp = time.strftime("%Y-%m-%d %H-%M-%S", time.localtime(now))
+    return os.path.join(pictures_dir(environ), "Ekran görüntüsü %s.png" % stamp)

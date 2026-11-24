@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Window
 import org.kde.layershell 1.0 as LS
 
-// The launcher: Super or the dock's grid button. Type to search, arrows and
-// Enter to start, Esc or a click outside to close. Power actions at the bottom.
+// The launcher: Super, Super+Space or the apps button. Type to search, arrows
+// and Enter to start, Esc or a click outside to close. Right click on an app
+// pins it to the dock. Lock, sleep, log out, restart and shut down at the
+// bottom; the last three ask once more before they act.
 Window {
     id: launcher
     property var shell
@@ -24,181 +26,210 @@ Window {
     property bool open: false
     property var results: Shell.apps
     property int current: 0
+    property string armed: ""   // a power action waiting for its second click
 
     function toggle() { open ? close() : show() }
     function show() {
         query.text = ""
         results = Shell.apps
         current = 0
+        armed = ""
         visible = true
         open = true
+        grid.positionViewAtBeginning()
         query.forceActiveFocus()
     }
     function close() { open = false; hideTimer.restart() }
     function start(app) { if (app) { Shell.launch(app.id); close() } }
+    function move(by) {
+        if (results.length === 0) return
+        current = Math.max(0, Math.min(results.length - 1, current + by))
+        grid.positionViewAtIndex(current, GridView.Contain)
+    }
 
-    Timer { id: hideTimer; interval: launcher.shell.ms(180); onTriggered: if (!launcher.open) launcher.visible = false }
+    Timer { id: hideTimer; interval: launcher.shell.ms(160); onTriggered: if (!launcher.open) launcher.visible = false }
+    Timer { id: disarm; interval: 3000; onTriggered: launcher.armed = "" }
 
     // Dim everything behind; a click there closes.
     Rectangle {
         anchors.fill: parent
-        color: Qt.alpha(launcher.c.ink, 0.72)
+        color: Qt.rgba(0, 0, 0, 0.45)
         opacity: launcher.open ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: launcher.shell.ms(180) } }
+        Behavior on opacity { NumberAnimation { duration: launcher.shell.ms(160) } }
         MouseArea { anchors.fill: parent; onClicked: launcher.close() }
     }
 
     Rectangle {
         id: card
         anchors.centerIn: parent
-        width: Math.min(parent.width - 80, 860)
-        height: Math.min(parent.height - 80, 620)
-        radius: 26
-        color: Qt.alpha(launcher.c.raised, 0.97)
+        width: Math.min(parent.width - 64, 760)
+        height: Math.min(parent.height - 96, 600)
+        radius: 16
+        color: launcher.c.raised
         border.width: 1
-        border.color: Qt.alpha(launcher.c.accent, 0.35)
+        border.color: Qt.alpha(launcher.c.text, 0.08)
         opacity: launcher.open ? 1 : 0
-        scale: launcher.open ? 1 : 0.94
-        Behavior on opacity { NumberAnimation { duration: launcher.shell.ms(200) } }
-        Behavior on scale { NumberAnimation { duration: launcher.shell.ms(320); easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
+        scale: launcher.open ? 1 : 0.97
+        Behavior on opacity { NumberAnimation { duration: launcher.shell.ms(160) } }
+        Behavior on scale { NumberAnimation { duration: launcher.shell.ms(200); easing.type: Easing.OutCubic } }
         MouseArea { anchors.fill: parent }  // clicks on the card stay on the card
 
-        readonly property var greeting: {
-            const h = new Date().getHours()
-            return h < 6 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar"
-        }
-
-        Column {
-            anchors { fill: parent; margins: 28 }
-            spacing: 18
-
-            Text {
-                text: card.greeting
+        // Search field.
+        Rectangle {
+            id: field
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
+            height: 42; radius: 10
+            color: Qt.alpha(launcher.c.text, 0.06)
+            border.width: query.activeFocus ? 1 : 0
+            border.color: Qt.alpha(launcher.c.accent, 0.8)
+            Glyph { kind: "search"; color: launcher.c.muted; anchors { left: parent.left; leftMargin: 14 } size: 16 }
+            TextInput {
+                id: query
+                anchors { fill: parent; leftMargin: 40; rightMargin: 14 }
+                verticalAlignment: TextInput.AlignVCenter
                 color: launcher.c.text
-                font.pixelSize: 26; font.weight: Font.Bold
-            }
-
-            // Search field.
-            Rectangle {
-                width: parent.width; height: 48; radius: 24
-                color: launcher.c.control
-                border.width: query.activeFocus ? 2 : 1
-                border.color: query.activeFocus ? launcher.c.accent : Qt.alpha(launcher.c.muted, 0.3)
-                Glyph { kind: "search"; color: launcher.c.muted; anchors { left: parent.left; leftMargin: 18 } size: 18 }
-                TextInput {
-                    id: query
-                    anchors { fill: parent; leftMargin: 48; rightMargin: 18 }
-                    verticalAlignment: TextInput.AlignVCenter
-                    color: launcher.c.text
-                    selectionColor: launcher.c.accent
-                    font.pixelSize: 16
-                    onTextChanged: { launcher.results = Shell.search(text); launcher.current = 0 }
-                    Keys.onEscapePressed: launcher.close()
-                    Keys.onReturnPressed: launcher.start(launcher.results[launcher.current])
-                    Keys.onEnterPressed: launcher.start(launcher.results[launcher.current])
-                    Keys.onDownPressed: launcher.current = Math.min(launcher.results.length - 1, launcher.current + grid.columns)
-                    Keys.onUpPressed: launcher.current = Math.max(0, launcher.current - grid.columns)
-                    Keys.onRightPressed: launcher.current = Math.min(launcher.results.length - 1, launcher.current + 1)
-                    Keys.onLeftPressed: launcher.current = Math.max(0, launcher.current - 1)
-                    Text {
-                        visible: !query.text
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Uygulama ara…"
-                        color: launcher.c.muted; font.pixelSize: 16
-                    }
-                }
-            }
-
-            GridView {
-                id: grid
-                width: parent.width
-                height: parent.height - 48 - 26 - 64 - 3 * 18
-                clip: true
-                readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
-                cellWidth: 118; cellHeight: 112
-                model: launcher.results
-                currentIndex: launcher.current
-                boundsBehavior: Flickable.StopAtBounds
-                delegate: Item {
-                    id: cell
-                    required property var modelData
-                    required property int index
-                    width: grid.cellWidth; height: grid.cellHeight
-                    readonly property bool chosen: index === launcher.current
-                    // Arrive one after another when the launcher opens.
-                    opacity: launcher.open ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: launcher.shell.ms(160 + Math.min(cell.index, 24) * 14) } }
-
-                    Rectangle {
-                        anchors { fill: parent; margins: 4 }
-                        radius: 16
-                        color: cell.chosen || cellMouse.containsMouse ? Qt.alpha(launcher.c.accent, 0.14) : "transparent"
-                        border.width: cell.chosen ? 1 : 0
-                        border.color: Qt.alpha(launcher.c.accent, 0.6)
-                    }
-                    Image {
-                        id: icon
-                        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 14 }
-                        width: 48; height: 48
-                        source: Shell.iconSource(cell.modelData.icon)
-                        sourceSize: Qt.size(96, 96)
-                        smooth: true; mipmap: true
-                        scale: cellMouse.containsMouse ? 1.12 : 1
-                        Behavior on scale { NumberAnimation { duration: launcher.shell.ms(160); easing.type: Easing.OutBack } }
-                    }
-                    Text {
-                        anchors { top: icon.bottom; topMargin: 8; left: parent.left; right: parent.right; leftMargin: 6; rightMargin: 6 }
-                        text: cell.modelData.name
-                        color: launcher.c.text
-                        font.pixelSize: 12
-                        horizontalAlignment: Text.AlignHCenter
-                        elide: Text.ElideRight
-                        maximumLineCount: 2; wrapMode: Text.Wrap
-                    }
-                    MouseArea {
-                        id: cellMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: (ev) => {
-                            if (ev.button === Qt.RightButton) Shell.setPinned(cell.modelData.id, true)
-                            else launcher.start(cell.modelData)
-                        }
-                    }
-                }
+                selectionColor: launcher.c.accent
+                selectedTextColor: launcher.c.onAccent
+                font.pixelSize: 15
+                onTextChanged: { launcher.results = Shell.search(text); launcher.current = 0; grid.positionViewAtBeginning() }
+                Keys.onEscapePressed: launcher.close()
+                Keys.onReturnPressed: launcher.start(launcher.results[launcher.current])
+                Keys.onEnterPressed: launcher.start(launcher.results[launcher.current])
+                Keys.onDownPressed: launcher.move(grid.columns)
+                Keys.onUpPressed: launcher.move(-grid.columns)
+                Keys.onRightPressed: (ev) => { if (query.cursorPosition === query.text.length) launcher.move(1); else ev.accepted = false }
+                Keys.onLeftPressed: (ev) => { if (query.cursorPosition === 0) launcher.move(-1); else ev.accepted = false }
+                Keys.onTabPressed: launcher.move(1)
                 Text {
-                    anchors.centerIn: parent
-                    visible: launcher.results.length === 0
-                    text: "Bulunamadı"
+                    visible: !query.text
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Uygulama ara"
                     color: launcher.c.muted; font.pixelSize: 15
                 }
             }
+        }
 
-            // Power.
+        GridView {
+            id: grid
+            anchors { left: parent.left; right: parent.right; top: field.bottom; bottom: footer.top; leftMargin: 12; rightMargin: 12; topMargin: 10; bottomMargin: 6 }
+            clip: true
+            readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
+            cellWidth: Math.floor(width / Math.max(1, Math.floor(width / 112)))
+            cellHeight: 104
+            model: launcher.results
+            currentIndex: launcher.current
+            boundsBehavior: Flickable.StopAtBounds
+            delegate: Item {
+                id: cell
+                required property var modelData
+                required property int index
+                width: grid.cellWidth; height: grid.cellHeight
+                readonly property bool chosen: index === launcher.current
+
+                Rectangle {
+                    anchors { fill: parent; margins: 3 }
+                    radius: 10
+                    color: cell.chosen ? Qt.alpha(launcher.c.accent, 0.16)
+                         : cellMouse.containsMouse ? Qt.alpha(launcher.c.text, 0.06) : "transparent"
+                }
+                Image {
+                    id: icon
+                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 14 }
+                    width: 44; height: 44
+                    source: Shell.iconSource(cell.modelData.icon)
+                    sourceSize: Qt.size(96, 96)
+                    smooth: true; mipmap: true
+                }
+                Text {
+                    anchors { top: icon.bottom; topMargin: 8; left: parent.left; right: parent.right; leftMargin: 6; rightMargin: 6 }
+                    text: cell.modelData.name
+                    color: launcher.c.text
+                    font.pixelSize: 12
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    maximumLineCount: 2; wrapMode: Text.Wrap
+                }
+                MouseArea {
+                    id: cellMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (ev) => {
+                        if (ev.button === Qt.RightButton) Shell.setPinned(cell.modelData.id, true)
+                        else launcher.start(cell.modelData)
+                    }
+                }
+            }
+            Text {
+                anchors.centerIn: parent
+                visible: launcher.results.length === 0
+                text: "“" + query.text + "” için uygulama yok"
+                color: launcher.c.muted; font.pixelSize: 14
+            }
+        }
+
+        // Footer: how many apps, and the power actions.
+        Item {
+            id: footer
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }
+            height: 40
+            Rectangle {
+                anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: -6 }
+                height: 1; color: Qt.alpha(launcher.c.text, 0.07)
+            }
+            Text {
+                anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+                text: launcher.armed ? "Emin misin? Onaylamak için bir daha tıkla."
+                     : launcher.results.length + " uygulama · sağ tık: Dock'a sabitle"
+                color: launcher.armed ? launcher.c.danger : launcher.c.muted
+                font.pixelSize: 12
+            }
             Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 14
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                spacing: 4
                 Repeater {
                     model: [
-                        { kind: "lock", label: "Kilitle", action: "lock" },
-                        { kind: "suspend", label: "Uyku", action: "suspend" },
-                        { kind: "logout", label: "Oturumu kapat", action: "logout" },
-                        { kind: "reboot", label: "Yeniden başlat", action: "reboot" },
-                        { kind: "power", label: "Kapat", action: "poweroff" },
+                        { kind: "lock", label: "Kilitle", action: "lock", ask: false },
+                        { kind: "suspend", label: "Uyku", action: "suspend", ask: false },
+                        { kind: "logout", label: "Oturumu kapat", action: "logout", ask: true },
+                        { kind: "reboot", label: "Yeniden başlat", action: "reboot", ask: true },
+                        { kind: "power", label: "Kapat", action: "poweroff", ask: true },
                     ]
                     Rectangle {
+                        id: powerButton
                         required property var modelData
-                        width: 128; height: 46; radius: 23
-                        color: powerMouse.containsMouse ? Qt.alpha(modelData.action === "poweroff" ? "#FF556E" : launcher.c.accent, 0.18) : launcher.c.control
-                        border.width: 1
-                        border.color: powerMouse.containsMouse ? (modelData.action === "poweroff" ? "#FF556E" : launcher.c.accent) : Qt.alpha(launcher.c.muted, 0.25)
-                        Row {
-                            anchors.centerIn: parent
-                            spacing: 8
-                            Glyph { kind: parent.parent.modelData.kind; color: launcher.c.text }
-                            Text { text: parent.parent.modelData.label; color: launcher.c.text; font.pixelSize: 13 }
+                        readonly property bool isArmed: launcher.armed === modelData.action
+                        width: isArmed || powerMouse.containsMouse ? label.implicitWidth + 44 : 36
+                        height: 36; radius: 9
+                        clip: true
+                        color: isArmed ? launcher.c.danger : powerMouse.containsMouse ? Qt.alpha(launcher.c.text, 0.08) : "transparent"
+                        Behavior on width { NumberAnimation { duration: launcher.shell.ms(140); easing.type: Easing.OutCubic } }
+                        Glyph {
+                            id: glyph
+                            anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                            kind: powerButton.modelData.kind
+                            color: powerButton.isArmed ? "white" : launcher.c.text
                         }
-                        MouseArea { id: powerMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { launcher.close(); Shell.power(parent.modelData.action) } }
+                        Text {
+                            id: label
+                            anchors { left: glyph.right; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                            text: powerButton.modelData.label
+                            color: powerButton.isArmed ? "white" : launcher.c.text
+                            font.pixelSize: 13
+                            opacity: powerButton.width > 40 ? 1 : 0
+                        }
+                        MouseArea {
+                            id: powerMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                const m = powerButton.modelData
+                                if (m.ask && launcher.armed !== m.action) { launcher.armed = m.action; disarm.restart(); return }
+                                launcher.armed = ""
+                                launcher.close()
+                                Shell.power(m.action)
+                            }
+                        }
                     }
                 }
             }

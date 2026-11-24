@@ -33,32 +33,24 @@ Window {
                 id: card
                 required property var modelData
                 width: list.width
-                height: Math.max(72, body.y + body.height + 14)
-                radius: 18
-                color: Qt.alpha(win.c.raised, 0.97)
+                readonly property var buttons: modelData.actions.filter(a => a.key !== "default")
+                height: Math.max(68, (buttons.length > 0 ? actionRow.y + actionRow.height : body.y + body.height) + 14)
+                radius: 14
+                color: win.c.raised
                 border.width: 1
-                border.color: modelData.critical ? "#FF556E" : Qt.alpha(win.c.accent, 0.4)
+                border.color: modelData.critical ? win.c.danger : Qt.alpha(win.c.text, 0.08)
 
                 // Arrive from the right.
                 property real enter: 0
                 Component.onCompleted: enter = 1
-                Behavior on enter { NumberAnimation { duration: win.shell.ms(320); easing.type: Easing.OutBack } }
-                transform: Translate { x: (1 - card.enter) * 60 }
+                Behavior on enter { NumberAnimation { duration: win.shell.ms(220); easing.type: Easing.OutCubic } }
+                transform: Translate { x: (1 - card.enter) * 40 }
                 opacity: enter
 
-                // Time left, as a thin line of the theme colours along the bottom.
-                Rectangle {
+                // Time left; it waits while the pointer is on the card.
+                QtObject {
                     id: lifeLine
-                    visible: card.modelData.timeout > 0
-                    anchors { left: parent.left; bottom: parent.bottom; leftMargin: 18; bottomMargin: 5 }
-                    height: 2; radius: 1
-                    width: (parent.width - 36) * life
                     property real life: 1
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0; color: win.c.accent }
-                        GradientStop { position: 1; color: win.c.accent2 }
-                    }
                     NumberAnimation on life {
                         from: 1; to: 0
                         duration: Math.max(1, card.modelData.timeout)
@@ -106,12 +98,29 @@ Window {
                         else Notes.close(card.modelData.id)
                     }
                 }
+                // The program's own buttons ("Reply", "Open", ...).
+                Row {
+                    id: actionRow
+                    visible: card.buttons.length > 0
+                    anchors { left: summary.left; top: body.bottom; topMargin: 10 }
+                    spacing: 6
+                    Repeater {
+                        model: card.buttons
+                        Rectangle {
+                            required property var modelData
+                            width: actionText.implicitWidth + 24; height: 28; radius: 7
+                            color: actionMouse.containsMouse ? Qt.alpha(win.c.text, 0.14) : Qt.alpha(win.c.text, 0.08)
+                            Text { id: actionText; anchors.centerIn: parent; text: parent.modelData.label; color: win.c.text; font.pixelSize: 12 }
+                            MouseArea { id: actionMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Notes.invoke(card.modelData.id, parent.modelData.key) }
+                        }
+                    }
+                }
                 Rectangle {
                     id: closeButton
                     anchors { right: parent.right; top: parent.top; margins: 10 }
-                    width: 22; height: 22; radius: 11
-                    color: closeMouse.containsMouse ? Qt.alpha("#FF556E", 0.3) : "transparent"
-                    Text { anchors.centerIn: parent; text: "×"; color: win.c.muted; font.pixelSize: 16 }
+                    width: 22; height: 22; radius: 6
+                    color: closeMouse.containsMouse ? Qt.alpha(win.c.text, 0.10) : "transparent"
+                    Glyph { anchors.centerIn: parent; kind: "close"; color: win.c.muted; size: 10 }
                     MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Notes.close(card.modelData.id) }
                 }
             }

@@ -12,7 +12,7 @@ Window {
 
     visible: false
     color: "transparent"
-    width: 300; height: 64
+    width: 280; height: 52
     LS.Window.scope: "ozi-osd"
     LS.Window.layer: LS.Window.LayerOverlay
     LS.Window.anchors: LS.Window.AnchorBottom
@@ -36,13 +36,13 @@ Window {
 
     Rectangle {
         anchors.fill: parent
-        radius: height / 2
-        color: Qt.alpha(osd.c.raised, 0.96)
+        radius: 14
+        color: osd.c.raised
         border.width: 1
-        border.color: Qt.alpha(osd.c.accent, 0.45)
+        border.color: Qt.alpha(osd.c.text, 0.08)
         Glyph {
-            anchors { left: parent.left; leftMargin: 22; verticalCenter: parent.verticalCenter }
-            size: 22
+            anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
+            size: 18
             kind: osd.kind === "brightness" ? "sun" : osd.kind === "muted" ? "muted" : osd.kind === "mic" ? "mic"
                   : osd.kind.startsWith("airplane") ? "airplane" : "volume"
             level: osd.value / 100
@@ -50,22 +50,18 @@ Window {
         }
         Text {
             visible: !osd.gauge
-            anchors { left: parent.left; leftMargin: 60; verticalCenter: parent.verticalCenter }
+            anchors { left: parent.left; leftMargin: 50; verticalCenter: parent.verticalCenter }
             text: osd.labels[osd.kind] || ""
             color: osd.c.text; font.pixelSize: 15; font.weight: Font.DemiBold
         }
         Rectangle {
             visible: osd.gauge
-            anchors { left: parent.left; leftMargin: 60; right: parent.right; rightMargin: 62; verticalCenter: parent.verticalCenter }
-            height: 8; radius: 4
-            color: Qt.alpha(osd.c.muted, 0.25)
+            anchors { left: parent.left; leftMargin: 50; right: parent.right; rightMargin: 56; verticalCenter: parent.verticalCenter }
+            height: 4; radius: 2
+            color: Qt.alpha(osd.c.text, 0.14)
             Rectangle {
-                width: parent.width * Math.max(0, Math.min(1, osd.value / 100)); height: parent.height; radius: 4
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: osd.c.accent }
-                    GradientStop { position: 1; color: osd.c.accent2 }
-                }
+                width: parent.width * Math.max(0, Math.min(1, osd.value / 100)); height: parent.height; radius: 2
+                color: osd.c.accent
                 Behavior on width { NumberAnimation { duration: 120 } }
             }
         }
@@ -73,7 +69,8 @@ Window {
             visible: osd.gauge
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             text: osd.value + "%"
-            color: osd.c.muted; font.pixelSize: 13
+            color: osd.c.text; font.pixelSize: 13
+            font.features: { "tnum": 1 }
         }
     }
 }
