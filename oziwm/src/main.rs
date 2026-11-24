@@ -15,6 +15,9 @@ mod placement;
 mod render;
 mod shot;
 mod state;
+mod switcher;
+mod snap;
+mod clipboard;
 mod theme;
 mod title;
 mod tty;
@@ -91,6 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let display: Display<OziWm> = Display::new()?;
     let mut state = OziWm::new(&mut event_loop, display)?;
     lock::init(&mut state)?;
+    state.init_clipboard();
 
     let inside_a_desktop = std::env::var_os("WAYLAND_DISPLAY").is_some() || std::env::var_os("DISPLAY").is_some();
     let nested = match args.backend {

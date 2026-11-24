@@ -41,7 +41,8 @@ pub const THEMES: [Theme; 6] = [
 #[derive(Debug, Clone, PartialEq)]
 pub struct Look {
     pub theme: Theme,
-    /// 0 turns the glow off, 1 is the default, up to 2.
+    /// How much of the accent the focused window's border takes: 0 none (the
+    /// default), 1 most. The old 0..2 "glow" setting maps onto it.
     pub glow: f32,
     /// 0 turns animations off, 1 is normal, 2 is twice as fast.
     pub animation_speed: f64,
@@ -54,7 +55,7 @@ impl Default for Look {
     fn default() -> Self {
         Look {
             theme: THEMES[0],
-            glow: 1.0,
+            glow: 0.0,
             animation_speed: 1.0,
             corner_radius: crate::deco::RADIUS,
             lock_after_minutes: 10,
@@ -83,13 +84,13 @@ pub fn parse(text: &str) -> Look {
         look.theme = theme;
     }
     if let Some(glow) = value.get("glow").and_then(Value::as_f64) {
-        look.glow = glow.clamp(0.0, 2.0) as f32;
+        look.glow = glow.clamp(0.0, 1.0) as f32;
     }
     if let Some(speed) = value.get("animation_speed").and_then(Value::as_f64) {
         look.animation_speed = speed.clamp(0.0, 3.0);
     }
     if let Some(radius) = value.get("corner_radius").and_then(Value::as_f64) {
-        look.corner_radius = radius.clamp(0.0, 24.0) as f32;
+        look.corner_radius = radius.clamp(0.0, 16.0) as f32;
     }
     if let Some(minutes) = value.get("lock_after_minutes").and_then(Value::as_u64) {
         look.lock_after_minutes = minutes.min(24 * 60) as u32;
@@ -117,7 +118,7 @@ mod tests {
     fn reads_and_clamps() {
         let look = parse(r#"{"theme":"ember","glow":5,"animation_speed":0,"corner_radius":8}"#);
         assert_eq!(look.theme.id, "ember");
-        assert_eq!(look.glow, 2.0);
+        assert_eq!(look.glow, 1.0);
         assert_eq!(look.animation_speed, 0.0);
         assert_eq!(look.corner_radius, 8.0);
     }

@@ -1,12 +1,13 @@
 mod compositor;
 mod layer_shell;
+mod protocols;
 mod xdg_shell;
 
 use std::os::unix::io::OwnedFd;
 
 use smithay::{
     delegate_data_device, delegate_output, delegate_primary_selection, delegate_seat,
-    delegate_dmabuf, delegate_idle_inhibit, delegate_xdg_decoration,
+    delegate_dmabuf, delegate_idle_inhibit, delegate_xdg_decoration, delegate_data_control,
     backend::allocator::dmabuf::Dmabuf,
     reexports::wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode as DecorationMode,
     input::{pointer::CursorImageStatus, Seat, SeatHandler, SeatState},
@@ -22,7 +23,8 @@ use smithay::{
                 ServerDndGrabHandler,
             },
             primary_selection::{set_primary_focus, PrimarySelectionHandler, PrimarySelectionState},
-            SelectionHandler,
+            wlr_data_control::{DataControlHandler, DataControlState},
+            SelectionHandler, SelectionSource, SelectionTarget,
         },
     },
 };
@@ -60,8 +62,27 @@ impl SeatHandler for OziWm {
 delegate_seat!(OziWm);
 
 impl SelectionHandler for OziWm {
-    type SelectionUserData = ();
+    /// The text oziwm put on the clipboard from its history.
+    type SelectionUserData = Option<std::sync::Arc<str>>;
+
+    fn new_selection(&mut self, ty: SelectionTarget, source: Option<SelectionSource>, seat: Seat<Self>) {
+        self.clipboard_offered(ty, source, &seat);
+    }
+
+    fn send_selection(&mut self, _ty: SelectionTarget, _mime_type: String, fd: OwnedFd, _seat: Seat<Self>, user_data: &Self::SelectionUserData) {
+        if let Some(text) = user_data {
+            self.clipboard_send(fd, text);
+        }
+    }
 }
+
+/// Clipboard managers and wl-copy/wl-paste work through this.
+impl DataControlHandler for OziWm {
+    fn data_control_state(&self) -> &DataControlState {
+        &self.data_control_state
+    }
+}
+delegate_data_control!(OziWm);
 
 impl DataDeviceHandler for OziWm {
     fn data_device_state(&self) -> &DataDeviceState {

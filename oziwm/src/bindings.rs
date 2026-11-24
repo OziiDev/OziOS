@@ -12,6 +12,18 @@ pub enum Action {
     SwitchVt(i32),
     ToggleLauncher,
     TogglePanel,
+    /// Super+V: the clipboard history.
+    ToggleClipboard,
+    /// Alt+Tab / Super+Tab (back with Shift), and letting go of the modifier.
+    SwitchStep { back: bool },
+    SwitchFinish,
+    SwitchCancel,
+    Snap(crate::snap::Snap),
+    /// Super+Down: give a snapped or maximized window its size back, or minimize.
+    Shrink,
+    ShowDesktop,
+    /// Super+Shift+S: pick a part of the screen to save.
+    ScreenshotArea,
     /// 0-based workspace.
     Workspace(usize),
     MoveToWorkspace(usize),
@@ -75,6 +87,10 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
     if sym == Keysym::Print && !mods.alt && !mods.ctrl {
         return Some(Action::Screenshot);
     }
+    // Ctrl+Shift+Esc: the task manager, as on Windows.
+    if mods.ctrl && mods.shift && !mods.alt && !mods.logo && sym == Keysym::Escape {
+        return Some(Action::Spawn(vec!["plasma-systemmonitor".into()]));
+    }
     let main = if nested { mods.alt && !mods.logo } else { mods.logo };
     if !main || mods.ctrl {
         return None;
@@ -83,11 +99,18 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
         (false, Keysym::Return) => Action::Spawn(terminal()),
         (false, Keysym::e) => Action::Spawn(vec!["dolphin".into()]),
         (false, Keysym::q) => Action::CloseFocused,
-        (false, Keysym::Tab) => Action::CycleFocus,
         (false, Keysym::space) | (false, Keysym::a) => Action::ToggleLauncher,
         (false, Keysym::t) => Action::ToggleTiling,
         (false, Keysym::l) => Action::Lock,
         (false, Keysym::s) => Action::TogglePanel,
+        (false, Keysym::v) => Action::ToggleClipboard,
+        (false, Keysym::d) => Action::ShowDesktop,
+        (false, Keysym::Left) => Action::Snap(crate::snap::Snap::Left),
+        (false, Keysym::Right) => Action::Snap(crate::snap::Snap::Right),
+        (false, Keysym::Up) => Action::Snap(crate::snap::Snap::Full),
+        (false, Keysym::Down) => Action::Shrink,
+        (true, Keysym::s) => Action::ScreenshotArea,
+        (false, Keysym::period) => Action::Spawn(vec!["plasma-emojier".into()]),
         (false, Keysym::f) => Action::ToggleFloating,
         (shift, k) if (Keysym::_1.raw()..=Keysym::_4.raw()).contains(&k.raw()) => {
             let n = (k.raw() - Keysym::_1.raw()) as usize;

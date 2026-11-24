@@ -163,7 +163,7 @@ class Look(unittest.TestCase):
             self.assertEqual(shell.look(env), shell.LOOK_DEFAULTS)
             shell.write_config({"glow": 9, "corner_radius": -3, "theme": "ember"}, env)
             look = shell.look(env)
-            self.assertEqual((look["glow"], look["corner_radius"], look["theme"]), (2.0, 0, "ember"))
+            self.assertEqual((look["glow"], look["corner_radius"], look["theme"]), (1.0, 0, "ember"))
             shell.write_config({"glow": "much"}, env)
             self.assertEqual(shell.look(env), shell.LOOK_DEFAULTS)
 

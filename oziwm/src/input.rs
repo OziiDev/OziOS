@@ -12,6 +12,7 @@ use smithay::{
 
 use std::time::{Duration, Instant};
 
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::{desktop::Window, utils::{Rectangle, Serial}};
 
 use crate::{
@@ -40,21 +41,43 @@ impl OziWm {
         match event {
             InputEvent::Keyboard { event } => self.on_key(event),
             InputEvent::PointerMotion { event } => {
-                let pointer_location = self.pointer_location() + event.delta();
-                self.on_pointer_moved(pointer_location, event.time_msec());
-                if let Some(pointer) = self.seat.get_pointer() {
-                    let under = self.surface_under(pointer.current_location());
-                    pointer.relative_motion(
-                        self,
-                        under,
-                        &RelativeMotionEvent {
-                            delta: event.delta(),
-                            delta_unaccel: event.delta_unaccel(),
-                            utime: event.time(),
-                        },
-                    );
+                let Some(pointer) = self.seat.get_pointer() else {
+                    return;
+                };
+                let current = pointer.current_location();
+                let under = self.surface_under(current);
+                // Games lock the pointer (first-person cameras) or keep it inside
+                // their window; they still get the raw movement below.
+                let (locked, confine) = self.pointer_constraint(&pointer, under.as_ref(), current);
+                pointer.relative_motion(
+                    self,
+                    under.clone(),
+                    &RelativeMotionEvent {
+                        delta: event.delta(),
+                        delta_unaccel: event.delta_unaccel(),
+                        utime: event.time(),
+                    },
+                );
+                if locked {
                     pointer.frame(self);
+                    return;
                 }
+                let target = current + event.delta();
+                if let Some((surface, origin)) = confine {
+                    let inside = self
+                        .surface_under(target)
+                        .is_some_and(|(s, _)| s == surface)
+                        && smithay::wayland::pointer_constraints::with_pointer_constraint(&surface, &pointer, |c| {
+                            c.and_then(|c| c.region().cloned())
+                                .is_none_or(|r| r.contains((target - origin).to_i32_round()))
+                        });
+                    if !inside {
+                        pointer.frame(self);
+                        return;
+                    }
+                }
+                self.on_pointer_moved(target, event.time_msec());
+                self.activate_constraint_under(&pointer);
             }
             InputEvent::PointerMotionAbsolute { event } => {
                 let area = self.screen();
@@ -71,11 +94,48 @@ impl OziWm {
         }
     }
 
-    fn pointer_location(&self) -> Point<f64, Logical> {
-        self.seat
-            .get_pointer()
-            .map(|p| p.current_location())
-            .unwrap_or_default()
+    /// The active pointer constraint of the surface under the pointer:
+    /// (locked, Some((surface, its origin)) when confined).
+    fn pointer_constraint(
+        &self,
+        pointer: &smithay::input::pointer::PointerHandle<OziWm>,
+        under: Option<&(WlSurface, Point<f64, Logical>)>,
+        location: Point<f64, Logical>,
+    ) -> (bool, Option<(WlSurface, Point<f64, Logical>)>) {
+        use smithay::wayland::pointer_constraints::{with_pointer_constraint, PointerConstraint};
+        let Some((surface, origin)) = under else {
+            return (false, None);
+        };
+        with_pointer_constraint(surface, pointer, |constraint| match constraint {
+            Some(c) if c.is_active() => {
+                let inside = c.region().is_none_or(|r| r.contains((location - *origin).to_i32_round()));
+                match &*c {
+                    _ if !inside => (false, None),
+                    PointerConstraint::Locked(_) => (true, None),
+                    PointerConstraint::Confined(_) => (false, Some((surface.clone(), *origin))),
+                }
+            }
+            _ => (false, None),
+        })
+    }
+
+    /// The pointer moved onto a surface that asked for a lock or confinement: apply it.
+    fn activate_constraint_under(&mut self, pointer: &smithay::input::pointer::PointerHandle<OziWm>) {
+        let location = pointer.current_location();
+        let Some((surface, origin)) = self.surface_under(location) else {
+            return;
+        };
+        if pointer.current_focus().as_ref() != Some(&surface) {
+            return;
+        }
+        smithay::wayland::pointer_constraints::with_pointer_constraint(&surface, pointer, |constraint| {
+            if let Some(c) = constraint
+                && !c.is_active()
+                && c.region().is_none_or(|r| r.contains((location - origin).to_i32_round()))
+            {
+                c.activate();
+            }
+        });
     }
 
     fn on_key<E: KeyboardKeyEvent<B>, B: InputBackend>(&mut self, event: E) {
@@ -123,6 +183,15 @@ impl OziWm {
             }
             let mods = Mods { logo: mods.logo, alt: mods.alt, ctrl: mods.ctrl, shift: mods.shift };
             let sym = handle.raw_latin_sym_or_raw_current_sym().unwrap_or(handle.modified_sym());
+            // Alt+Tab / Super+Tab: walk the windows while the modifier is held.
+            if matches!(sym, Keysym::Tab | Keysym::ISO_Left_Tab) && (mods.alt || mods.logo) && !mods.ctrl {
+                wm.suppressed_keys.push(code);
+                return FilterResult::Intercept(Some(Action::SwitchStep { back: mods.shift }));
+            }
+            if wm.switcher.is_some() && sym == Keysym::Escape {
+                wm.suppressed_keys.push(code);
+                return FilterResult::Intercept(Some(Action::SwitchCancel));
+            }
             let special = bindings::special_key(handle.modified_sym());
             match special.or_else(|| bindings::action_for(mods, sym, nested)) {
                 Some(action) => {
@@ -136,6 +205,13 @@ impl OziWm {
         if let Some(Some(action)) = action {
             self.run_action(action);
         }
+        // Letting go of Alt/Super ends Alt+Tab (the program still saw the release).
+        if state == KeyState::Released && self.switcher.is_some() {
+            let mods = keyboard.modifier_state();
+            if !mods.alt && !mods.logo {
+                self.switcher_finish();
+            }
+        }
     }
 
     pub fn run_action(&mut self, action: Action) {
@@ -147,6 +223,14 @@ impl OziWm {
             Action::Quit => self.loop_signal.stop(),
             Action::ToggleLauncher => crate::ipc::emit_launcher(self),
             Action::TogglePanel => crate::ipc::emit_panel(self),
+            Action::ToggleClipboard => crate::ipc::emit(self, "shell", serde_json::json!({ "event": "clipboard" })),
+            Action::SwitchStep { back } => self.switcher_step(back),
+            Action::SwitchFinish => self.switcher_finish(),
+            Action::SwitchCancel => self.switcher_cancel(),
+            Action::Snap(snap) => self.snap_focused(snap),
+            Action::Shrink => self.shrink_focused(),
+            Action::ShowDesktop => self.toggle_show_desktop(),
+            Action::ScreenshotArea => crate::ipc::emit(self, "shell", serde_json::json!({ "event": "screenshot-area" })),
             Action::Workspace(n) => self.switch_workspace(n),
             Action::MoveToWorkspace(n) => {
                 if let Some(w) = self.focused_window() {

@@ -105,6 +105,15 @@ pub struct OziWm {
     /// Scroll Lock toggled by its key. Keymaps rarely drive its light, but many
     /// keyboards switch their backlight with it.
     pub scroll_lock: bool,
+    /// Window ids, most recently focused first (for Alt+Tab).
+    pub focus_history: Vec<u64>,
+    pub switcher: Option<crate::switcher::Switcher>,
+    /// Super+D: the windows it minimized, to bring back.
+    pub desktop_shown: Vec<u64>,
+    /// Where a dragged window would snap, drawn while it is dragged.
+    pub snap_preview: Option<Rectangle<i32, Logical>>,
+    pub snap_buffer: smithay::backend::renderer::element::solid::SolidColorBuffer,
+    pub clipboard: crate::clipboard::History,
     /// In a nested window the host desktop owns the Super key, so bindings use Alt.
     pub nested: bool,
     pub ipc_subscribers: Vec<ipc::Subscriber>,
@@ -125,6 +134,9 @@ pub struct OziWm {
     /// Last keyboard or pointer event, for locking an idle screen.
     pub last_input: Instant,
     pub idle_inhibit_state: smithay::wayland::idle_inhibit::IdleInhibitManagerState,
+    pub xdg_activation_state: smithay::wayland::xdg_activation::XdgActivationState,
+    pub data_control_state: smithay::wayland::selection::wlr_data_control::DataControlState,
+    pub keyboard_shortcuts_inhibit_state: smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitState,
     /// Surfaces (a playing video, a game) asking the screen to stay awake.
     pub inhibitors: Vec<WlSurface>,
     /// A screenshot to save after the next frame: where, and whether to tell the user.
@@ -148,6 +160,21 @@ impl OziWm {
         let xdg_decoration_state = XdgDecorationState::new::<Self>(&dh);
         let layer_shell_state = WlrLayerShellState::new::<Self>(&dh);
         let idle_inhibit_state = smithay::wayland::idle_inhibit::IdleInhibitManagerState::new::<Self>(&dh);
+        // Globals that live for the whole session; their state needs no keeping.
+        smithay::wayland::relative_pointer::RelativePointerManagerState::new::<Self>(&dh);
+        smithay::wayland::pointer_constraints::PointerConstraintsState::new::<Self>(&dh);
+        smithay::wayland::viewporter::ViewporterState::new::<Self>(&dh);
+        smithay::wayland::single_pixel_buffer::SinglePixelBufferState::new::<Self>(&dh);
+        smithay::wayland::pointer_gestures::PointerGesturesState::new::<Self>(&dh);
+        smithay::wayland::fractional_scale::FractionalScaleManagerState::new::<Self>(&dh);
+        let xdg_activation_state = smithay::wayland::xdg_activation::XdgActivationState::new::<Self>(&dh);
+        let data_control_state = smithay::wayland::selection::wlr_data_control::DataControlState::new::<Self, _>(
+            &dh,
+            Some(&primary_selection_state),
+            |_| true,
+        );
+        let keyboard_shortcuts_inhibit_state =
+            smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitState::new::<Self>(&dh);
 
         let mut seat_state = SeatState::new();
         let mut seat: Seat<Self> = seat_state.new_wl_seat(&dh, "seat0");
@@ -199,6 +226,12 @@ impl OziWm {
             suppressed_keys: Vec::new(),
             super_alone: false,
             scroll_lock: false,
+            focus_history: Vec::new(),
+            switcher: None,
+            desktop_shown: Vec::new(),
+            snap_preview: None,
+            snap_buffer: Default::default(),
+            clipboard: Default::default(),
             nested: true,
             ipc_subscribers: Vec::new(),
             active_ws: 0,
@@ -210,6 +243,9 @@ impl OziWm {
             lock_answers: None,
             last_input: Instant::now(),
             idle_inhibit_state,
+            xdg_activation_state,
+            data_control_state,
+            keyboard_shortcuts_inhibit_state,
             inhibitors: Vec::new(),
             pending_shot: None,
             stats: crate::shot::FrameStats::default(),
@@ -354,6 +390,18 @@ impl OziWm {
                 .filter(|l| l.can_receive_keyboard_focus())
                 .map(|l| l.wl_surface().clone())
         })
+    }
+
+    /// Where a client surface's (0, 0) is on screen: a window's content or a layer surface.
+    pub fn surface_origin(&self, surface: &WlSurface) -> Option<Point<i32, Logical>> {
+        if let Some(window) = self.window_for_surface(surface) {
+            return self.space.element_location(&window).map(|loc| loc - window.geometry().loc);
+        }
+        let output = self.space.outputs().next()?;
+        let output_geo = self.space.output_geometry(output)?;
+        let map = layer_map_for_output(output);
+        let layer = map.layer_for_surface(surface, WindowSurfaceType::TOPLEVEL)?;
+        map.layer_geometry(layer).map(|g| g.loc + output_geo.loc)
     }
 
     pub fn window_for_surface(&self, surface: &WlSurface) -> Option<Window> {
@@ -524,6 +572,7 @@ impl OziWm {
             }
         match &window {
             Some(window) => {
+                self.note_focus(window_id(window));
                 self.space.raise_element(window, true);
                 let surface = window.toplevel().map(|t| t.wl_surface().clone());
                 keyboard.set_focus(self, surface, serial);

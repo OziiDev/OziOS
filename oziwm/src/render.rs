@@ -245,6 +245,7 @@ render_elements! {
     Frame=PixelShaderElement,
     Title=MemoryRenderBufferRenderElement<GlesRenderer>,
     Plain=WaylandSurfaceRenderElement<GlesRenderer>,
+    Solid=smithay::backend::renderer::element::solid::SolidColorRenderElement,
 }
 
 render_elements! {
@@ -539,7 +540,7 @@ pub fn window_elements(
             .map(|t| now.saturating_duration_since(t).as_secs_f32())
             .unwrap_or(flow_for);
         let frame_time = (id as f32) * 1.7 + flowing_for.min(flow_for);
-        animating |= is_focused && style.glow > 0.0 && speed > 0.0 && flowing_for < flow_for;
+        // The frame no longer moves: nothing to keep redrawing for.
         let _ = time;
         if !fullscreen {
             parts.push(WindowPart::Frame(frame_element(look, shaders, &style, &frame, origin, active, frame_time, alpha)));
@@ -635,6 +636,17 @@ pub fn output_elements(
     // the volume display, the launcher) still show above it.
     let top: &[Layer] = if state.fullscreen_on_top() { &[Layer::Overlay] } else { &[Layer::Overlay, Layer::Top] };
     let mut out = layer_elements(output, renderer, scale, top);
+    // Where a dragged window will snap: a soft sheet of the accent above the others.
+    if let Some(preview) = state.snap_preview {
+        let accent = state.look.theme.accent;
+        state.snap_buffer.update(preview.size, [accent[0] * 0.22, accent[1] * 0.22, accent[2] * 0.22, 0.22]);
+        let loc = (preview.loc - origin).to_physical_precise_round(scale);
+        out.push(OziElement::Part(WindowPart::Solid(
+            smithay::backend::renderer::element::solid::SolidColorRenderElement::from_buffer(
+                &state.snap_buffer, loc, scale, 1.0, Kind::Unspecified,
+            ),
+        )));
+    }
     let (windows, animating) = window_elements(state, renderer, shaders, origin, scale, now);
     out.extend(windows);
     out.extend(layer_elements(output, renderer, scale, &[Layer::Bottom, Layer::Background]));

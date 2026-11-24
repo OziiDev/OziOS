@@ -34,6 +34,11 @@ pub enum Request {
     Key(String),
     Lock,
     Screenshot(Option<String>),
+    /// Put the history's text number `index` back on the clipboard.
+    ClipboardUse(usize),
+    /// Forget one text, or (None) all of them.
+    ClipboardRemove(Option<usize>),
+    ToggleClipboard,
     Quit,
     Subscribe(Vec<String>),
 }
@@ -68,6 +73,13 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("toggle-launcher") => Ok(Request::ToggleLauncher),
         Some("toggle-panel") => Ok(Request::TogglePanel),
         Some("toggle-tiling") => Ok(Request::ToggleTiling),
+        Some("toggle-clipboard") => Ok(Request::ToggleClipboard),
+        Some("clipboard-use") => Ok(Request::ClipboardUse(
+            value.get("index").and_then(Value::as_u64).ok_or("\"index\" (a number) is missing")? as usize,
+        )),
+        Some("clipboard-remove") => Ok(Request::ClipboardRemove(
+            value.get("index").and_then(Value::as_u64).map(|i| i as usize),
+        )),
         Some("key") => Ok(Request::Key(
             value.get("key").and_then(Value::as_str).unwrap_or_default().to_string(),
         )),
@@ -131,6 +143,7 @@ pub fn window_json(state: &OziWm, window: &Window) -> Value {
         "workspace": crate::workspace::workspace_of(window) + 1,
         "focused": focused,
         "minimized": state.minimized.contains(window),
+        "fullscreen": crate::render::is_fullscreen(window),
         "x": loc.x, "y": loc.y, "width": size.w, "height": size.h,
     })
 }
@@ -145,6 +158,7 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
     let reply = match request {
         Request::Get(what) => match what.as_str() {
             "version" => ok(json!({ "version": env!("CARGO_PKG_VERSION") })),
+            "clipboard" => ok(state.clipboard_json()),
             "windows" => ok(Value::Array(
                 state
                     .space
@@ -231,6 +245,17 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
             emit_launcher(state);
             ok(Value::Null)
         }
+        Request::ClipboardUse(index) => {
+            if state.clipboard_use(index) { ok(Value::Null) } else { error("no such text in the history") }
+        }
+        Request::ClipboardRemove(index) => {
+            state.clipboard_remove(index);
+            ok(Value::Null)
+        }
+        Request::ToggleClipboard => {
+            emit(state, "shell", json!({ "event": "clipboard" }));
+            ok(Value::Null)
+        }
         Request::Quit => {
             state.loop_signal.stop();
             ok(Value::Null)
@@ -252,7 +277,7 @@ fn write_line(mut stream: &UnixStream, value: &Value) -> io::Result<()> {
 }
 
 /// Send an event to everyone subscribed to `topic`; drop the ones that went away.
-fn emit(state: &mut OziWm, topic: &str, event: Value) {
+pub fn emit(state: &mut OziWm, topic: &str, event: Value) {
     state.ipc_subscribers.retain(|s| {
         !s.topics.iter().any(|t| t == topic) || write_line(&s.stream, &event).is_ok()
     });

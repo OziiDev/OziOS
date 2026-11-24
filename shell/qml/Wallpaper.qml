@@ -20,11 +20,12 @@ Window {
     Behavior on color { ColorAnimation { duration: 600 } }
 
     property real clock: 0
-    // Nobody sees the wallpaper move behind windows: it only moves on an empty desktop.
+    // It keeps moving behind windows (see-through terminals show it); only a
+    // fullscreen window (a game, a video) hides it completely, and then it rests.
     readonly property bool covered: {
         const active = Shell.workspaces.find(w => w.active)
         const index = active ? active.index : 1
-        return Shell.windows.some(w => !w.minimized && w.workspace === index)
+        return Shell.windows.some(w => !w.minimized && w.fullscreen && w.workspace === index)
     }
     readonly property string chosen: Shell.look.wallpaper || "tesseract"
     readonly property bool live: chosen === "tesseract"

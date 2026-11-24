@@ -30,6 +30,33 @@ impl PointerGrab<OziWm> for MoveSurfaceGrab {
     ) {
         // No client gets pointer events while a window is being dragged.
         handle.motion(data, None, event);
+        // A snapped or maximized window comes loose once it is pulled, at its
+        // old size, under the pointer where it was grabbed (proportionally).
+        let pulled = event.location - self.start_data.location;
+        let loose = crate::snap::snapped(&self.window).is_some() || crate::snap::is_maximized(&self.window);
+        if loose && (pulled.x.abs() > 8.0 || pulled.y.abs() > 8.0) {
+            let old = self.window.geometry().size;
+            let start = self.initial_window_location;
+            if crate::snap::is_maximized(&self.window) {
+                data.toggle_maximize(&self.window);
+            } else {
+                data.unsnap(&self.window);
+            }
+            let restored = self
+                .window
+                .user_data()
+                .get::<crate::state::RestoreRect>()
+                .and_then(|r| r.0.lock().ok().and_then(|g| *g))
+                .map(|r| r.size)
+                .unwrap_or(old);
+            let fx = ((self.start_data.location.x - start.x as f64) / old.w.max(1) as f64).clamp(0.0, 1.0);
+            self.initial_window_location = Point::from((
+                (event.location.x - fx * restored.w as f64) as i32,
+                start.y,
+            ));
+            self.start_data.location = event.location;
+        }
+        data.drag_preview(event.location);
         let delta = event.location - self.start_data.location;
         let new_location = self.initial_window_location.to_f64() + delta;
         data.space
@@ -49,7 +76,13 @@ impl PointerGrab<OziWm> for MoveSurfaceGrab {
     fn button(&mut self, data: &mut OziWm, handle: &mut PointerInnerHandle<'_, OziWm>, event: &ButtonEvent) {
         handle.button(data, event);
         if !handle.current_pressed().contains(&BTN_LEFT) {
+            let snap = data.drag_preview(handle.current_location());
+            data.snap_preview = None;
+            data.needs_redraw = true;
             handle.unset_grab(self, data, event.serial, event.time, true);
+            if let Some(snap) = snap {
+                data.snap_window(&self.window, snap);
+            }
             ipc::emit_window(data, &self.window, "window-changed");
         }
     }

@@ -219,6 +219,7 @@ impl XdgShellHandler for OziWm {
         surface.send_pending_configure();
         if let Some(window) = self.window_for_surface(surface.wl_surface()) {
             self.space.map_element(window.clone(), area.loc, true);
+            ipc::emit_window(self, &window, "window-changed");
         }
     }
 
@@ -230,7 +231,8 @@ impl XdgShellHandler for OziWm {
         surface.send_pending_configure();
         if let Some(window) = self.window_for_surface(surface.wl_surface()) {
             self.space.unmap_elem(&window);
-            self.map_new_window(window);
+            self.map_new_window(window.clone());
+            ipc::emit_window(self, &window, "window-changed");
         }
     }
 

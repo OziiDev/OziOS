@@ -1,15 +1,15 @@
 //! OziOS window frames: geometry and hit testing. Pure: tested without a compositor.
 //!
 //! A framed window is its content plus a title bar above it. Windows that draw
-//! their own title bar (GTK) get no bar, only the border, glow and shadow.
+//! their own title bar (GTK) get no bar, only the border and shadow.
 
 use crate::grabs::resize_grab::Edges;
 
 /// Logical pixels.
 pub const TITLE_HEIGHT: i32 = 34;
-pub const RADIUS: f32 = 12.0;
-pub const BORDER: f32 = 2.0;
-/// Room around the frame for the glow and the shadow.
+pub const RADIUS: f32 = 10.0;
+pub const BORDER: f32 = 1.0;
+/// Room around the frame for the shadow.
 pub const MARGIN: i32 = 44;
 /// How far outside the frame the pointer can grab an edge.
 pub const GRIP: i32 = 8;
