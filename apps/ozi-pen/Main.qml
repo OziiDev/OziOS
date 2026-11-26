@@ -19,8 +19,15 @@ Window {
     color: "transparent"
     title: backend.tr("Screen pen")
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
-           | (passThrough ? Qt.WindowTransparentForInput : 0)
+           | (passThrough && !layer ? Qt.WindowTransparentForInput : 0)
     // layer: board
+    // As a layer, "Use screen" leaves only the toolbar taking input.
+    function updateInput() {
+        if (!layer) return
+        if (passThrough) backend.setInputRegion(board, [barBox.x, barBox.y, barBox.width, barBox.height])
+        else backend.setInputRegion(board, [])
+    }
+    onPassThroughChanged: updateInput()
 
     // pen | marker | line | arrow | box | circle | eraser | laser | spot
     property string tool: "pen"
@@ -157,9 +164,10 @@ Window {
         }
     }
 
-    Shortcut { sequence: "Ctrl+Z"; onActivated: board.undo() }
-    Shortcut { sequence: "Delete"; onActivated: board.clearAll() }
-    Shortcut { sequence: "Escape"; onActivated: board.passThrough = !board.passThrough }
+    // Application-wide: they work whether the drawing or the toolbar has the keyboard.
+    Shortcut { sequence: "Ctrl+Z"; context: Qt.ApplicationShortcut; onActivated: board.undo() }
+    Shortcut { sequence: "Delete"; context: Qt.ApplicationShortcut; onActivated: board.clearAll() }
+    Shortcut { sequence: "Escape"; context: Qt.ApplicationShortcut; onActivated: board.passThrough = !board.passThrough }
 
     // The stroke being drawn right now.
     QtObject {
@@ -296,40 +304,50 @@ Window {
     }
 
     // --- the toolbar -------------------------------------------------------------
+    // On a layer-shell desktop the toolbar lives inside the drawing layer: one
+    // surface, so a finger never has to cross from one window of the program
+    // to another (Qt then lost the first tap after a stroke). Elsewhere it is a
+    // small window of its own above the drawing.
     Window {
         id: bar
-        width: column.implicitWidth + 24
-        height: column.implicitHeight + 20
+        width: barBox.width
+        height: barBox.height
         x: (Screen.width - width) / 2
         y: Screen.height - height - 24
-        visible: true
+        visible: !board.layer
         color: "transparent"
         title: backend.tr("Screen pen")
         flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
-        // As a layer the bar sits at these margins from the bottom left corner.
-        property real left: Math.max(0, (Screen.width - width) / 2)
-        property real bottom: 24
         property point grabbed
-        // layer: bar
 
         Rectangle {
-            anchors.fill: parent
+            id: barBox
+            width: column.implicitWidth + 24
+            height: column.implicitHeight + 20
             radius: 14
             color: Theme.raised
             border.color: Theme.mid
             border.width: 1
+            Component.onCompleted: if (board.layer) {
+                parent = board.contentItem
+                x = Math.round((board.width - width) / 2)
+                y = Math.round(board.height - height - 24)
+            }
+            onXChanged: board.updateInput()
+            onYChanged: board.updateInput()
+            onWidthChanged: board.updateInput()
 
             // Dragging the empty parts moves the whole bar.
             DragHandler {
                 target: null
                 onActiveChanged: {
                     if (!active) return
-                    if (board.layer) bar.grabbed = Qt.point(bar.left, bar.bottom)
+                    if (board.layer) bar.grabbed = Qt.point(barBox.x, barBox.y)
                     else bar.startSystemMove()
                 }
                 onTranslationChanged: if (active && board.layer) {
-                    bar.left = Math.max(0, Math.min(Screen.width - bar.width, bar.grabbed.x + translation.x))
-                    bar.bottom = Math.max(0, Math.min(Screen.height - bar.height, bar.grabbed.y - translation.y))
+                    barBox.x = Math.max(0, Math.min(board.width - barBox.width, bar.grabbed.x + translation.x))
+                    barBox.y = Math.max(0, Math.min(board.height - barBox.height, bar.grabbed.y + translation.y))
                 }
             }
 
@@ -360,19 +378,21 @@ Window {
 
                     Repeater {
                         model: board.inks
-                        delegate: Rectangle {
+                        // Buttons, not bare mouse areas: Qt Quick Controls kept every tap
+                        // in testing with fingers, plain handlers lost some right after a stroke.
+                        delegate: AbstractButton {
                             required property string modelData
-                            width: 34; height: 34; radius: 17
-                            color: modelData
-                            border.width: board.ink == modelData ? 3 : 1
-                            border.color: board.ink == modelData ? Theme.cyan : Theme.far
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    board.ink = parent.modelData
-                                    if (board.tool === "eraser" || board.tool === "laser" || board.tool === "spot") board.tool = "pen"
-                                    board.passThrough = false
-                                }
+                            width: 34; height: 34
+                            background: Rectangle {
+                                radius: 17
+                                color: modelData
+                                border.width: Qt.colorEqual(board.ink, modelData) ? 3 : 1
+                                border.color: Qt.colorEqual(board.ink, modelData) ? Theme.cyan : Theme.far
+                            }
+                            onClicked: {
+                                board.ink = modelData
+                                if (board.tool === "eraser" || board.tool === "laser" || board.tool === "spot") board.tool = "pen"
+                                board.passThrough = false
                             }
                         }
                     }
@@ -381,18 +401,21 @@ Window {
 
                     Repeater {
                         model: board.sizes
-                        delegate: Rectangle {
+                        delegate: AbstractButton {
                             required property real modelData
-                            width: 34; height: 34; radius: 8
-                            color: board.thickness === modelData ? Theme.control : "transparent"
-                            border.width: 1
-                            border.color: board.thickness === modelData ? Theme.cyan : Theme.far
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: parent.modelData + 4; height: width; radius: width / 2
-                                color: Theme.ice
+                            width: 34; height: 34
+                            background: Rectangle {
+                                radius: 8
+                                color: board.thickness === modelData ? Theme.control : "transparent"
+                                border.width: 1
+                                border.color: board.thickness === modelData ? Theme.cyan : Theme.far
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: modelData + 4; height: width; radius: width / 2
+                                    color: Theme.ice
+                                }
                             }
-                            MouseArea { anchors.fill: parent; onClicked: board.thickness = parent.modelData }
+                            onClicked: board.thickness = modelData
                         }
                     }
 

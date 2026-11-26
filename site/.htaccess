@@ -1,0 +1,6 @@
+# On the web host the pictures come from the GitHub repository through jsDelivr,
+# so only the HTML and CSS have to be uploaded here.
+RedirectMatch 302 ^/img/(.*)$ https://cdn.jsdelivr.net/gh/OziiDev/OziOS@main/site/img/$1
+RedirectMatch 302 ^/wallpapers/(.*)$ https://cdn.jsdelivr.net/gh/OziiDev/OziOS@main/site/wallpapers/$1
+RedirectMatch 302 ^/logo\.svg$ https://cdn.jsdelivr.net/gh/OziiDev/OziOS@main/site/logo.svg
+DirectoryIndex index.html

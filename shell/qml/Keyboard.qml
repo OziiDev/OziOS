@@ -24,9 +24,11 @@ Window {
     readonly property var rows: board.rows || []
     readonly property int screenW: Screen.width > 0 ? Screen.width : 1366
     readonly property int screenH: Screen.height > 0 ? Screen.height : 768
-    readonly property int keyH: Math.max(44, Math.min(90, Math.round(Math.min(screenH * 0.072, screenW * 0.05))))
+    // Big enough for a finger, but not wider than an arm can reach on a
+    // 65-inch board: about two thirds of a wide screen, all of a narrow one.
+    readonly property int keyH: Math.max(44, Math.min(84, Math.round(Math.min(screenH * 0.066, screenW * 0.05))))
     readonly property int gap: Math.max(5, Math.round(keyH * 0.12))
-    readonly property real unit: Math.min((width - 2 * pad - 13 * gap) / 14.5, keyH * 1.35)
+    readonly property real unit: Math.min((width - 2 * pad - 13 * gap) / 14.5, keyH * 1.15)
     readonly property int pad: Math.round(gap * 1.6)
     readonly property bool upper: shift !== caps
 

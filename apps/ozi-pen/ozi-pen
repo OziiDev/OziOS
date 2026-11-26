@@ -15,7 +15,8 @@ if LAYER:
     os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"
 
 import ozi_qt  # noqa: E402
-from PyQt6.QtCore import QStandardPaths, pyqtSlot  # noqa: E402
+from PyQt6.QtCore import QObject, QStandardPaths, pyqtSlot  # noqa: E402
+from PyQt6.QtGui import QRegion  # noqa: E402
 
 
 class PenBackend(ozi_qt.Backend):
@@ -25,6 +26,19 @@ class PenBackend(ozi_qt.Backend):
     def demo(self):
         """--demo draws a few strokes, to check the drawing without a pointer."""
         return "--demo" in sys.argv
+
+    @pyqtSlot(QObject, "QVariantList")
+    def setInputRegion(self, window, rects):
+        """Only these parts of the window take input; empty: all of it."""
+        region = QRegion()
+        for i in range(0, len(rects) - 3, 4):
+            x, y, w, h = (round(float(v)) for v in rects[i:i + 4])
+            if w > 0 and h > 0:
+                region = region.united(QRegion(x, y, w, h))
+        try:
+            window.setMask(region)
+        except AttributeError:
+            pass
 
     @pyqtSlot(result=bool)
     def layerShell(self):
@@ -55,15 +69,6 @@ def layered(qml_file):
             "LS.Window.anchors: LS.Window.AnchorTop | LS.Window.AnchorBottom | LS.Window.AnchorLeft | LS.Window.AnchorRight",
             "LS.Window.exclusionZone: -1",
             "LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityOnDemand",
-        ]),
-        "// layer: bar": "\n".join([
-            'LS.Window.scope: "ozi-pen-bar"',
-            "LS.Window.layer: LS.Window.LayerOverlay",
-            "LS.Window.anchors: LS.Window.AnchorBottom | LS.Window.AnchorLeft",
-            "LS.Window.margins.left: bar.left",
-            "LS.Window.margins.bottom: bar.bottom",
-            "LS.Window.exclusionZone: -1",
-            "LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone",
         ]),
     }
     for mark, code in parts.items():

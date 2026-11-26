@@ -1,10 +1,11 @@
 //! Touch screens and pens: smart boards, tablets, touch laptops.
 //!
-//! A finger goes to the program under it as a real touch when that program
+//! A finger goes to the window under it as a real touch when that program
 //! listens for touches (Firefox, Qt and GTK programs scroll, pinch and press
 //! and hold that way). Everywhere else it works as the mouse: on our window
-//! frames (drag a title bar, press the buttons, pull an edge), on the lock
-//! screen, and over programs that know no touch. One finger at a time drives
+//! frames (drag a title bar, press the buttons, pull an edge), on the bar,
+//! dock, keyboard and other layer surfaces, on the lock screen, and over
+//! programs that know no touch. One finger at a time drives
 //! the mouse; more fingers on a program that listens all go to it.
 //!
 //! A pen that reports itself as a tablet tool (some boards' styluses) is the
@@ -32,12 +33,16 @@ const BTN_STYLUS2: u32 = 0x14c;
 /// Where each finger on the screen went.
 #[derive(Default)]
 pub struct Touches {
-    /// The finger that drives the mouse, if one does.
+    /// The finger that drives the mouse, if one does, and where it last was.
     mouse: Option<TouchSlot>,
+    mouse_at: Point<f64, Logical>,
     /// Fingers given to programs, with the surface they went to.
     clients: HashMap<TouchSlot, (WlSurface, Point<f64, Logical>)>,
     /// The pen's tip is on the screen.
     pen_down: bool,
+    /// Programs got touch events that still need their closing frame (a lift
+    /// too: a program holds the lift back until the frame comes).
+    frame_due: bool,
     /// The last press came from a finger or a pen, not a mouse or keyboard:
     /// then a text field brings up the on-screen keyboard.
     pub last_was_touch: bool,
@@ -56,6 +61,13 @@ impl OziWm {
     /// The program surface a finger at this point goes to, if it takes touches.
     fn touch_target(&self, location: Point<f64, Logical>) -> Option<(WlSurface, Point<f64, Logical>)> {
         if self.lock.is_some() || self.frame_hit(location).is_some() {
+            return None;
+        }
+        // The shell's own surfaces (bar, dock, launcher, on-screen keyboard, a
+        // screen pen's layers) take a finger as the mouse: Qt loses track of
+        // touches that move between several layer surfaces of one program, and
+        // a panel needs nothing more than taps and drags.
+        if self.top_layer_at(location) || self.space.element_under(location).is_none() {
             return None;
         }
         let touch = self.seat.get_touch()?;
@@ -90,6 +102,7 @@ impl OziWm {
         {
             self.focus_at(location);
             self.touches.clients.insert(slot, target.clone());
+            self.touches.frame_due = true;
             let serial = SERIAL_COUNTER.next_serial();
             touch.down(self, Some(target), &DownEvent { slot, location, serial, time });
             return;
@@ -99,18 +112,24 @@ impl OziWm {
             return;
         }
         self.touches.mouse = Some(slot);
+        self.touches.mouse_at = location;
+        // Twice: a finger lands without the pointer having been there, and the
+        // program has to see the pointer arrive before the button goes down.
+        self.pointer_to(location, time);
         self.pointer_to(location, time);
         self.press(BTN_LEFT, ButtonState::Pressed, time);
     }
 
     pub fn touch_motion(&mut self, slot: TouchSlot, location: Point<f64, Logical>, time: u32) {
         if self.touches.mouse == Some(slot) {
+            self.touches.mouse_at = location;
             self.pointer_to(location, time);
             return;
         }
         if let Some(target) = self.touches.clients.get(&slot).cloned()
             && let Some(touch) = self.seat.get_touch()
         {
+            self.touches.frame_due = true;
             touch.motion(self, Some(target), &MotionEvent { slot, location, time });
         }
     }
@@ -118,12 +137,17 @@ impl OziWm {
     pub fn touch_up(&mut self, slot: TouchSlot, time: u32) {
         if self.touches.mouse == Some(slot) {
             self.touches.mouse = None;
+            // The way a mouse lets go: where it is, then the button. A bare
+            // release left Qt deaf to the next press.
+            let at = self.touches.mouse_at;
+            self.pointer_to(at, time);
             self.press(BTN_LEFT, ButtonState::Released, time);
             return;
         }
         if self.touches.clients.remove(&slot).is_some()
             && let Some(touch) = self.seat.get_touch()
         {
+            self.touches.frame_due = true;
             let serial = SERIAL_COUNTER.next_serial();
             touch.up(self, &UpEvent { slot, serial, time });
         }
@@ -148,7 +172,7 @@ impl OziWm {
     }
 
     pub fn on_touch_frame(&mut self) {
-        if !self.touches.clients.is_empty()
+        if std::mem::take(&mut self.touches.frame_due)
             && let Some(touch) = self.seat.get_touch()
         {
             touch.frame(self);
@@ -205,7 +229,15 @@ impl OziWm {
             "never" => false,
             _ => self.touches.screen_present || education(),
         };
+        let was = smithay::wayland::text_input::enter_without_ime();
         smithay::wayland::text_input::set_enter_without_ime(on);
+        // The window that already has the keyboard learns about it now, not only
+        // the next one to be focused.
+        if on != was {
+            use smithay::wayland::text_input::TextInputSeat;
+            let text_input = self.seat.text_input();
+            if on { text_input.enter() } else { text_input.leave() }
+        }
     }
 
     /// A touch screen or pen came in (libinput device added).
