@@ -156,7 +156,7 @@ def render_splash(picture, colors, out_path):
     glow.setColorAt(0.0, middle)
     glow.setColorAt(1.0, edge)
     painter.fillRect(0, 0, w, h, glow)
-    draw_mark(painter, w, h, colors)
+    draw_mark(painter, w, h, colors, image)
     painter.end()
     tmp = out_path + ".tmp"
     if not image.save(tmp, "PNG"):
@@ -171,39 +171,74 @@ def _logo_path():
     return checkout if os.path.isfile(checkout) else LOGO
 
 
-def draw_mark(painter, w, h, colors):
-    """The OziOS mark and name at the bottom, under the menu: the picture is
-    the user's, the boot screen still says whose system it is."""
-    from PyQt6.QtCore import QRectF, Qt
-    from PyQt6.QtGui import QColor, QFont, QLinearGradient
-    from PyQt6.QtSvg import QSvgRenderer
-    # A soft dark floor so the name reads on a bright picture.
-    floor = QLinearGradient(0, h * 0.70, 0, h)
-    clear, dark = QColor(colors["ink"]), QColor(colors["ink"])
-    clear.setAlphaF(0.0)
-    dark.setAlphaF(0.75)
-    floor.setColorAt(0.0, clear)
-    floor.setColorAt(1.0, dark)
-    painter.fillRect(0, int(h * 0.70), w, h - int(h * 0.70), floor)
+def busyness(image, x, y, w, h):
+    """How much is going on in a part of the picture (detail and contrast,
+    roughly 0..1): the mark goes where it covers the least."""
+    from PyQt6.QtCore import Qt
+    part = image.copy(int(x), int(y), int(w), int(h)).scaled(
+        48, 24, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+    lum = [[0.0] * 48 for _ in range(24)]
+    for j in range(24):
+        for i in range(48):
+            c = part.pixelColor(i, j)
+            lum[j][i] = (0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF())
+    flat = [v for row in lum for v in row]
+    mean = sum(flat) / len(flat)
+    spread = (sum((v - mean) ** 2 for v in flat) / len(flat)) ** 0.5
+    edges = sum(abs(lum[j][i] - lum[j][i + 1]) + abs(lum[j][i] - lum[j + 1][i])
+                for j in range(23) for i in range(47)) / (23 * 47)
+    return spread + 2 * edges + 0.3 * mean
 
-    size = h * 0.085
+
+def mark_place(image, w, h, box_w, box_h):
+    """(x, y) of the quieter bottom corner. The bottom middle stays free:
+    the boot menu counts down there."""
+    margin_x, margin_y = w * 0.045, h * 0.07
+    places = [(margin_x, h - margin_y - box_h), (w - margin_x - box_w, h - margin_y - box_h)]
+    return min(places, key=lambda p: busyness(image, p[0] - 20, p[1] - 20, box_w + 40, box_h + 40))
+
+
+def draw_mark(painter, w, h, colors, image=None):
+    """The OziOS mark and name in a quiet corner of the user's wallpaper: the
+    picture is theirs, the boot screen still says whose system it is. "Ozi"
+    in the text colour, "OS" in the wallpaper's accent."""
+    from PyQt6.QtCore import QPointF, QRectF, Qt
+    from PyQt6.QtGui import QColor, QFont, QFontMetricsF, QRadialGradient
+    from PyQt6.QtSvg import QSvgRenderer
+
+    size = h * 0.072                      # logo height
     font = QFont("Overpass", 1)
-    font.setPixelSize(int(size * 0.62))
+    font.setPixelSize(int(size * 0.66))
     font.setWeight(QFont.Weight.Bold)
-    font.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 104)
-    painter.setFont(font)
-    name = "OziOS"
-    text_w = painter.fontMetrics().horizontalAdvance(name)
-    gap = size * 0.2
-    total = size + gap + text_w
-    x = (w - total) / 2
-    y = h - size - h * 0.06
+    metrics = QFontMetricsF(font)
+    ozi_w, os_w = metrics.horizontalAdvance("Ozi"), metrics.horizontalAdvance("OS")
+    gap = size * 0.26
+    box_w, box_h = size + gap + ozi_w + os_w, size
+    x, y = mark_place(image, w, h, box_w, box_h) if image is not None else ((w - box_w) / 2, h - h * 0.07 - box_h)
+
+    # A soft shade just behind the mark keeps it readable on a bright picture.
+    shade = QRadialGradient(QPointF(x + box_w / 2, y + box_h / 2), box_w * 0.95)
+    inner, outer = QColor(colors["ink"]), QColor(colors["ink"])
+    inner.setAlphaF(0.62)
+    outer.setAlphaF(0.0)
+    shade.setColorAt(0.0, inner)
+    shade.setColorAt(1.0, outer)
+    painter.save()
+    painter.translate(x + box_w / 2, y + box_h / 2)
+    painter.scale(1.0, 0.42)
+    painter.translate(-(x + box_w / 2), -(y + box_h / 2))
+    painter.fillRect(QRectF(x - box_w, y - box_w, box_w * 3, box_h + box_w * 2), shade)
+    painter.restore()
+
     logo = QSvgRenderer(_logo_path())
     if logo.isValid():
         logo.render(painter, QRectF(x, y, size, size))
+    painter.setFont(font)
+    baseline = y + (size + metrics.capHeight()) / 2
     painter.setPen(QColor(colors["text"]))
-    painter.drawText(QRectF(x + size + gap, y, text_w + 4, size),
-                     int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), name)
+    painter.drawText(QPointF(x + size + gap, baseline), "Ozi")
+    painter.setPen(QColor(colors["accent"]))
+    painter.drawText(QPointF(x + size + gap + ozi_w, baseline), "OS")
 
 
 def fingerprint(look, picture):
