@@ -20,7 +20,6 @@ optdepends=(
   'xwayland-satellite: run X11 programs (Steam, older games)'
   'breeze: the default pointer theme'
   'polkit-kde-agent: password prompts for administrator tasks'
-  'dolphin: the file manager Super+E opens'
 )
 backup=(etc/pam.d/oziwm)
 options=(!strip !debug !lto)

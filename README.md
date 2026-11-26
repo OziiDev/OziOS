@@ -6,10 +6,13 @@ for people who do not want to learn Arch first.
 
 ![The OziOS desktop](docs/img/desktop.png)
 
-The desktop after a fresh install, the login screen and the Welcome window:
+The launcher, Ozi Files, Ozi Terminal and, in the Education edition, the
+on-screen keyboard on a smart board:
 
-![Login screen](docs/img/login.png)
-![Welcome](docs/img/welcome.png)
+![Launcher](docs/img/launcher.png)
+![Ozi Files](docs/img/files.png)
+![Ozi Terminal](docs/img/terminal.png)
+![On-screen keyboard](docs/img/keyboard.png)
 
 **Status: early development.** A live ISO boots to the OziOS desktop on the
 OziOS kernel in a virtual machine, the installer puts it on a disk and the

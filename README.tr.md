@@ -4,6 +4,13 @@ CachyOS paketleri üstüne kurulu, sıfırdan yazılmış kendi masaüstüne sah
 Arch tabanlı bir masaüstü sistemi. Sıradan donanımda hızlı olmayı ve önce Arch
 öğrenmek istemeyenler için kolay olmayı hedefliyor.
 
+![OziOS masaüstü](docs/img/desktop.png)
+
+![Başlatıcı](docs/img/launcher.png)
+![Ozi Dosyalar](docs/img/files.png)
+![Ozi Terminal](docs/img/terminal.png)
+![Ekran klavyesi](docs/img/keyboard.png)
+
 **Durum: erken geliştirme.** Canlı ISO sanal makinede OziOS çekirdeği ve
 masaüstüyle açılıyor; paket kurucu `.deb`, AppImage ve Arch paketleri için
 çalışıyor. 0.4 masaüstü (`ozi-desktop`) gerçek bir bilgisayarda günlük oturum

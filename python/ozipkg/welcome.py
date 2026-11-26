@@ -70,9 +70,15 @@ def shared_folders(mounts=None):
     return out
 
 
-def command(name, mounts=None):
+def command(name, mounts=None, which=None):
     """The command behind a button."""
     if name == "windowsnet":
+        # Browsing Windows shares needs a file manager that speaks SMB; without
+        # Dolphin, Ozi Files opens what a VirtualBox host shares, or the home folder.
+        which = which or __import__("shutil").which
+        if not which("dolphin") and which("ozi-files"):
+            folders = shared_folders(mounts)
+            return ["ozi-files"] + folders[:1]
         return ACTIONS[name] + shared_folders(mounts)
     return list(ACTIONS[name])
 

@@ -238,7 +238,8 @@ fi
 
 step "Removing CachyOS programs and branding"
 drop=()
-for name in cachyos-hello cachyos-cli-installer-new cachy-chroot; do
+# KDE's file manager, archiver and terminal: OziOS has its own (Ozi Files, Ozi Terminal).
+for name in cachyos-hello cachyos-cli-installer-new cachy-chroot dolphin ark konsole; do
   pacman --root "$root" -Qq "$name" >/dev/null 2>&1 && drop+=("$name")
 done
 [ "${#drop[@]}" -eq 0 ] || "${pm[@]}" -Rdd "${drop[@]}"
