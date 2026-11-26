@@ -39,7 +39,10 @@ impl OziWm {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         self.last_input = Instant::now();
         match event {
-            InputEvent::Keyboard { event } => self.on_key(event),
+            InputEvent::Keyboard { event } => {
+                self.touches.last_was_touch = false;
+                self.on_key(event)
+            }
             InputEvent::PointerMotion { event } => {
                 let Some(pointer) = self.seat.get_pointer() else {
                     return;
@@ -84,12 +87,24 @@ impl OziWm {
                 let location = event.position_transformed(area.size) + area.loc.to_f64();
                 self.on_pointer_moved(location, event.time_msec());
             }
-            InputEvent::PointerButton { event } => self.on_button(
+            InputEvent::PointerButton { event } => {
+                self.touches.last_was_touch = false;
+                self.on_button(
                 event.button_code(),
                 event.state(),
                 event.time_msec(),
-            ),
+            )
+            }
             InputEvent::PointerAxis { event } => self.on_axis::<I>(&event),
+            InputEvent::TouchDown { event } => self.on_touch_down::<I>(&event),
+            InputEvent::TouchMotion { event } => self.on_touch_motion::<I>(&event),
+            InputEvent::TouchUp { event } => self.on_touch_up::<I>(&event),
+            InputEvent::TouchFrame { .. } => self.on_touch_frame(),
+            InputEvent::TouchCancel { .. } => self.on_touch_cancel(),
+            InputEvent::TabletToolAxis { event } => self.on_pen_move::<I>(&event),
+            InputEvent::TabletToolProximity { event } => self.on_pen_move::<I>(&event),
+            InputEvent::TabletToolTip { event } => self.on_pen_tip::<I>(&event),
+            InputEvent::TabletToolButton { event } => self.on_pen_button::<I>(&event),
             _ => {}
         }
     }
@@ -326,35 +341,53 @@ impl OziWm {
 
         if state == ButtonState::Pressed && !pointer.is_grabbed() {
             let location = pointer.current_location();
-            if let Some(layer) = self.focusable_layer_at(location) {
-                self.focus_layer(&layer);
-                pointer.button(self, &ButtonEvent { button, state, serial, time });
-                pointer.frame(self);
-                return;
-            }
-            let clicked = self
-                .space
-                .element_under(location)
-                .map(|(w, loc)| (w.clone(), loc));
-            match clicked {
-                Some((window, window_location)) => {
-                    self.focus_window(Some(window.clone()));
-                    // Mod + left drag moves a window from anywhere inside it.
-                    if button == BTN_LEFT && self.mod_held() {
-                        let grab = MoveSurfaceGrab {
-                            start_data: GrabStartData { focus: None, button, location },
-                            window,
-                            initial_window_location: window_location,
-                        };
-                        pointer.set_grab(self, grab, serial, Focus::Clear);
-                    }
-                }
-                None => self.focus_window(None),
+            // Mod + left drag moves a window from anywhere inside it.
+            if let Some((window, window_location)) = self.focus_at(location)
+                && button == BTN_LEFT
+                && self.mod_held()
+            {
+                let grab = MoveSurfaceGrab {
+                    start_data: GrabStartData { focus: None, button, location },
+                    window,
+                    initial_window_location: window_location,
+                };
+                pointer.set_grab(self, grab, serial, Focus::Clear);
             }
         }
 
         pointer.button(self, &ButtonEvent { button, state, serial, time });
         pointer.frame(self);
+    }
+
+    /// A press (a click or a finger) at a point moves the keyboard focus: to a
+    /// layer that takes the keyboard (launcher, panels), to the window there,
+    /// or away from all windows on the bare desktop. Bars, the dock and the
+    /// on-screen keyboard leave it where it is, so typing goes on in the window.
+    /// The window pressed on and where it is.
+    pub(crate) fn focus_at(&mut self, location: Point<f64, Logical>) -> Option<(Window, Point<i32, Logical>)> {
+        if let Some(layer) = self.focusable_layer_at(location) {
+            self.focus_layer(&layer);
+            return None;
+        }
+        if self.top_layer_at(location) {
+            return None;
+        }
+        let pressed = self.space.element_under(location).map(|(w, loc)| (w.clone(), loc));
+        match &pressed {
+            Some((window, _)) => self.focus_window(Some(window.clone())),
+            None => self.focus_window(None),
+        }
+        pressed
+    }
+
+    /// Move the pointer, as a mouse would (touch and pens use it).
+    pub(crate) fn pointer_to(&mut self, location: Point<f64, Logical>, time: u32) {
+        self.on_pointer_moved(location, time);
+    }
+
+    /// Press or let go of a mouse button (touch and pens use it).
+    pub(crate) fn press(&mut self, button: u32, state: ButtonState, time: u32) {
+        self.on_button(button, state, time);
     }
 
     /// A press on our own frame: buttons act, the bar drags, edges resize.

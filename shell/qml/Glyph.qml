@@ -158,6 +158,27 @@ Canvas {
             arc(s * 0.42, s * 0.42, s * 0.28, 0, Math.PI * 2)
             line([s * 0.63, s * 0.63, s * 0.88, s * 0.88])
             break
+        case "keyboard":
+        case "keyboard-hide": {
+            const top = kind === "keyboard" ? s * 0.24 : s * 0.12
+            g.strokeRect(s * 0.08, top, s * 0.84, s * 0.5)
+            for (let r = 0; r < 2; r++)
+                for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(s * (0.25 + 0.17 * i), top + s * (0.15 + 0.15 * r), s * 0.035, 0, Math.PI * 2); g.fill() }
+            line([s * 0.32, top + s * 0.4, s * 0.68, top + s * 0.4])
+            if (kind === "keyboard-hide") line([s * 0.36, s * 0.76, s * 0.5, s * 0.9, s * 0.64, s * 0.76])
+            break
+        }
+        case "backspace":
+            line([s * 0.38, s * 0.22, s * 0.9, s * 0.22, s * 0.9, s * 0.78, s * 0.38, s * 0.78, s * 0.1, s * 0.5, s * 0.38, s * 0.22])
+            line([s * 0.5, s * 0.38, s * 0.74, s * 0.62]); line([s * 0.74, s * 0.38, s * 0.5, s * 0.62])
+            break
+        case "shift":
+            line([s * 0.5, s * 0.1, s * 0.9, s * 0.52, s * 0.68, s * 0.52, s * 0.68, s * 0.88, s * 0.32, s * 0.88, s * 0.32, s * 0.52, s * 0.1, s * 0.52, s * 0.5, s * 0.1])
+            break
+        case "enter":
+            line([s * 0.86, s * 0.16, s * 0.86, s * 0.6, s * 0.16, s * 0.6])
+            line([s * 0.36, s * 0.4, s * 0.16, s * 0.6, s * 0.36, s * 0.8])
+            break
         default: // dots
             for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(s * (0.2 + 0.3 * i), s / 2, s * 0.08, 0, Math.PI * 2); g.fill() }
         }

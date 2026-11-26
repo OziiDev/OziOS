@@ -13,6 +13,7 @@ Window {
     signal launcher()
     signal calendar()
     signal trayMenuAt(real x)
+    signal keyboard()
 
     visible: true
     height: 34
@@ -154,7 +155,7 @@ Window {
     // it; right click: its menu.
     Row {
         id: trayRow
-        anchors { right: statusButton.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
+        anchors { right: keyboardButton.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
         spacing: 2
         Repeater {
             model: Tray.items
@@ -195,6 +196,16 @@ Window {
                 }
             }
         }
+    }
+
+    // The on-screen keyboard, on touch screens and in the Education edition.
+    BarButton {
+        id: keyboardButton
+        anchors { right: statusButton.left; rightMargin: visible ? 4 : 0 }
+        visible: Shell.keyboardButton
+        width: visible ? 34 : 0
+        onClicked: bar.keyboard()
+        Glyph { anchors.centerIn: parent; kind: "keyboard"; color: bar.c.text; size: 17 }
     }
 
     // Right: network, sound, battery; a click opens the quick settings.

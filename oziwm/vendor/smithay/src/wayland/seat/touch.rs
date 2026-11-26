@@ -21,6 +21,17 @@ impl<D: SeatHandler> TouchHandle<D> {
         let mut guard = self.known_instances.lock().unwrap();
         guard.push((touch.downgrade(), None));
     }
+
+    /// Whether the client that owns this surface has a `wl_touch` (OziOS patch):
+    /// a compositor can send touches only to clients that listen for them and
+    /// work as a mouse for the others.
+    pub fn listens(&self, surface: &WlSurface) -> bool {
+        let guard = self.known_instances.lock().unwrap();
+        guard
+            .iter()
+            .filter_map(|(touch, _)| touch.upgrade().ok())
+            .any(|touch| touch.id().same_client_as(&surface.id()))
+    }
 }
 
 impl<D: SeatHandler + 'static> TouchHandle<D> {

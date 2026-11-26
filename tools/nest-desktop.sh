@@ -30,7 +30,7 @@ start)
     mkdir -p "$dir/config/ozios"
     real="${XDG_CONFIG_HOME:-$HOME/.config}/ozios/desktop.json"
     [ -f "$dir/config/ozios/desktop.json" ] || { [ -f "$real" ] && cp "$real" "$dir/config/ozios/desktop.json"; } || true
-    bin="$here/oziwm/target/debug/oziwm"
+    bin="${OZIWM_BIN:-$here/oziwm/target/debug/oziwm}"
     [ -x "$bin" ] || { echo "build first: cd $here/oziwm && cargo build" >&2; exit 1; }
     (
         export XDG_CONFIG_HOME="$dir/config"

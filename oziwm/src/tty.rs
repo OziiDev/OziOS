@@ -137,6 +137,11 @@ pub fn init_tty(
         match &mut event {
             InputEvent::DeviceAdded { device } => {
                 configure_device(device);
+                if device.has_capability(libinput::DeviceCapability::Touch)
+                    || device.has_capability(libinput::DeviceCapability::TabletTool)
+                {
+                    state.touch_device_added();
+                }
                 if device.has_capability(libinput::DeviceCapability::Keyboard) {
                     if let Some(tty) = state.tty.as_mut() {
                         tty.keyboards.push(device.clone());

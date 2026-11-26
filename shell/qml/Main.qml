@@ -11,7 +11,7 @@ QtObject {
 
     property Wallpaper wallpaper: Wallpaper { shell: root }
     // Inside Bar and Dock, `launcher` is their own signal: reach the windows through root.
-    property Bar bar: Bar { shell: root; onQuickPanel: root.panel.toggle(); onLauncher: root.launcher.toggle(); onCalendar: root.calendar.toggle(); onTrayMenuAt: (x) => root.trayMenu.anchorX = x }
+    property Bar bar: Bar { shell: root; onQuickPanel: root.panel.toggle(); onLauncher: root.launcher.toggle(); onCalendar: root.calendar.toggle(); onTrayMenuAt: (x) => root.trayMenu.anchorX = x; onKeyboard: root.keyboard.toggle() }
     property Dock dock: Dock { shell: root; onLauncher: root.launcher.toggle() }
     property Launcher launcher: Launcher { shell: root }
     property QuickPanel panel: QuickPanel { shell: root }
@@ -22,6 +22,7 @@ QtObject {
     property AreaShot areaShot: AreaShot { shell: root }
     property Calendar calendar: Calendar { shell: root }
     property TrayMenu trayMenu: TrayMenu { shell: root }
+    property Keyboard keyboard: Keyboard { shell: root }
 
     property Connections events: Connections {
         target: Shell

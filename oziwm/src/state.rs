@@ -86,6 +86,9 @@ pub struct OziWm {
     pub font: Option<ab_glyph::FontVec>,
     /// For telling a double click on a title bar from two single ones.
     pub last_title_click: Option<(u64, Instant)>,
+    pub touches: crate::touch::Touches,
+    /// A text field has the keyboard (text-input-v3 enabled), as last told to the shell.
+    pub text_input_active: bool,
 
     pub dmabuf_state: DmabufState,
     pub cursor_status: CursorImageStatus,
@@ -187,6 +190,9 @@ impl OziWm {
             keyboard_handle.set_modifier_state(mods);
         }
         seat.add_pointer();
+        seat.add_touch();
+        // Text fields tell us when they want typing: the on-screen keyboard comes up.
+        smithay::wayland::text_input::TextInputManagerState::new::<Self>(&dh);
 
         let socket_name = Self::init_wayland_listener(display, event_loop)?;
         let ipc_path = ipc::listen(event_loop.handle(), &socket_name)?;
@@ -216,6 +222,8 @@ impl OziWm {
             looks: Looks::default(),
             font: crate::title::load_font(),
             last_title_click: None,
+            touches: Default::default(),
+            text_input_active: false,
             dmabuf_state: DmabufState::new(),
             cursor_status: CursorImageStatus::default_named(),
             needs_redraw: true,
@@ -392,6 +400,29 @@ impl OziWm {
         })
     }
 
+    /// Whether a bar, the dock or another top or overlay layer surface is at a point.
+    pub fn top_layer_at(&self, pos: Point<f64, Logical>) -> bool {
+        let Some(output) = self.space.outputs().next() else {
+            return false;
+        };
+        let Some(output_geo) = self.space.output_geometry(output) else {
+            return false;
+        };
+        let map = layer_map_for_output(output);
+        let local = pos - output_geo.loc.to_f64();
+        let layers: &[WlrLayer] = if self.fullscreen_on_top() {
+            &[WlrLayer::Overlay]
+        } else {
+            &[WlrLayer::Overlay, WlrLayer::Top]
+        };
+        layers.iter().any(|layer| {
+            map.layer_under(*layer, local).is_some_and(|l| {
+                let loc = map.layer_geometry(l).map(|g| g.loc).unwrap_or_default();
+                l.surface_under(local - loc.to_f64(), WindowSurfaceType::ALL).is_some()
+            })
+        })
+    }
+
     /// Where a client surface's (0, 0) is on screen: a window's content or a layer surface.
     pub fn surface_origin(&self, surface: &WlSurface) -> Option<Point<i32, Logical>> {
         if let Some(window) = self.window_for_surface(surface) {
@@ -471,6 +502,7 @@ impl OziWm {
 
     pub fn reload_look(&mut self) {
         self.look = theme::load();
+        self.refresh_osk();
         for look in self.looks.values_mut() {
             look.forget_title();
         }

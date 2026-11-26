@@ -1,10 +1,10 @@
 pkgname=ozios-settings
 pkgver=0.3.0
-pkgrel=7
+pkgrel=8
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib ttf-overpass kdialog udisks2 libarchive glib2 xdg-utils)
+depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib ttf-overpass kdialog udisks2 libarchive glib2 xdg-utils libxkbcommon)
 optdepends=(
   'snapper: snapshots before package changes'
   'gamemode: ozi play uses it when it is installed'
@@ -30,6 +30,7 @@ package() {
   # cp keeps the source's modes; from a VirtualBox shared folder those are rwxrwx---.
   chmod -R u=rwX,go=rX "$pkgdir/usr/lib/ozios/python"
   install -Dm644 -t "$share/data/i18n" "$src"/data/i18n/*.json
+  install -Dm644 -t "$share/data/osk" "$src"/data/osk/keysyms.json
   install -Dm755 "$src/branding/ozi-fetch"     "$pkgdir/usr/bin/ozi-fetch"
 
   install -Dm755 "$src/branding/ozi-fetch"       "$share/branding/ozi-fetch"

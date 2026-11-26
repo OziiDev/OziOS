@@ -44,6 +44,7 @@ pub enum Request {
     /// Move the pointer (and click, with a button code) as if the mouse did:
     /// lets tests drive the desktop without a hand on the mouse.
     Pointer { x: i32, y: i32, button: Option<u32>, action: String },
+    Touch { x: i32, y: i32, slot: u32, action: String },
     /// Press keys (evdev codes) as a chord, for tests.
     Press(Vec<u32>),
     Quit,
@@ -85,6 +86,13 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
                 .filter_map(|k| k.as_u64().map(|k| k as u32))
                 .collect(),
         )),
+        Some("touch") => Ok(Request::Touch {
+            x: value.get("x").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"x\" (a number) is missing")?,
+            y: value.get("y").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"y\" (a number) is missing")?,
+            slot: value.get("slot").and_then(Value::as_u64).unwrap_or(0) as u32,
+            // "tap" (default), "down", "move" or "up".
+            action: value.get("action").and_then(Value::as_str).unwrap_or("tap").to_string(),
+        }),
         Some("pointer") => Ok(Request::Pointer {
             x: value.get("x").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"x\" (a number) is missing")?,
             y: value.get("y").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"y\" (a number) is missing")?,
@@ -293,6 +301,10 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
         }
         Request::Press(keys) => {
             state.ipc_press(&keys);
+            ok(Value::Null)
+        }
+        Request::Touch { x, y, slot, action } => {
+            state.ipc_touch(slot, (x as f64, y as f64).into(), &action);
             ok(Value::Null)
         }
         Request::Pointer { x, y, button, action } => {

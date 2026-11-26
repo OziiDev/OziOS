@@ -82,6 +82,21 @@ impl<D: SeatHandler + 'static> TextInputSeat for Seat<D> {
     }
 }
 
+static ENTER_WITHOUT_IME: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Send text-input `enter` and `leave` even when no input method client is
+/// connected (OziOS patch). A compositor that shows an on-screen keyboard of
+/// its own turns this on: clients then enable their text input when a text
+/// field gets the keyboard, and the compositor sees that and brings up the keys.
+pub fn set_enter_without_ime(on: bool) {
+    ENTER_WITHOUT_IME.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether [`set_enter_without_ime`] is on.
+pub fn enter_without_ime() -> bool {
+    ENTER_WITHOUT_IME.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// State of wp text input protocol
 #[derive(Debug)]
 pub struct TextInputManagerState {

@@ -6,7 +6,7 @@ mod xdg_shell;
 use std::os::unix::io::OwnedFd;
 
 use smithay::{
-    delegate_data_device, delegate_output, delegate_primary_selection, delegate_seat,
+    delegate_data_device, delegate_output, delegate_text_input_manager, delegate_primary_selection, delegate_seat,
     delegate_dmabuf, delegate_idle_inhibit, delegate_xdg_decoration, delegate_data_control,
     backend::allocator::dmabuf::Dmabuf,
     reexports::wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode as DecorationMode,
@@ -60,6 +60,7 @@ impl SeatHandler for OziWm {
 }
 
 delegate_seat!(OziWm);
+delegate_text_input_manager!(OziWm);
 
 impl SelectionHandler for OziWm {
     /// The text oziwm put on the clipboard from its history.

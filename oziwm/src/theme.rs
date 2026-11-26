@@ -49,6 +49,9 @@ pub struct Look {
     pub corner_radius: f32,
     /// Lock after this many minutes without input; 0 never.
     pub lock_after_minutes: u32,
+    /// The on-screen keyboard: "auto" (touch screens and the Education
+    /// edition), "always" or "never".
+    pub osk: String,
 }
 
 impl Default for Look {
@@ -59,6 +62,7 @@ impl Default for Look {
             animation_speed: 1.0,
             corner_radius: crate::deco::RADIUS,
             lock_after_minutes: 10,
+            osk: "auto".into(),
         }
     }
 }
@@ -117,6 +121,12 @@ pub fn parse(text: &str) -> Look {
             }
         }
         None => {}
+    }
+    match value.get("osk") {
+        Some(Value::Bool(true)) => look.osk = "always".into(),
+        Some(Value::Bool(false)) => look.osk = "never".into(),
+        Some(Value::String(mode)) if ["auto", "always", "never"].contains(&mode.as_str()) => look.osk = mode.clone(),
+        _ => {}
     }
     if let Some(glow) = value.get("glow").and_then(Value::as_f64) {
         look.glow = glow.clamp(0.0, 1.0) as f32;

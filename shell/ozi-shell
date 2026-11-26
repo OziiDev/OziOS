@@ -21,7 +21,7 @@ for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python", "/usr/
         sys.path.insert(0, root)
         break
 
-from ozipkg import i18n, shell, tray  # noqa: E402
+from ozipkg import i18n, osk, shell, tray  # noqa: E402
 
 QML_DIRS = (os.path.join(HERE, "qml"), "/usr/share/ozios/shell/qml")
 
@@ -36,6 +36,21 @@ def wm_socket():
 
 
 FAILED = object()
+
+
+def keyboard_button():
+    mode = shell.read_config().get("osk", "auto")
+    if mode in ("never", False):
+        return False
+    if mode in ("always", True):
+        return True
+    try:
+        with open("/usr/share/ozios/edition", encoding="utf-8") as f:
+            if f.read().strip() == "edu":
+                return True
+    except OSError:
+        pass
+    return osk.touch_screen()
 
 
 def ask(request, timeout=2.0, default=None):
@@ -96,6 +111,10 @@ class Shell(QObject):
     _osdReady = pyqtSignal(str, int)
     _event = pyqtSignal(dict)
     _colorsReady = pyqtSignal()
+    keyboardChanged = pyqtSignal()
+    # The on-screen keyboard should come up (True) or go (False): a text field
+    # got or lost the keyboard after a finger or pen touched the screen.
+    keyboardWanted = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -130,6 +149,9 @@ class Shell(QObject):
         self._event.connect(self._on_event)
         self._colorsReady.connect(self._colors_ready)
         self._colors_busy = False
+        self._keyboard = {"rows": [], "symbols": []}
+        self._keyboard_button = keyboard_button()
+        threading.Thread(target=self._load_keyboard, daemon=True).start()
         self._update_colors()
         self._refresh_windows()
         threading.Thread(target=self._listen, daemon=True).start()
@@ -168,7 +190,9 @@ class Shell(QObject):
 
     def _on_event(self, message):
         event = message.get("event")
-        if event == "launcher":
+        if event == "keyboard-loaded":
+            self.keyboardChanged.emit()
+        elif event == "launcher":
             self.launcherRequested.emit()
         elif event == "panel":
             self.panelRequested.emit()
@@ -187,6 +211,12 @@ class Shell(QObject):
             self._load_clipboard()
         elif event == "screenshot-area":
             self.areaShotRequested.emit()
+        elif event == "text-input":
+            mode = shell.read_config().get("osk", "auto")
+            if not message.get("active"):
+                self.keyboardWanted.emit(False)
+            elif mode == "always" or (mode != "never" and message.get("touch")):
+                self.keyboardWanted.emit(True)
         else:
             self._refresh_windows()
 
@@ -282,6 +312,35 @@ class Shell(QObject):
     def trf(self, text, values):
         """tr() with {names} filled in."""
         return i18n.tr(text, **{k: str(v) for k, v in values.items()})
+
+    # ---- the on-screen keyboard ---------------------------------------
+
+    def _load_keyboard(self):
+        try:
+            board = osk.board()
+        except Exception as e:  # a broken layout must not take the shell down
+            print("ozi-shell: on-screen keyboard:", e, file=sys.stderr)
+            return
+        self._keyboard = board
+        self._event.emit({"event": "keyboard-loaded"})
+
+    @pyqtProperty("QVariantMap", notify=keyboardChanged)
+    def keyboard(self):
+        return self._keyboard
+
+    @pyqtProperty(bool, notify=keyboardChanged)
+    def keyboardButton(self):
+        """The bar shows the keyboard button: on a touch screen, in the Education
+        edition, or when asked for ("osk": "always" in desktop.json)."""
+        return self._keyboard_button
+
+    @pyqtSlot("QVariantList")
+    def pressKeys(self, keys):
+        """Type with the on-screen keyboard: oziwm presses these keys together
+        (evdev codes), as if they came from a keyboard."""
+        codes = [int(k) for k in keys if 0 < int(k) < 768]
+        if codes:
+            threading.Thread(target=ask, args=({"do": "press", "keys": codes},), daemon=True).start()
 
     @pyqtProperty(str, constant=True)
     def locale(self):

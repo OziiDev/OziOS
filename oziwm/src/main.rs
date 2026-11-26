@@ -21,6 +21,7 @@ mod snap;
 mod clipboard;
 mod theme;
 mod title;
+mod touch;
 mod tty;
 mod winit;
 mod workspace;
@@ -94,6 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut event_loop: EventLoop<OziWm> = EventLoop::try_new()?;
     let display: Display<OziWm> = Display::new()?;
     let mut state = OziWm::new(&mut event_loop, display)?;
+    state.refresh_osk();
     lock::init(&mut state)?;
     state.init_clipboard();
 
@@ -120,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         state.spawn_shell(command);
     }
 
-    let result = event_loop.run(None, &mut state, |_| {});
+    let result = event_loop.run(None, &mut state, |state| state.check_text_input());
     let _ = std::fs::remove_file(&state.ipc_path);
     result?;
     tracing::info!("oziwm stopped");

@@ -209,8 +209,9 @@ where
             data.handle.increment_serial(resource);
         }
 
-        // Discard requsets without any active input method instance.
-        if !data.input_method_handle.has_instance() {
+        // Discard requsets without any active input method instance (unless the
+        // compositor has its own on-screen keyboard: OziOS patch).
+        if !data.input_method_handle.has_instance() && !super::enter_without_ime() {
             debug!("discarding text-input request without IME running");
             return;
         }
