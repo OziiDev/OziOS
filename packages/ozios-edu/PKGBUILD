@@ -1,10 +1,10 @@
 pkgname=ozios-edu
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 pkgdesc="OziOS Education: smart board desktop, screen pen and school defaults"
 arch=(any)
 license=(MIT)
-depends=(ozios-settings xournalpp okular kcalc kolourpaint plasma-keyboard
+depends=(ozios-settings ozi-desktop xournalpp gnome-calculator
          libreoffice-still libreoffice-still-tr)
 install=ozios-edu.install
 options=(!strip !debug)
@@ -16,8 +16,10 @@ package() {
 
   echo edu > "$srcdir/edition"
   install -Dm644 "$srcdir/edition" "$share/edition"
-  install -Dm644 "$src/edu/layouts/board.js" "$share/layouts/board.js"
-  install -Dm755 "$src/edu/apply-edu.sh" "$share/edu/apply-edu.sh"
+  # The board's desktop: no lock, the school programs on the dock, the
+  # on-screen keyboard (oziwm and ozi-shell read these under the user's own).
+  install -Dm644 "$src/edu/desktop-defaults.json" "$share/desktop-defaults.json"
+  install -Dm644 "$src/edu/50-ozios-edu-logind.conf" "$pkgdir/usr/lib/systemd/logind.conf.d/50-ozios-edu.conf"
   install -Dm644 -t "$pkgdir/usr/share/applications" "$src"/edu/applications/*.desktop
 
   # The screen pen.

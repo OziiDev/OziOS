@@ -57,7 +57,6 @@ installed() {  # installed <kind> <id>: is this Plasma package available?
 
 if [ "${1:-}" = "--undo" ]; then
   [ -x "$HOME/.local/bin/ozi-fetch" ] && "$HOME/.local/bin/ozi-fetch" --unpin >/dev/null 2>&1
-  [ -f /usr/share/ozios/edu/apply-edu.sh ] && bash /usr/share/ozios/edu/apply-edu.sh --undo >/dev/null 2>&1
   drop_block "$HOME/.bashrc"
   drop_block "$fish_rc"
   command -v plasma-apply-lookandfeel >/dev/null &&
@@ -353,12 +352,6 @@ shortcut plasmashell "manage activities" $((0x12000051))
 shortcut kwin "Window Close" $((0x09000033)) $((0x10000051))
 shortcut org.kde.konsole.desktop _launch $((0x0C000054)) $((0x11000004))
 echo ok
-
-# The Education edition adds its own desktop on top: board layout, school defaults.
-if [ "$(cat /usr/share/ozios/edition 2>/dev/null)" = edu ] && [ -f /usr/share/ozios/edu/apply-edu.sh ]; then
-  say "Education desktop"
-  bash /usr/share/ozios/edu/apply-edu.sh >/dev/null 2>&1 && echo ok || echo failed
-fi
 
 echo
 echo "Done. Open a new Konsole window."

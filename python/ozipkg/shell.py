@@ -163,13 +163,24 @@ def desktop_config_path(environ=os.environ):
     return os.path.join(base, "ozios", "desktop.json")
 
 
-def read_config(environ=os.environ):
+# An edition's defaults (the Education edition: no lock, the school programs
+# on the dock); the user's own settings win over them.
+EDITION_DEFAULTS = "/usr/share/ozios/desktop-defaults.json"
+
+
+def _read_json(path):
     try:
-        with open(desktop_config_path(environ), encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
         return {}
+
+
+def read_config(environ=os.environ):
+    data = _read_json(environ.get("OZIOS_DESKTOP_DEFAULTS", EDITION_DEFAULTS))
+    data.update(_read_json(desktop_config_path(environ)))
+    return data
 
 
 def write_config(changes, environ=os.environ):

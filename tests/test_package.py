@@ -52,7 +52,8 @@ class EducationPackage(unittest.TestCase):
 
     def test_it_needs_the_base_package_and_the_school_programs(self):
         text = read("packages", "ozios-edu", "PKGBUILD")
-        for dep in ("ozios-settings", "xournalpp", "plasma-keyboard", "libreoffice-still", "libreoffice-still-tr"):
+        for dep in ("ozios-settings", "ozi-desktop", "xournalpp", "libreoffice-still", "libreoffice-still-tr"):
+            self.assertNotRegex(text, r"depends=\([^)]*\b(okular|kcalc|kolourpaint|plasma-keyboard)\b")
             self.assertRegex(text, r"depends=\([^)]*\b%s\b" % dep)
 
     def test_it_marks_the_edition_the_rest_of_the_system_looks_for(self):
@@ -380,11 +381,10 @@ class Layouts(unittest.TestCase):
         self.assertEqual(sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(ROOT, "desktop", "layouts", "*.js"))),
                          sorted(self.NAMES))
 
-    def test_the_education_board_layout_clears_the_old_panels_and_pins_the_pen(self):
-        text = read("edu", "layouts", "board.js")
-        code = [line for line in text.splitlines() if line.strip() and not line.startswith("//")]
-        self.assertEqual(code[0], "panels().forEach(function (p) { p.remove() })")
-        self.assertIn("applications:ozi-pen.desktop", text)
+    def test_the_education_defaults_pin_the_pen_and_never_lock(self):
+        data = json.loads(read("edu", "desktop-defaults.json"))
+        self.assertEqual(data["dock"][0], "ozi-pen")
+        self.assertEqual(data["lock_after_minutes"], 0)
 
     def test_the_theme_layout_is_the_default_one(self):
         def body(text):

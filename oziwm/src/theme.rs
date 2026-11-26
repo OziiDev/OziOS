@@ -143,10 +143,27 @@ pub fn parse(text: &str) -> Look {
     look
 }
 
+/// An edition's defaults (the Education edition: no lock); the user's own
+/// settings win over them.
+const EDITION_DEFAULTS: &str = "/usr/share/ozios/desktop-defaults.json";
+
 pub fn load() -> Look {
-    std::fs::read_to_string(config_path())
-        .map(|t| parse(&t))
-        .unwrap_or_default()
+    let read = |path: &std::path::Path| {
+        std::fs::read_to_string(path)
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .and_then(|v| match v {
+                Value::Object(map) => Some(map),
+                _ => None,
+            })
+            .unwrap_or_default()
+    };
+    let defaults = std::env::var_os("OZIOS_DESKTOP_DEFAULTS")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(EDITION_DEFAULTS));
+    let mut merged = read(&defaults);
+    merged.extend(read(&config_path()));
+    parse(&Value::Object(merged).to_string())
 }
 
 #[cfg(test)]

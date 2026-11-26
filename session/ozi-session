@@ -12,6 +12,10 @@ export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=auto
 export SDL_VIDEODRIVER="wayland,x11"
 export XCURSOR_THEME="${XCURSOR_THEME:-breeze_cursors}"
+# A bigger pointer on smart boards (the Education edition).
+if [ -z "${XCURSOR_SIZE:-}" ] && [ "$(cat /usr/share/ozios/edition 2>/dev/null)" = edu ]; then
+    XCURSOR_SIZE=36
+fi
 export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
 # KDE programs keep their own look when Plasma's Qt integration is installed.
 if [ -e /usr/lib/qt6/plugins/platformthemes/KDEPlasmaPlatformTheme6.so ]; then

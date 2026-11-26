@@ -7,30 +7,39 @@ günlük işi görmek için gereken programları hazır getirir. Teknik ayrınt�
 
 ## Masaüstü
 
-Ekranın altında tek bir çubuk var; düğmeler parmakla ya da kalemle rahat
-basılacak kadar büyük. Soldan sağa:
+OziOS'un kendi masaüstü açılır: üstte ince bir çubuk, altta büyük simgeli bir
+dock. Dock'ta soldan sağa:
 
-| Düğme | Ne işe yarar |
+| Simge | Ne işe yarar |
 |---|---|
-| Menü | Tüm programlar |
+| Uygulamalar | Tüm programlar (yazarak aranır) |
 | Ekran kalemi | Ekranda ne varsa üzerine çizer |
-| Beyaz tahta | Boş sayfa; sayfalar, görseller ve PDF üzerine not alma |
+| Beyaz tahta | Xournal++: boş sayfa, görseller, PDF üzerine not alma |
 | Sunum | LibreOffice Impress |
-| PDF okuyucu | Okular |
 | Sınıf | Öğrenci seçme, grup kurma, zamanlayıcı |
-| Tarayıcı | Firefox |
+| Tarayıcı | Firefox (PDF'leri de açar) |
 | EBA | Eğitim Bilişim Ağı |
-| Dosyalar | Dosya yöneticisi |
-| Hesap makinesi | KCalc |
-| Yazılım | Program kurma ve güncelleme |
+| Dosyalar | Ozi Dosyalar |
+| Hesap makinesi | Hesap makinesi |
+| Mağaza | Program kurma ve güncelleme |
 
-Çubuğun sağında OziOS kontrol düğmesi, sistem tepsisi (ses, ağ ve benzerleri) ve saat bulunur.
-Arayüz Türkçedir, klavye Türkçe Q'dur.
-Bir yazı alanına dokununca ekran klavyesi açılır. Ekran kilidi ve uyku kapalıdır,
-bu yüzden ders ortasında tahta kararmaz.
+Dock'taki simgeler sürüklenerek yer değiştirir; sağ tık (ya da basılı tutma)
+ile sabitlenir veya kaldırılır. Arayüz Türkçedir, klavye Türkçe Q'dur. Ekran
+kilidi ve uyku kapalıdır, bu yüzden ders ortasında tahta kararmaz; imleç
+büyüktür.
 
-Başka bir düzene geçmek için bir terminalde `ozi layout default`, geri dönmek
-için `ozi layout board` yazılır.
+## Dokunma ve ekran klavyesi
+
+- **Parmakla:** dokunmak tıklamaktır. Firefox'ta ve programlarda parmakla
+  kaydırılır, iki parmakla yakınlaştırılır. Pencere başlığından tutup
+  sürüklenir, başlıktaki düğmeler parmakla basılır.
+- **Ekran klavyesi:** bir yazı alanına parmakla dokununca kendiliğinden açılır,
+  alanın dışına dokununca kapanır. Çubuktaki klavye düğmesiyle her zaman
+  açılıp kapatılır. Açıkken pencereler yukarı kayar, yazılan yer görünür
+  kalır. Türkçe Q düzenindedir (ı, ğ, ü, ş, ö, ç, İ); **&123** sembolleri, iki
+  kez **⇧** büyük harf kilidini açar.
+- **Kalem:** tahtanın kalemi bilgisayara kalem olarak bağlanıyorsa fare gibi
+  çalışır; kalemin düğmesi sağ tıktır.
 
 ## Ekran kalemi
 
@@ -87,7 +96,9 @@ Sınıf uygulaması dört bölümden oluşur.
 
 - Birçok tahtayı tek yerden yönetmek (uzaktan güncelleme, uzaktan kilit, sınıf
   hesapları) yoktur; her tahta kendi bilgisayarıdır.
-- Tahtanın dokunmatik çerçevesi, kalemi ve üreticinin yazılımı denenmedi. Bilgisayara
-  sıradan bir USB dokunmatik ekran gibi görünen tahtalar çalışır; üreticinin sürücüsünü
-  isteyenler için o sürücü gerekir.
-- Eğitim sürümü bir sanal makinede denendi, gerçek bir tahtada henüz denenmedi.
+- Dokunma, ekran klavyesi ve pencere sürükleme bir test masaüstünde parmak
+  dokunuşları taklit edilerek denendi; gerçek bir tahtada henüz denenmedi.
+  Bilgisayara sıradan bir USB dokunmatik ekran gibi görünen tahtalar (çoğu
+  tahta böyledir) çalışır; üreticinin sürücüsünü isteyen eski tahtalar için o
+  sürücü gerekir.
+- Birden çok ekran bağlıysa dokunma ilk ekrana eşlenir.

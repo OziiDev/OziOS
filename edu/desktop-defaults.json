@@ -1,0 +1,15 @@
+{
+  "lock_after_minutes": 0,
+  "osk": "auto",
+  "dock": [
+    "ozi-pen",
+    "com.github.xournalpp.xournalpp",
+    "libreoffice-impress",
+    "ozi-classroom",
+    "firefox",
+    "ozi-eba",
+    "ozi-files",
+    "org.gnome.Calculator",
+    "ozi-store"
+  ]
+}

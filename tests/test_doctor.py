@@ -292,9 +292,9 @@ class Rest(unittest.TestCase):
 
     def test_the_education_edition_is_only_checked_where_it_exists(self):
         self.assertEqual(doctor.check_edition(Fake()), [])
-        edu = Fake(files={"/usr/share/ozios/edition": "edu\n"}, programs=["ozi-pen", "ozi-classroom", "xournalpp", "okular"])
+        edu = Fake(files={"/usr/share/ozios/edition": "edu\n"}, programs=["ozi-pen", "ozi-classroom", "xournalpp", "libreoffice"])
         self.assertEqual(levels(doctor.check_edition(edu)), {"edu": "ok"})
-        stale = Fake(files={"/usr/share/ozios/edition": "edu\n"}, programs=["ozi-pen", "xournalpp", "okular"])
+        stale = Fake(files={"/usr/share/ozios/edition": "edu\n"}, programs=["ozi-pen", "xournalpp", "libreoffice"])
         self.assertIn("ozi-classroom", doctor.check_edition(stale)[0].title)
         self.assertEqual(levels(doctor.check_edition(Fake(files={"/usr/share/ozios/edition": "edu\n"}))), {"edu": "warn"})
 
