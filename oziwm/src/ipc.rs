@@ -43,7 +43,7 @@ pub enum Request {
     Switcher(String),
     /// Move the pointer (and click, with a button code) as if the mouse did:
     /// lets tests drive the desktop without a hand on the mouse.
-    Pointer { x: i32, y: i32, button: Option<u32> },
+    Pointer { x: i32, y: i32, button: Option<u32>, action: String },
     /// Press keys (evdev codes) as a chord, for tests.
     Press(Vec<u32>),
     Quit,
@@ -89,6 +89,8 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
             x: value.get("x").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"x\" (a number) is missing")?,
             y: value.get("y").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"y\" (a number) is missing")?,
             button: value.get("button").and_then(Value::as_u64).map(|b| b as u32),
+            // "click" (default), "press" or "release": a drag is a press, moves, a release.
+            action: value.get("action").and_then(Value::as_str).unwrap_or("click").to_string(),
         }),
         Some("reload-look") => Ok(Request::ReloadLook),
         Some("toggle-launcher") => Ok(Request::ToggleLauncher),
@@ -293,8 +295,8 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
             state.ipc_press(&keys);
             ok(Value::Null)
         }
-        Request::Pointer { x, y, button } => {
-            state.ipc_pointer((x as f64, y as f64).into(), button);
+        Request::Pointer { x, y, button, action } => {
+            state.ipc_pointer((x as f64, y as f64).into(), button, &action);
             ok(Value::Null)
         }
         Request::Quit => {

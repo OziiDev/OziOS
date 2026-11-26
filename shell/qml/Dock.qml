@@ -26,6 +26,22 @@ Window {
     LS.Window.exclusionZone: 70
     LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone
 
+    // Dragging an icon along the dock moves it; where it will land shows as a line.
+    property string dragId: ""
+    property real dragX: 0
+    readonly property var drop: {
+        if (!dragId) return { index: -1, x: 0 }
+        let n = 0, x = -1
+        for (let i = 0; i < icons.count; i++) {
+            const it = icons.itemAt(i)
+            if (!it || it.modelData.id === dragId || !it.modelData.pinned) continue
+            const left = it.x
+            if (x < 0) x = left - row.spacing / 2
+            if (left + it.width / 2 < dragX) { n++; x = left + it.width + row.spacing / 2 }
+        }
+        return { index: n, x: x }
+    }
+
     function updateInput() {
         if (menu.visible)
             Shell.setInputRegion(dock, [0, 0, dock.width, dock.height])
@@ -83,17 +99,23 @@ Window {
         Rectangle { width: 1; height: dock.iconSize * 0.6; color: Qt.alpha(dock.c.text, 0.12); anchors.verticalCenter: parent.verticalCenter }
 
         Repeater {
+            id: icons
             model: Shell.dock
             DockItem {
                 id: item
                 required property var modelData
+                readonly property bool dragged: dock.dragId === modelData.id
+                z: dragged ? 10 : 0
+                opacity: dragged ? 0.85 : 1
+                // Follows the pointer while dragged; its place in the row (x) stays.
+                transform: Translate { x: item.dragged ? dock.dragX - item.x - item.width / 2 : 0 }
                 baseSize: dock.iconSize
                 c: dock.c
                 animate: dock.shell.speed > 0
                 running: modelData.windows.length > 0
                 active: modelData.active
                 windows: modelData.windows.length
-                hovered: mouse.containsMouse && !menu.visible
+                hovered: mouse.containsMouse && !menu.visible && !dock.dragId
                 pressed: mouse.pressed
                 name: modelData.name
                 Image {
@@ -107,7 +129,28 @@ Window {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+                    property real startX: 0
+                    property bool dragging: false
+                    onPressed: (ev) => { startX = ev.x; dragging = false }
+                    onPositionChanged: (ev) => {
+                        if (!(pressedButtons & Qt.LeftButton)) return
+                        if (!dragging && Math.abs(ev.x - startX) > 10) {
+                            dragging = true
+                            menu.close()
+                            dock.dragId = item.modelData.id
+                        }
+                        // Local coordinates move with the icon; mapping undoes that.
+                        if (dragging) dock.dragX = mouse.mapToItem(row, ev.x, 0).x
+                    }
+                    onReleased: {
+                        if (!dragging) return
+                        const to = dock.drop.index
+                        dock.dragId = ""
+                        if (to >= 0) Shell.movePin(item.modelData.id, to)
+                    }
+                    onCanceled: { dragging = false; dock.dragId = "" }
                     onClicked: (ev) => {
+                        if (dragging) return
                         if (ev.button === Qt.RightButton) { menu.openFor(item); return }
                         menu.close()
                         if (ev.button === Qt.MiddleButton) { Shell.launch(item.modelData.id); return }
@@ -117,6 +160,14 @@ Window {
                 }
             }
         }
+    }
+
+    Rectangle {
+        visible: dock.dragId !== "" && dock.drop.x >= 0
+        x: row.x + dock.drop.x - 1
+        anchors.verticalCenter: shelf.verticalCenter
+        width: 3; height: dock.iconSize; radius: 1.5
+        color: dock.c.accent
     }
 
     // Right-click menu of a dock icon.

@@ -452,6 +452,16 @@ class Shell(QObject):
         shell.write_config({"dock": current})
         self.windowsChanged.emit()
 
+    @pyqtSlot(str, int)
+    def movePin(self, app_id, index):
+        """Put a dock item at this place among the pinned ones (pinning it if it was not)."""
+        if app_id not in self._by_id:
+            return
+        current = [p for p in shell.pins(self._by_id) if p != app_id]
+        current.insert(max(0, min(index, len(current))), app_id)
+        shell.write_config({"dock": current})
+        self.windowsChanged.emit()
+
     @pyqtSlot(int)
     def focusWindow(self, window_id):
         ask({"do": "focus", "id": window_id})

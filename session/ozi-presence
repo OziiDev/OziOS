@@ -1,0 +1,14 @@
+#!/usr/bin/python3
+# Discord Rich Presence for the OziOS desktop; see python/ozipkg/presence.py.
+import os
+import sys
+
+here = os.path.dirname(os.path.realpath(__file__))
+for root in (os.path.join(here, "..", "python"), "/usr/lib/ozios/python"):
+    if os.path.isdir(os.path.join(root, "ozipkg")):
+        sys.path.insert(0, root)
+        break
+
+from ozipkg import presence  # noqa: E402
+
+sys.exit(presence.main(sys.argv[1:]))

@@ -271,12 +271,16 @@ impl OziWm {
     }
 
     /// The IPC "pointer" request: move there, then press and release a button.
-    pub fn ipc_pointer(&mut self, location: Point<f64, Logical>, button: Option<u32>) {
+    pub fn ipc_pointer(&mut self, location: Point<f64, Logical>, button: Option<u32>, action: &str) {
         let time = self.start_time.elapsed().as_millis() as u32;
         self.on_pointer_moved(location, time);
         if let Some(button) = button {
-            self.on_button(button, ButtonState::Pressed, time);
-            self.on_button(button, ButtonState::Released, time + 1);
+            if action != "release" {
+                self.on_button(button, ButtonState::Pressed, time);
+            }
+            if action != "press" {
+                self.on_button(button, ButtonState::Released, time + 1);
+            }
         }
     }
 

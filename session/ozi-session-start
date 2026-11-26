@@ -13,6 +13,9 @@ for agent in /usr/lib/polkit-kde-authentication-agent-1 \
     fi
 done
 
+# Discord friends see OziOS (if Discord runs and it is not switched off).
+command -v ozi-presence >/dev/null && ozi-presence >/dev/null 2>&1 &
+
 state="${XDG_STATE_HOME:-$HOME/.local/state}/oziwm"
 mkdir -p "$state"
 # If the shell crashes it comes back; five quick crashes in a row and it rests,

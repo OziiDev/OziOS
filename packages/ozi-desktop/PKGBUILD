@@ -2,7 +2,7 @@
 # launcher, quick settings, wallpaper), with an "OziOS" login session.
 # Built from a checkout like ozios-settings: OZI_SRC points at it.
 pkgname=ozi-desktop
-pkgver=0.4.0beta3
+pkgver=0.4.0beta4
 pkgrel=1
 pkgdesc="OziOS desktop: its own window manager and shell"
 arch=(x86_64)
@@ -50,6 +50,7 @@ package() {
   install -Dm755 "$src/session/ozi-session-start" "$pkgdir/usr/lib/ozios/ozi-session-start"
   install -Dm644 "$src/session/ozios.desktop" "$pkgdir/usr/share/wayland-sessions/ozios.desktop"
   install -Dm644 "$src/session/oziwm.pam" "$pkgdir/etc/pam.d/oziwm"
+  install -Dm755 "$src/session/ozi-presence" "$pkgdir/usr/bin/ozi-presence"
   install -Dm755 "$src/session/ozi-boot-look" "$pkgdir/usr/lib/ozios/ozi-boot-look"
   install -Dm644 "$src/session/ozi-boot-look.service" "$pkgdir/usr/lib/systemd/system/ozi-boot-look.service"
   install -d "$pkgdir/usr/lib/systemd/system/multi-user.target.wants"
