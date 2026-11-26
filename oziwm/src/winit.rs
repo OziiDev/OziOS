@@ -27,7 +27,20 @@ pub fn init_winit(
     event_loop: &mut EventLoop<'static, OziWm>,
     state: &mut OziWm,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (backend, winit) = winit::init::<GlesRenderer>()?;
+    // OZIWM_NESTED_SIZE=1600x900 opens the window at that size (screenshots, videos).
+    let size = std::env::var("OZIWM_NESTED_SIZE").ok().and_then(|s| {
+        let (w, h) = s.split_once('x')?;
+        Some((w.trim().parse::<f64>().ok()?, h.trim().parse::<f64>().ok()?))
+    });
+    let (backend, winit) = match size {
+        Some((w, h)) => winit::init_from_attributes::<GlesRenderer>(
+            smithay::reexports::winit::window::WindowAttributes::default()
+                .with_inner_size(smithay::reexports::winit::dpi::LogicalSize::new(w, h))
+                .with_title("oziwm")
+                .with_visible(true),
+        )?,
+        None => winit::init::<GlesRenderer>()?,
+    };
     let backend = std::rc::Rc::new(std::cell::RefCell::new(backend));
     state.winit = Some(backend.clone());
     let mut backend_ref = backend.borrow_mut();
