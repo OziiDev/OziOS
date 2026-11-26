@@ -95,6 +95,7 @@ class Shell(QObject):
     _partReady = pyqtSignal(str, "QVariant")
     _osdReady = pyqtSignal(str, int)
     _event = pyqtSignal(dict)
+    _colorsReady = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -127,6 +128,9 @@ class Shell(QObject):
         self._partReady.connect(self._set_part)
         self._osdReady.connect(self.osd)
         self._event.connect(self._on_event)
+        self._colorsReady.connect(self._colors_ready)
+        self._colors_busy = False
+        self._update_colors()
         self._refresh_windows()
         threading.Thread(target=self._listen, daemon=True).start()
         self._timer = QTimer(self)
@@ -365,15 +369,38 @@ class Shell(QObject):
 
     @pyqtProperty("QVariantMap", notify=lookChanged)
     def colors(self):
-        return shell.palette(self._look["theme"])
+        return shell.palette(self._look["theme"], self._look.get("colors"))
 
     @pyqtProperty("QVariantList", notify=appsChanged)
     def wallpapers(self):
         return self._wallpapers
 
-    @pyqtProperty("QVariantList", constant=True)
+    @pyqtProperty("QVariantList", notify=lookChanged)
     def themes(self):
-        return [shell.palette(t) for t in shell.theme_ids()]
+        return [shell.palette(t, self._look.get("colors") if t == shell.AUTO else None)
+                for t in shell.theme_ids()]
+
+    def _update_colors(self):
+        """The "auto" theme: work the colours out of a new wallpaper, off the UI thread."""
+        if self._colors_busy or self._look.get("theme") != shell.AUTO:
+            return
+        self._colors_busy = True
+
+        def run():
+            try:
+                changed = shell.update_wallpaper_colors()
+            except Exception as err:  # a broken picture must not take the shell down
+                print("ozi-shell: wallpaper colours:", err, file=sys.stderr)
+                changed = False
+            self._colors_busy = False
+            if changed:
+                self._colorsReady.emit()
+        threading.Thread(target=run, daemon=True).start()
+
+    def _colors_ready(self):
+        self._look = shell.look()
+        ask({"do": "reload-look"})
+        self.lookChanged.emit()
 
     # ---- actions ----------------------------------------------------------
 
@@ -462,6 +489,7 @@ class Shell(QObject):
         if look != self._look:
             self._look = look
             self.lookChanged.emit()
+        self._update_colors()
 
     def _flush_look(self):
         if not self._pending_look:
@@ -471,6 +499,7 @@ class Shell(QObject):
         self._look = shell.look()
         ask({"do": "reload-look"})
         self.lookChanged.emit()
+        self._update_colors()
 
     def _starting_timeout(self):
         if self._starting:

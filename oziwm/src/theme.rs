@@ -63,6 +63,31 @@ impl Default for Look {
     }
 }
 
+/// "#RRGGBB" -> colour.
+fn parse_hex(text: &str) -> Option<Rgb> {
+    let hex = text.strip_prefix('#')?;
+    if hex.len() != 6 || !hex.is_ascii() {
+        return None;
+    }
+    let byte = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok().map(|b| b as f32 / 255.0);
+    Some([byte(0)?, byte(2)?, byte(4)?])
+}
+
+/// The "auto" theme: colours the shell worked out from the wallpaper and
+/// wrote under "colors" (python/ozipkg/wallcolors.py).
+fn from_wallpaper(colors: &Value) -> Option<Theme> {
+    let get = |key: &str| colors.get(key).and_then(Value::as_str).and_then(parse_hex);
+    Some(Theme {
+        id: "auto",
+        ink: get("ink")?,
+        raised: get("raised")?,
+        text: get("text")?,
+        muted: get("muted")?,
+        accent: get("accent")?,
+        accent2: get("accent2")?,
+    })
+}
+
 pub fn theme_by_id(id: &str) -> Option<Theme> {
     THEMES.iter().copied().find(|t| t.id == id)
 }
@@ -80,8 +105,18 @@ pub fn parse(text: &str) -> Look {
     let Ok(value) = serde_json::from_str::<Value>(text) else {
         return look;
     };
-    if let Some(theme) = value.get("theme").and_then(Value::as_str).and_then(theme_by_id) {
-        look.theme = theme;
+    match value.get("theme").and_then(Value::as_str) {
+        Some("auto") => {
+            if let Some(theme) = value.get("colors").and_then(from_wallpaper) {
+                look.theme = theme;
+            }
+        }
+        Some(id) => {
+            if let Some(theme) = theme_by_id(id) {
+                look.theme = theme;
+            }
+        }
+        None => {}
     }
     if let Some(glow) = value.get("glow").and_then(Value::as_f64) {
         look.glow = glow.clamp(0.0, 1.0) as f32;
@@ -128,6 +163,19 @@ mod tests {
         assert_eq!(parse("{}").lock_after_minutes, 10);
         assert_eq!(parse(r#"{"lock_after_minutes":0}"#).lock_after_minutes, 0);
         assert_eq!(parse(r#"{"lock_after_minutes":99999}"#).lock_after_minutes, 1440);
+    }
+
+    #[test]
+    fn auto_theme_reads_the_wallpaper_colours() {
+        let look = parse(
+            r##"{"theme":"auto","colors":{"ink":"#09110C","raised":"#111B14","text":"#F2FCF6",
+                "muted":"#8DA897","accent":"#35FF7B","accent2":"#35CAFF"}}"##,
+        );
+        assert_eq!(look.theme.id, "auto");
+        assert_eq!(look.theme.accent, rgb(0x35, 0xFF, 0x7B));
+        // Not worked out yet, or broken: cyan.
+        assert_eq!(parse(r#"{"theme":"auto"}"#).theme.id, "cyan");
+        assert_eq!(parse(r##"{"theme":"auto","colors":{"ink":"#zz"}}"##).theme.id, "cyan");
     }
 
     #[test]

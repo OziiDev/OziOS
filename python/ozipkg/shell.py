@@ -301,7 +301,7 @@ ACCENT2 = {
     "mint": (60, 140, 255), "rose": (160, 92, 255), "frost": (110, 80, 230),
 }
 
-LOOK_DEFAULTS = {"theme": "cyan", "glow": 0.0, "animation_speed": 1.0, "corner_radius": 10,
+LOOK_DEFAULTS = {"theme": "auto", "glow": 0.0, "animation_speed": 1.0, "corner_radius": 10,
                  "lock_after_minutes": 10, "wallpaper": "tesseract"}
 
 
@@ -309,18 +309,51 @@ def _hex(rgb):
     return "#%02X%02X%02X" % tuple(rgb)
 
 
-def palette(theme_id):
-    """Colours for the shell, as #RRGGBB strings."""
+AUTO = "auto"   # colours taken from the wallpaper (wallcolors.py)
+
+
+def palette(theme_id, colors=None):
+    """Colours for the shell, as #RRGGBB strings. The "auto" theme takes the
+    colours worked out from the wallpaper (`colors`), cyan until they are."""
     from . import themes
+    if theme_id == AUTO and _valid_colors(colors):
+        return dict(colors, id=AUTO, light=False, danger="#E5484D")
     theme = next((t for t in themes.THEMES if t.id == theme_id), themes.THEMES[0])
     return {
-        "id": theme.id, "light": theme.light,
+        "id": AUTO if theme_id == AUTO else theme.id, "light": theme.light,
         "ink": _hex(theme.ink), "raised": _hex(theme.raised), "control": _hex(theme.control),
         "text": _hex(theme.text), "muted": _hex(theme.muted),
         "accent": _hex(theme.accent), "accent2": _hex(ACCENT2.get(theme.id, theme.accent_alt)),
         # Text on an accent-filled surface, and the one colour for warnings and closing.
         "onAccent": _hex(theme.on_accent or theme.ink), "danger": "#E5484D",
     }
+
+
+COLOR_KEYS = ("ink", "raised", "control", "text", "muted", "accent", "accent2", "onAccent")
+
+
+def _valid_colors(colors):
+    return isinstance(colors, dict) and all(
+        isinstance(colors.get(k), str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", colors[k]) for k in COLOR_KEYS)
+
+
+def update_wallpaper_colors(environ=os.environ):
+    """With the "auto" theme, work the colours out of the wallpaper once per
+    wallpaper and keep them in desktop.json, where oziwm, the lock screen and
+    the boot menu read them. True if they changed."""
+    cfg = read_config(environ)
+    current = look(environ)
+    if current["theme"] != AUTO:
+        return False
+    wallpaper = current["wallpaper"]
+    if cfg.get("colors_for") == wallpaper and _valid_colors(cfg.get("colors")):
+        return False
+    from . import wallcolors
+    colors = wallcolors.colors_for(wallpaper)
+    if not colors:
+        return False
+    write_config({"colors": colors, "colors_for": wallpaper}, environ)
+    return True
 
 
 def look(environ=os.environ):
@@ -339,12 +372,14 @@ def look(environ=os.environ):
             data["wallpaper"] = "tesseract"
     except (TypeError, ValueError):
         data = dict(LOOK_DEFAULTS)
+    if data["theme"] == AUTO and _valid_colors(cfg.get("colors")):
+        data["colors"] = {k: cfg["colors"][k] for k in COLOR_KEYS}
     return data
 
 
 def theme_ids():
     from . import themes
-    return [t.id for t in themes.THEMES]
+    return [AUTO] + [t.id for t in themes.THEMES]
 
 
 # ---- radios, brightness, power ------------------------------------------

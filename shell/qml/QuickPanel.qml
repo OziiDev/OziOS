@@ -316,8 +316,17 @@ Window {
                         Rectangle {
                             required property var modelData
                             readonly property bool chosen: modelData.id === panel.look.theme
+                            // "auto": the two colours taken from the wallpaper.
+                            readonly property bool auto: modelData.id === "auto"
                             width: 30; height: 30; radius: 15
                             color: modelData.accent
+                            gradient: auto ? autoFill : null
+                            Gradient {
+                                id: autoFill
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.45; color: modelData.accent }
+                                GradientStop { position: 0.55; color: modelData.accent2 }
+                            }
                             border.width: chosen ? 2 : 0
                             border.color: panel.c.text
                             Rectangle {
