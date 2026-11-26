@@ -1,0 +1,15 @@
+[Unit]
+Description=Boot menu in the colours and wallpaper of the OziOS desktop
+RequiresMountsFor=/boot /home
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# At start, and again at shutdown so a wallpaper chosen today shows tomorrow.
+ExecStart=/usr/lib/ozios/ozi-boot-look
+ExecStop=/usr/lib/ozios/ozi-boot-look
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
