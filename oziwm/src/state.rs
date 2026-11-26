@@ -460,8 +460,8 @@ impl OziWm {
                         "OziOS".into(),
                         "-i".into(),
                         path.to_string_lossy().to_string(),
-                        "Ekran görüntüsü alındı".into(),
-                        format!("Resimler klasörüne kaydedildi: {name}"),
+                        crate::i18n::tr("Screenshot taken"),
+                        crate::i18n::trf("Saved in Pictures: {name}", &[("name", &name)]),
                     ]);
                 }
             }

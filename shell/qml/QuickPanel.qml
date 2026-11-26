@@ -60,7 +60,7 @@ Window {
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
             spacing: 4
             Repeater {
-                model: [{ id: "quick", label: "Hızlı ayarlar" }, { id: "look", label: "Görünüm" }]
+                model: [{ id: "quick", label: Shell.tr("Quick settings") }, { id: "look", label: Shell.tr("Look") }]
                 Rectangle {
                     required property var modelData
                     readonly property bool chosen: panel.page === modelData.id
@@ -95,7 +95,7 @@ Window {
                         c: panel.c; width: parent.tileWidth
                         glyph: panel.s.wifi.wifi ? "wifi" : "offline"
                         title: "Wi-Fi"
-                        subtitle: !panel.s.wifi.wifi ? "Kapalı" : (panel.s.network.kind === "wifi" ? panel.s.network.name : (panel.s.network.kind === "wired" ? "Kablolu bağlı" : "Bağlı değil"))
+                        subtitle: !panel.s.wifi.wifi ? Shell.tr("Off") : (panel.s.network.kind === "wifi" ? panel.s.network.name : (panel.s.network.kind === "wired" ? Shell.tr("Wired") : Shell.tr("Not connected")))
                         on: panel.s.wifi.wifi === true
                         more: true
                         onToggled: Shell.setWifi(!panel.s.wifi.wifi)
@@ -106,7 +106,7 @@ Window {
                         visible: panel.s.bluetooth.available === true
                         glyph: "bluetooth"
                         title: "Bluetooth"
-                        subtitle: !panel.s.bluetooth.powered ? "Kapalı" : (panel.s.bluetooth.devices.filter(d => d.connected).map(d => d.name)[0] || "Açık")
+                        subtitle: !panel.s.bluetooth.powered ? Shell.tr("Off") : (panel.s.bluetooth.devices.filter(d => d.connected).map(d => d.name)[0] || Shell.tr("On"))
                         on: panel.s.bluetooth.powered === true
                         more: true
                         onToggled: Shell.setBluetooth(!panel.s.bluetooth.powered)
@@ -115,16 +115,16 @@ Window {
                     Tile {
                         c: panel.c; width: parent.tileWidth
                         glyph: "airplane"
-                        title: "Uçak modu"
-                        subtitle: panel.s.airplane ? "Açık" : "Kapalı"
+                        title: Shell.tr("Airplane mode")
+                        subtitle: panel.s.airplane ? Shell.tr("On") : Shell.tr("Off")
                         on: panel.s.airplane === true
                         onToggled: Shell.setAirplane(!panel.s.airplane)
                     }
                     Tile {
                         c: panel.c; width: parent.tileWidth
                         glyph: "moon"
-                        title: "Rahatsız etme"
-                        subtitle: Notes.quiet ? "Yalnız acil olanlar" : "Kapalı"
+                        title: Shell.tr("Do not disturb")
+                        subtitle: Notes.quiet ? Shell.tr("Urgent ones only") : Shell.tr("Off")
                         on: Notes.quiet
                         onToggled: Notes.setQuiet(!Notes.quiet)
                     }
@@ -132,8 +132,8 @@ Window {
                         c: panel.c; width: parent.tileWidth
                         visible: panel.s.power !== ""
                         glyph: "bolt"
-                        title: "Güç"
-                        subtitle: ({ "power-saver": "Tasarruf", "balanced": "Dengeli", "performance": "Performans" })[panel.s.power] || ""
+                        title: Shell.tr("Power")
+                        subtitle: ({ "power-saver": Shell.tr("Power saver"), "balanced": Shell.tr("Balanced"), "performance": Shell.tr("Performance") })[panel.s.power] || ""
                         on: panel.s.power === "performance"
                         onToggled: {
                             const order = ["power-saver", "balanced", "performance"]
@@ -144,8 +144,8 @@ Window {
                         readonly property var desk: Shell.workspaces.find(w => w.active) || {}
                         c: panel.c; width: parent.tileWidth
                         glyph: "tiles"
-                        title: "Döşeme"
-                        subtitle: desk.tiling ? "Açık" : "Kapalı"
+                        title: Shell.tr("Tiling")
+                        subtitle: desk.tiling ? Shell.tr("On") : Shell.tr("Off")
                         on: desk.tiling === true
                         onToggled: Shell.toggleTiling()
                     }
@@ -155,7 +155,7 @@ Window {
                         glyph: panel.s.battery.charging ? "charging" : "battery"
                         level: (panel.s.battery.percent || 0) / 100
                         title: (panel.s.battery.percent || 0) + "%"
-                        subtitle: panel.s.battery.charging ? "Şarj oluyor" : "Pil"
+                        subtitle: panel.s.battery.charging ? Shell.tr("Charging") : Shell.tr("Battery")
                         on: false
                     }
                 }
@@ -165,7 +165,7 @@ Window {
                     visible: panel.drawer === "wifi"
                     width: parent.width
                     spacing: 6
-                    Text { text: Shell.networks.length ? "Ağlar" : "Ağlar aranıyor…"; color: panel.c.muted; font.pixelSize: 12 }
+                    Text { text: Shell.networks.length ? Shell.tr("Networks") : Shell.tr("Looking for networks…"); color: panel.c.muted; font.pixelSize: 12 }
                     Repeater {
                         model: Shell.networks
                         Rectangle {
@@ -181,7 +181,7 @@ Window {
                             }
                             Text {
                                 anchors { right: parent.right; rightMargin: 12; top: parent.top; topMargin: 13 }
-                                text: (net.modelData.secure ? "Parolalı · " : "") + net.modelData.signal + "%"; color: panel.c.muted; font.pixelSize: 11
+                                text: (net.modelData.secure ? Shell.tr("Secured") + " · " : "") + net.modelData.signal + "%"; color: panel.c.muted; font.pixelSize: 11
                             }
                             MouseArea {
                                 id: netMouse
@@ -202,7 +202,7 @@ Window {
                                     echoMode: TextInput.Password
                                     color: panel.c.text; font.pixelSize: 13
                                     onAccepted: { Shell.connectWifi(net.modelData.ssid, text); text = ""; net.asking = false }
-                                    Text { visible: !pass.text; anchors.verticalCenter: parent.verticalCenter; text: "Parola, sonra Enter"; color: panel.c.muted; font.pixelSize: 12 }
+                                    Text { visible: !pass.text; anchors.verticalCenter: parent.verticalCenter; text: Shell.tr("Password, then Enter"); color: panel.c.muted; font.pixelSize: 12 }
                                 }
                             }
                             Connections {
@@ -220,7 +220,7 @@ Window {
                     visible: panel.drawer === "bluetooth"
                     width: parent.width
                     spacing: 6
-                    Text { text: panel.s.bluetooth.devices.length ? "Eşleşmiş cihazlar" : "Eşleşmiş cihaz yok"; color: panel.c.muted; font.pixelSize: 12 }
+                    Text { text: panel.s.bluetooth.devices.length ? Shell.tr("Paired devices") : Shell.tr("No paired devices"); color: panel.c.muted; font.pixelSize: 12 }
                     Repeater {
                         model: panel.s.bluetooth.devices
                         Rectangle {
@@ -228,13 +228,13 @@ Window {
                             width: quickPage.width; height: 42; radius: 12
                             color: modelData.connected ? Qt.alpha(panel.c.accent, 0.16) : (devMouse.containsMouse ? panel.c.control : "transparent")
                             Text { anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter } text: parent.modelData.name; color: panel.c.text; font.pixelSize: 13 }
-                            Text { anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter } text: parent.modelData.connected ? "Bağlı" : "Bağlan"; color: parent.modelData.connected ? panel.c.accent : panel.c.muted; font.pixelSize: 12 }
+                            Text { anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter } text: parent.modelData.connected ? Shell.tr("Connected") : Shell.tr("Connect"); color: parent.modelData.connected ? panel.c.accent : panel.c.muted; font.pixelSize: 12 }
                             MouseArea { id: devMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Shell.bluetoothDevice(parent.modelData.mac, !parent.modelData.connected) }
                         }
                     }
                     Rectangle {
                         width: quickPage.width; height: 38; radius: 12; color: panel.c.control
-                        Text { anchors.centerIn: parent; text: "Yeni cihaz eşleştir…"; color: panel.c.text; font.pixelSize: 12 }
+                        Text { anchors.centerIn: parent; text: Shell.tr("Pair a new device…"); color: panel.c.text; font.pixelSize: 12 }
                         MouseArea { anchors.fill: parent; onClicked: { panel.close(); Shell.openSettings("kcm_bluetooth") } }
                     }
                 }
@@ -270,7 +270,7 @@ Window {
 
                 Rectangle {
                     width: quickPage.width; height: 38; radius: 12; color: panel.c.control
-                    Text { anchors.centerIn: parent; text: "Tüm ayarlar"; color: panel.c.text; font.pixelSize: 12 }
+                    Text { anchors.centerIn: parent; text: Shell.tr("All settings"); color: panel.c.text; font.pixelSize: 12 }
                     MouseArea { anchors.fill: parent; onClicked: { panel.close(); Shell.openSettings("") } }
                 }
             }
@@ -342,10 +342,10 @@ Window {
 
                 Repeater {
                     model: [
-                        { key: "glow", label: "Renkli kenar", from: 0, to: 1, step: 0.05, fmt: (v) => v === 0 ? "kapalı" : Math.round(v * 100) + "%" },
-                        { key: "corner_radius", label: "Köşeler", from: 0, to: 16, step: 1, fmt: (v) => v + " px" },
-                        { key: "animation_speed", label: "Hareket", from: 0, to: 2, step: 0.1, fmt: (v) => v === 0 ? "kapalı" : v.toFixed(1) + "×" },
-                        { key: "lock_after_minutes", label: "Boşta kilitle", from: 0, to: 60, step: 5, fmt: (v) => v === 0 ? "hiçbir zaman" : v + " dk" },
+                        { key: "glow", label: Shell.tr("Coloured edge"), from: 0, to: 1, step: 0.05, fmt: (v) => v === 0 ? Shell.tr("off") : Math.round(v * 100) + "%" },
+                        { key: "corner_radius", label: Shell.tr("Corners"), from: 0, to: 16, step: 1, fmt: (v) => v + " px" },
+                        { key: "animation_speed", label: Shell.tr("Motion"), from: 0, to: 2, step: 0.1, fmt: (v) => v === 0 ? Shell.tr("off") : v.toFixed(1) + "×" },
+                        { key: "lock_after_minutes", label: Shell.tr("Lock when idle"), from: 0, to: 60, step: 5, fmt: (v) => v === 0 ? Shell.tr("never") : Shell.trf("{n} min", { n: v }) },
                     ]
                     Column {
                         required property var modelData
@@ -367,12 +367,12 @@ Window {
                 }
 
                 // Wallpapers: the moving tesseract first, then every picture found.
-                Text { text: "Duvar kâğıdı"; color: panel.c.text; font.pixelSize: 15; font.weight: Font.Bold }
+                Text { text: Shell.tr("Wallpaper"); color: panel.c.text; font.pixelSize: 15; font.weight: Font.Bold }
                 Grid {
                     columns: 3
                     spacing: 8
                     Repeater {
-                        model: [{ path: "tesseract", title: "Canlı tesseract" }].concat(Shell.wallpapers)
+                        model: [{ path: "tesseract", title: Shell.tr("Live tesseract") }].concat(Shell.wallpapers)
                         Rectangle {
                             required property var modelData
                             readonly property bool chosen: panel.look.wallpaper === modelData.path

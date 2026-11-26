@@ -6,6 +6,7 @@ mod cursor;
 mod deco;
 mod grabs;
 mod handlers;
+mod i18n;
 mod input;
 mod ipc;
 mod keyboard;

@@ -22,7 +22,7 @@ Window {
     LS.Window.exclusionZone: 34
     LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone
 
-    readonly property var locale: Qt.locale("tr_TR")
+    readonly property var locale: Qt.locale(Shell.locale)
     property date now: new Date()
     Timer { interval: 1000; repeat: true; running: true; onTriggered: bar.now = new Date() }
 
@@ -118,7 +118,7 @@ Window {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             leftPadding: Shell.starting.name ? 0 : 6
-            text: Shell.starting.name ? Shell.starting.name + " açılıyor…" : (Shell.activeTitle || "Masaüstü")
+            text: Shell.starting.name ? Shell.trf("{app} is starting…", { app: Shell.starting.name }) : (Shell.activeTitle || Shell.tr("Desktop"))
             color: Shell.starting.name ? bar.c.muted : bar.c.text
             font.pixelSize: 13; font.weight: Font.DemiBold
             elide: Text.ElideRight

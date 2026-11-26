@@ -103,7 +103,7 @@ Window {
                 Text {
                     visible: !query.text
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Uygulama ara"
+                    text: Shell.tr("Search apps")
                     color: launcher.c.muted; font.pixelSize: 15
                 }
             }
@@ -163,7 +163,7 @@ Window {
             Text {
                 anchors.centerIn: parent
                 visible: launcher.results.length === 0
-                text: "“" + query.text + "” için uygulama yok"
+                text: Shell.trf("No apps for “{query}”", { query: query.text })
                 color: launcher.c.muted; font.pixelSize: 14
             }
         }
@@ -179,8 +179,8 @@ Window {
             }
             Text {
                 anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
-                text: launcher.armed ? "Emin misin? Onaylamak için bir daha tıkla."
-                     : launcher.results.length + " uygulama · sağ tık: Dock'a sabitle"
+                text: launcher.armed ? Shell.tr("Sure? Click again to confirm.")
+                     : Shell.trf("{n} apps · right click: pin to the dock", { n: launcher.results.length })
                 color: launcher.armed ? launcher.c.danger : launcher.c.muted
                 font.pixelSize: 12
             }
@@ -189,11 +189,11 @@ Window {
                 spacing: 4
                 Repeater {
                     model: [
-                        { kind: "lock", label: "Kilitle", action: "lock", ask: false },
-                        { kind: "suspend", label: "Uyku", action: "suspend", ask: false },
-                        { kind: "logout", label: "Oturumu kapat", action: "logout", ask: true },
-                        { kind: "reboot", label: "Yeniden başlat", action: "reboot", ask: true },
-                        { kind: "power", label: "Kapat", action: "poweroff", ask: true },
+                        { kind: "lock", label: Shell.tr("Lock"), action: "lock", ask: false },
+                        { kind: "suspend", label: Shell.tr("Sleep"), action: "suspend", ask: false },
+                        { kind: "logout", label: Shell.tr("Log out"), action: "logout", ask: true },
+                        { kind: "reboot", label: Shell.tr("Restart"), action: "reboot", ask: true },
+                        { kind: "power", label: Shell.tr("Shut down"), action: "poweroff", ask: true },
                     ]
                     Rectangle {
                         id: powerButton

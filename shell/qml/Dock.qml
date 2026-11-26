@@ -86,7 +86,7 @@ Window {
             animate: dock.shell.speed > 0
             hovered: launcherMouse.containsMouse
             pressed: launcherMouse.pressed
-            name: "Uygulamalar"
+            name: Shell.tr("Apps")
             Rectangle {
                 anchors.fill: parent
                 radius: 10
@@ -216,14 +216,14 @@ Window {
                 color: dock.c.muted; font.pixelSize: 12; font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
-            MenuEntry { label: "Yeni pencere"; onPicked: Shell.launch(menu.app.id) }
+            MenuEntry { label: Shell.tr("New window"); onPicked: Shell.launch(menu.app.id) }
             MenuEntry {
-                label: menu.app && menu.app.pinned ? "Dock'tan kaldır" : "Dock'a sabitle"
+                label: menu.app && menu.app.pinned ? Shell.tr("Unpin from the dock") : Shell.tr("Pin to the dock")
                 onPicked: Shell.setPinned(menu.app.id, !menu.app.pinned)
             }
             MenuEntry {
                 visible: !!menu.app && menu.app.windows.length > 0
-                label: menu.app && menu.app.windows.length > 1 ? "Tüm pencereleri kapat" : "Kapat"
+                label: menu.app && menu.app.windows.length > 1 ? Shell.tr("Close all windows") : Shell.tr("Close")
                 danger: true
                 onPicked: menu.app.windows.forEach(w => Shell.closeWindow(w))
             }

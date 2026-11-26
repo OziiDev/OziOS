@@ -671,4 +671,5 @@ def screenshot_path(environ=os.environ, now=None):
     """Where a new screenshot goes, named like oziwm names its own."""
     import time
     stamp = time.strftime("%Y-%m-%d %H-%M-%S", time.localtime(now))
-    return os.path.join(pictures_dir(environ), "Ekran görüntüsü %s.png" % stamp)
+    from .i18n import tr
+    return os.path.join(pictures_dir(environ), "%s %s.png" % (tr("Screenshot"), stamp))

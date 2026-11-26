@@ -29,8 +29,8 @@ Window {
     Timer { id: hide; interval: 1500; onTriggered: osd.visible = false }
 
     readonly property var labels: ({
-        "volume": "Ses", "muted": "Ses kapalı", "brightness": "Parlaklık", "mic": "Mikrofon",
-        "airplane-on": "Uçak modu açık", "airplane-off": "Uçak modu kapalı"
+        "volume": Shell.tr("Volume"), "muted": Shell.tr("Muted"), "brightness": Shell.tr("Brightness"), "mic": Shell.tr("Microphone"),
+        "airplane-on": Shell.tr("Airplane mode on"), "airplane-off": Shell.tr("Airplane mode off")
     })
     readonly property bool gauge: kind === "volume" || kind === "brightness"
 

@@ -51,7 +51,7 @@ Window {
         width: hint.implicitWidth + 28; height: 36; radius: 10
         color: shot.c.raised
         border.width: 1; border.color: Qt.alpha(shot.c.text, 0.10)
-        Text { id: hint; anchors.centerIn: parent; text: "Kaydetmek istediğin yeri sürükleyerek seç · Esc: vazgeç"; color: shot.c.text; font.pixelSize: 13 }
+        Text { id: hint; anchors.centerIn: parent; text: Shell.tr("Drag over the part to save · Esc: cancel"); color: shot.c.text; font.pixelSize: 13 }
     }
 
     Item { id: keys; focus: true; Keys.onEscapePressed: shot.cancel() }

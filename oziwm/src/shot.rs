@@ -80,7 +80,7 @@ pub fn parse_pictures_dir(text: &str, home: &Path) -> Option<PathBuf> {
 
 pub fn default_name() -> String {
     let now = chrono::Local::now();
-    format!("Ekran görüntüsü {}.png", now.format("%Y-%m-%d %H-%M-%S"))
+    format!("{} {}.png", crate::i18n::tr("Screenshot"), now.format("%Y-%m-%d %H-%M-%S"))
 }
 
 /// Rolling frame timings, for `{"get":"stats"}`.

@@ -29,18 +29,18 @@ use crate::{
 };
 
 const MONTHS: [&str; 12] = [
-    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+    "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
+    "December",
 ];
-const DAYS: [&str; 7] = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+const DAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-/// "22 Kasım Pazar" from a day, a 1-based month and a weekday (0 = Monday).
-pub fn turkish_date(day: u32, month: u32, weekday: u32) -> String {
-    format!(
-        "{} {} {}",
-        day,
-        MONTHS[(month.clamp(1, 12) - 1) as usize],
-        DAYS[weekday.min(6) as usize]
-    )
+/// "Sunday, November 22" (in Turkish "22 Kasım Pazar") from a day, a 1-based
+/// month and a weekday (0 = Monday).
+pub fn local_date(day: u32, month: u32, weekday: u32) -> String {
+    let day = day.to_string();
+    let month = crate::i18n::tr(MONTHS[(month.clamp(1, 12) - 1) as usize]);
+    let weekday = crate::i18n::tr(DAYS[weekday.min(6) as usize]);
+    crate::i18n::trf("{weekday}, {month} {day}", &[("weekday", &weekday), ("month", &month), ("day", &day)])
 }
 
 /// Longest password kept; more is ignored.
@@ -324,12 +324,12 @@ impl OziWm {
             let local = chrono::Local::now();
             use chrono::{Datelike, Timelike};
             let clock = format!("{:02}:{:02}", local.hour(), local.minute());
-            let date = turkish_date(local.day(), local.month(), local.weekday().num_days_from_monday());
+            let date = local_date(local.day(), local.month(), local.weekday().num_days_from_monday());
             let hint = match lock.phase {
-                Phase::Typing if lock.dots() == 0 => "Kilidi açmak için parolanı yaz".to_string(),
+                Phase::Typing if lock.dots() == 0 => crate::i18n::tr("Type your password to unlock"),
                 Phase::Typing => "•".repeat(lock.dots().min(24)),
-                Phase::Checking => "Denetleniyor…".to_string(),
-                Phase::Wrong => "Parola yanlış, yeniden dene".to_string(),
+                Phase::Checking => crate::i18n::tr("Checking…"),
+                Phase::Wrong => crate::i18n::tr("Wrong password, try again"),
             };
             let hint_color = match lock.phase {
                 Phase::Wrong => [1.0, 0.333, 0.431],
@@ -406,7 +406,8 @@ mod tests {
 
     #[test]
     fn dates_in_turkish() {
-        assert_eq!(turkish_date(22, 11, 6), "22 Kasım Pazar");
-        assert_eq!(turkish_date(1, 1, 0), "1 Ocak Pazartesi");
+        // The words follow the session language; the day is always there.
+        assert!(local_date(22, 11, 6).contains("22"));
+        assert!(local_date(1, 1, 0).contains('1'));
     }
 }

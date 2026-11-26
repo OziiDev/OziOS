@@ -18,7 +18,7 @@ Window {
     LS.Window.exclusionZone: -1
     LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityOnDemand
 
-    readonly property var locale: Qt.locale("tr_TR")
+    readonly property var locale: Qt.locale(Shell.locale)
     property date today: new Date()
     property int year: today.getFullYear()
     property int month: today.getMonth()
@@ -99,7 +99,7 @@ Window {
             Grid {
                 columns: 7
                 Repeater {
-                    model: ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"]
+                    model: [1, 2, 3, 4, 5, 6, 0].map(d => cal.locale.dayName(d, Locale.ShortFormat).slice(0, 2))
                     Text { required property string modelData; width: 38; height: 22; text: modelData; color: cal.c.muted; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter }
                 }
                 Repeater {

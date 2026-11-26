@@ -36,6 +36,19 @@ def source_strings():
     for path in glob.glob(os.path.join(ROOT, "apps", "**", "*.qml"), recursive=True):
         with open(path, encoding="utf-8") as fh:
             found.update(re.findall(r'backend\.tr\("((?:[^"\\]|\\.)*)"\)', fh.read()))
+    # The desktop shell: Shell.tr("...") / Shell.trf("...") in QML, i18n.tr("...") in ozi-shell.
+    for path in glob.glob(os.path.join(ROOT, "shell", "qml", "*.qml")) + [os.path.join(ROOT, "shell", "ozi-shell")]:
+        with open(path, encoding="utf-8") as fh:
+            found.update(re.findall(r'(?:Shell\.trf?|i18n\.tr)\("((?:[^"\\]|\\.)*)"', fh.read()))
+    # oziwm: crate::i18n::tr("...") / trf("..."), and its month and day names.
+    for path in glob.glob(os.path.join(ROOT, "oziwm", "src", "*.rs")):
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        found.update(re.findall(r'i18n::trf?\("((?:[^"\\]|\\.)*)"', text))
+        for table_name in ("MONTHS", "DAYS"):
+            m = re.search(table_name + r": \[&str; \d+\] = \[(.*?)\];", text, re.S)
+            if m:
+                found.update(re.findall(r'"([^"]+)"', m.group(1)))
     return found
 
 

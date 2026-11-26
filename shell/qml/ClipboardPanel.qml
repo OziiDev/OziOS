@@ -30,7 +30,7 @@ Window {
     function pick(i) {
         if (i < 0 || i >= items.length) return
         Shell.useClip(i)
-        copied = "Kopyalandı: Ctrl+V ile yapıştır"
+        copied = Shell.tr("Copied: paste with Ctrl+V")
         closeSoon.restart()
     }
     Timer { id: hideTimer; interval: cb.shell.ms(140); onTriggered: if (!cb.open) cb.visible = false }
@@ -58,7 +58,7 @@ Window {
             Glyph { id: hIcon; kind: "clipboard"; color: cb.c.text; size: 16; anchors { left: parent.left; verticalCenter: parent.verticalCenter } }
             Text {
                 anchors { left: hIcon.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                text: cb.copied || "Pano geçmişi"
+                text: cb.copied || Shell.tr("Clipboard history")
                 color: cb.copied ? cb.c.accent : cb.c.text
                 font.pixelSize: 14; font.weight: Font.DemiBold
             }
@@ -67,7 +67,7 @@ Window {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 width: clearText.implicitWidth + 20; height: 26; radius: 7
                 color: clearMouse.containsMouse ? Qt.alpha(cb.c.text, 0.10) : "transparent"
-                Text { id: clearText; anchors.centerIn: parent; text: "Tümünü temizle"; color: cb.c.muted; font.pixelSize: 12 }
+                Text { id: clearText; anchors.centerIn: parent; text: Shell.tr("Clear all"); color: cb.c.muted; font.pixelSize: 12 }
                 MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; onClicked: Shell.forgetClip(-1) }
             }
         }
@@ -124,7 +124,7 @@ Window {
                 width: parent.width - 40
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                text: "Henüz bir şey kopyalanmadı. Kopyaladığın yazılar burada birikir."
+                text: Shell.tr("Nothing copied yet. Text you copy collects here.")
                 color: cb.c.muted; font.pixelSize: 13
             }
         }
