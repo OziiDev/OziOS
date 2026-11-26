@@ -12,6 +12,7 @@ Window {
     signal quickPanel()
     signal launcher()
     signal calendar()
+    signal trayMenuAt(real x)
 
     visible: true
     height: 34
@@ -149,8 +150,56 @@ Window {
         }
     }
 
+    // Tray: programs running in the background (Discord, Steam...). Click: open
+    // it; right click: its menu.
+    Row {
+        id: trayRow
+        anchors { right: statusButton.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
+        spacing: 2
+        Repeater {
+            model: Tray.items
+            BarButton {
+                id: trayButton
+                required property var modelData
+                width: 28
+                onClicked: {
+                    const p = trayButton.mapToGlobal(width / 2, bar.height)
+                    Tray.activate(modelData.service, p.x, p.y)
+                }
+                Image {
+                    anchors.centerIn: parent
+                    width: 18; height: 18
+                    sourceSize: Qt.size(36, 36)
+                    smooth: true; mipmap: true
+                    source: trayButton.modelData.icon.startsWith("/") ? "file://" + trayButton.modelData.icon
+                                                                      : Shell.iconSource(trayButton.modelData.icon)
+                }
+                Rectangle {   // asks to be looked at (a new message...)
+                    visible: trayButton.modelData.status === "NeedsAttention"
+                    width: 6; height: 6; radius: 3
+                    color: bar.c.accent
+                    anchors { right: parent.right; top: parent.top; margins: 3 }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton | Qt.MiddleButton
+                    onClicked: (ev) => {
+                        if (ev.button === Qt.MiddleButton) {
+                            const p = trayButton.mapToGlobal(width / 2, bar.height)
+                            Tray.activate(trayButton.modelData.service, p.x, p.y)
+                            return
+                        }
+                        bar.trayMenuAt(trayButton.mapToGlobal(trayButton.width / 2, 0).x)
+                        Tray.openMenu(trayButton.modelData.service)
+                    }
+                }
+            }
+        }
+    }
+
     // Right: network, sound, battery; a click opens the quick settings.
     BarButton {
+        id: statusButton
         anchors { right: parent.right; rightMargin: 6 }
         width: status.implicitWidth + 20
         onClicked: bar.quickPanel()

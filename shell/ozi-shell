@@ -21,7 +21,7 @@ for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python", "/usr/
         sys.path.insert(0, root)
         break
 
-from ozipkg import i18n, shell  # noqa: E402
+from ozipkg import i18n, shell, tray  # noqa: E402
 
 QML_DIRS = (os.path.join(HERE, "qml"), "/usr/share/ozios/shell/qml")
 
@@ -698,6 +698,146 @@ class NotificationAdaptor(QDBusAbstractAdaptor):
         self.owner.dismiss(nid, 3)
 
 
+TRAY_XML = """
+  <interface name="org.kde.StatusNotifierWatcher">
+    <method name="RegisterStatusNotifierItem"><arg name="service" type="s" direction="in"/></method>
+    <method name="RegisterStatusNotifierHost"><arg name="service" type="s" direction="in"/></method>
+    <property name="RegisteredStatusNotifierItems" type="as" access="read"/>
+    <property name="IsStatusNotifierHostRegistered" type="b" access="read"/>
+    <property name="ProtocolVersion" type="i" access="read"/>
+    <signal name="StatusNotifierItemRegistered"><arg type="s"/></signal>
+    <signal name="StatusNotifierItemUnregistered"><arg type="s"/></signal>
+    <signal name="StatusNotifierHostRegistered"/>
+  </interface>
+"""
+
+
+@pyqtClassInfo("D-Bus Interface", "org.kde.StatusNotifierWatcher")
+@pyqtClassInfo("D-Bus Introspection", TRAY_XML)
+class TrayWatcherAdaptor(QDBusAbstractAdaptor):
+    """org.kde.StatusNotifierWatcher: background programs register their tray icon here."""
+    StatusNotifierItemRegistered = pyqtSignal(str)
+    StatusNotifierItemUnregistered = pyqtSignal(str)
+    StatusNotifierHostRegistered = pyqtSignal()
+
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.owner = owner
+        self.setAutoRelaySignals(False)
+
+    @pyqtSlot(str, QDBusMessage)
+    def RegisterStatusNotifierItem(self, service, message):
+        self.owner.register(service, message.service())
+
+    @pyqtSlot(str)
+    def RegisterStatusNotifierHost(self, service):
+        pass  # ozi-shell is the host
+
+    @pyqtProperty("QStringList")
+    def RegisteredStatusNotifierItems(self):
+        return list(self.owner.services)
+
+    @pyqtProperty(bool)
+    def IsStatusNotifierHostRegistered(self):
+        return True
+
+    @pyqtProperty(int)
+    def ProtocolVersion(self):
+        return 0
+
+
+class Tray(QObject):
+    """The tray icons in the bar: who registered, how they look, their menus."""
+    changed = pyqtSignal()
+    menuReady = pyqtSignal(str, "QVariantList")
+    _itemReady = pyqtSignal(str, "QVariantMap")
+
+    def __init__(self):
+        super().__init__()
+        self.services = []
+        self._items = {}
+        self._itemReady.connect(self._set_item)
+        self.adaptor = TrayWatcherAdaptor(self)
+        bus = QDBusConnection.sessionBus()
+        self.active = bus.registerObject("/StatusNotifierWatcher", self) and \
+            bus.registerService("org.kde.StatusNotifierWatcher")
+        if not self.active:
+            print("ozi-shell: another tray watcher is running", file=sys.stderr)
+        # A program that quits takes its icon with it.
+        bus.connect("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+                    "NameOwnerChanged", self._owner_changed)
+        # Icons change (new message, muted...): read the item again.
+        for signal in ("NewIcon", "NewStatus", "NewToolTip", "NewTitle", "NewAttentionIcon"):
+            bus.connect("", "", tray.ITEM_IFACE, signal, self._item_changed)
+        self.adaptor.StatusNotifierHostRegistered.emit()
+
+    def register(self, service, sender):
+        name, path = tray.split_service(service, sender)
+        key = name + path
+        if key in self.services:
+            return
+        self.services.append(key)
+        self.adaptor.StatusNotifierItemRegistered.emit(key)
+        self._read(key)
+
+    @pyqtSlot(QDBusMessage)
+    def _item_changed(self, message):
+        sender = message.service()
+        for key in self.services:
+            if key.startswith(sender + "/"):
+                self._read(key)
+
+    @pyqtSlot(str, str, str)
+    def _owner_changed(self, name, old, new):
+        if new:
+            return
+        gone = [k for k in self.services if k.startswith(name + "/")]
+        for key in gone:
+            self.services.remove(key)
+            self._items.pop(key, None)
+            self.adaptor.StatusNotifierItemUnregistered.emit(key)
+        if gone:
+            self.changed.emit()
+
+    def _read(self, key):
+        def run():
+            item = tray.read_item(key)
+            if item:
+                self._itemReady.emit(key, item)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _set_item(self, key, item):
+        if key in self.services:
+            self._items[key] = item
+            self.changed.emit()
+
+    @pyqtProperty("QVariantList", notify=changed)
+    def items(self):
+        return [self._items[k] for k in self.services if k in self._items and self._items[k]["status"] != "Passive"]
+
+    @pyqtSlot(str, int, int)
+    def activate(self, key, x, y):
+        item = self._items.get(key, {})
+        if item.get("itemIsMenu") and item.get("menu"):
+            self.openMenu(key)
+            return
+        threading.Thread(target=lambda: tray.activate(key, x, y) or (item.get("menu") and self.openMenu(key)),
+                         daemon=True).start()
+
+    @pyqtSlot(str)
+    def openMenu(self, key):
+        item = self._items.get(key, {})
+        if not item.get("menu"):
+            return
+        threading.Thread(target=lambda: self.menuReady.emit(key, tray.menu(key, item["menu"])), daemon=True).start()
+
+    @pyqtSlot(str, int)
+    def menuClick(self, key, entry_id):
+        item = self._items.get(key, {})
+        if item.get("menu"):
+            threading.Thread(target=lambda: tray.menu_click(key, item["menu"], entry_id), daemon=True).start()
+
+
 class Notifications(QObject):
     """The popups on screen and what QML needs to draw them."""
     changed = pyqtSignal()
@@ -787,6 +927,8 @@ def main():
     engine.rootContext().setContextProperty("Shell", backend)
     notifications = Notifications()
     engine.rootContext().setContextProperty("Notes", notifications)
+    tray_icons = Tray()
+    engine.rootContext().setContextProperty("Tray", tray_icons)
     qml = next((d for d in QML_DIRS if os.path.exists(os.path.join(d, "Main.qml"))), None)
     if not qml:
         sys.exit("ozi-shell: QML files not found")
