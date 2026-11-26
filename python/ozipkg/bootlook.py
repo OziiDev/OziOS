@@ -23,6 +23,7 @@ from . import shell
 CONFS = ("/boot/limine.conf", "/efi/limine.conf", "/boot/efi/limine.conf", "/boot/EFI/limine/limine.conf")
 SPLASH = "limine-splash.png"
 DEFAULT_SPLASH = "/usr/share/ozios/branding/limine-splash.png"
+LOGO = "/usr/share/ozios/branding/logo.svg"
 STAMP = "/var/lib/ozios/boot-look"
 SIZE = (1920, 1080)
 
@@ -155,12 +156,54 @@ def render_splash(picture, colors, out_path):
     glow.setColorAt(0.0, middle)
     glow.setColorAt(1.0, edge)
     painter.fillRect(0, 0, w, h, glow)
+    draw_mark(painter, w, h, colors)
     painter.end()
     tmp = out_path + ".tmp"
     if not image.save(tmp, "PNG"):
         return False
     os.replace(tmp, out_path)
     return True
+
+
+def _logo_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    checkout = os.path.join(here, "..", "..", "branding", "logo.svg")
+    return checkout if os.path.isfile(checkout) else LOGO
+
+
+def draw_mark(painter, w, h, colors):
+    """The OziOS mark and name at the bottom, under the menu: the picture is
+    the user's, the boot screen still says whose system it is."""
+    from PyQt6.QtCore import QRectF, Qt
+    from PyQt6.QtGui import QColor, QFont, QLinearGradient
+    from PyQt6.QtSvg import QSvgRenderer
+    # A soft dark floor so the name reads on a bright picture.
+    floor = QLinearGradient(0, h * 0.70, 0, h)
+    clear, dark = QColor(colors["ink"]), QColor(colors["ink"])
+    clear.setAlphaF(0.0)
+    dark.setAlphaF(0.75)
+    floor.setColorAt(0.0, clear)
+    floor.setColorAt(1.0, dark)
+    painter.fillRect(0, int(h * 0.70), w, h - int(h * 0.70), floor)
+
+    size = h * 0.085
+    font = QFont("Overpass", 1)
+    font.setPixelSize(int(size * 0.62))
+    font.setWeight(QFont.Weight.Bold)
+    font.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 104)
+    painter.setFont(font)
+    name = "OziOS"
+    text_w = painter.fontMetrics().horizontalAdvance(name)
+    gap = size * 0.2
+    total = size + gap + text_w
+    x = (w - total) / 2
+    y = h - size - h * 0.06
+    logo = QSvgRenderer(_logo_path())
+    if logo.isValid():
+        logo.render(painter, QRectF(x, y, size, size))
+    painter.setPen(QColor(colors["text"]))
+    painter.drawText(QRectF(x + size + gap, y, text_w + 4, size),
+                     int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), name)
 
 
 def fingerprint(look, picture):
