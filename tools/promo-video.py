@@ -87,17 +87,24 @@ def framed(p, img, rect, glow_phase):
 
 
 def text_block(p, title, text, top, w, alpha, rise):
+    """The title and the line under it; the title may take two lines, the
+    text starts below wherever the title ends."""
     p.save()
     p.setOpacity(alpha)
     p.translate(0, rise)
+    flags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap
+    size = 84
+    while True:
+        p.setFont(font(size))
+        used = p.boundingRect(QRectF(70, top, w - 140, 1000), flags, title)
+        if used.height() <= size * 2.6 or size <= 56:
+            break
+        size -= 6
     p.setPen(TEXT)
-    p.setFont(font(84))
-    r = QRectF(70, top, w - 140, 220)
-    p.drawText(r, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap, title)
+    p.drawText(QRectF(70, top, w - 140, used.height() + 10), flags, title)
     p.setPen(MUTED)
     p.setFont(font(44, QFont.Weight.Normal))
-    p.drawText(QRectF(90, top + 210, w - 180, 260),
-               Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap, text)
+    p.drawText(QRectF(90, top + used.height() + 28, w - 180, 300), flags, text)
     p.restore()
 
 
@@ -119,6 +126,10 @@ class Scene:
         self.title = spec.get("title", "")
         self.text = spec.get("text", "")
         self.seconds = float(spec.get("seconds", 4))
+        # [x, y, w] in the screenshot: the reel zooms from the whole screen to
+        # this part (the panel, the keyboard...), so a phone shows it big.
+        self.focus = spec.get("focus")
+        self.ratio = float(spec.get("ratio", 1.08))   # the frame's height / width while zoomed
         self.frames = []
         if spec.get("frames"):
             d = os.path.join(base, spec["frames"])
@@ -147,7 +158,35 @@ def draw_scene(p, scene, t, global_t, w=W, h=H, still=False):
     brand(p, w, 120 if h > 1500 else 90, 44, 0.9)
     img = scene.image(t)
     appear = 1.0 if still else ease(t * 5)
-    if img is not None and not img.isNull():
+    if img is not None and not img.isNull() and scene.focus and not still:
+        # A tall frame on the phone, zooming from the whole screen into the focus.
+        box_w = w - 2 * 60
+        box_h = round(box_w * scene.ratio)
+        aspect = box_w / box_h
+        fx, fy, fw = scene.focus
+        fh = fw / aspect
+        if fh > img.height():                 # never ask for more than the picture has
+            fh = img.height()
+            fw = fh * aspect
+        full_h = img.height()
+        full_w = full_h * aspect
+        cx0, cy0 = img.width() / 2, img.height() / 2
+        k = ease((t - 0.12) / 0.6)
+        sw = full_w + (fw - full_w) * k
+        sh = full_h + (fh - full_h) * k
+        cx = cx0 + (fx + fw / 2 - cx0) * k
+        cy = cy0 + (fy + fh / 2 - cy0) * k
+        sx = max(0.0, min(img.width() - sw, cx - sw / 2))
+        sy = max(0.0, min(img.height() - sh, cy - sh / 2))
+        y = 250
+        rect = QRectF(w / 2 - box_w / 2, y + 40 * (1 - appear), box_w, box_h)
+        part = img.copy(int(sx), int(sy), int(sw), int(sh))
+        p.save()
+        p.setOpacity(appear)
+        framed(p, part, rect, global_t * 2)
+        p.restore()
+        text_top = rect.bottom() + 60
+    elif img is not None and not img.isNull():
         box_w = w - 2 * 60
         box_h = box_w * img.height() / img.width()
         y = (h * 0.30) if h > 1500 else 200
