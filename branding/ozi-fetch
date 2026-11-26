@@ -32,11 +32,12 @@ FULL = (40, 19)       # greeting size, in cells
 COMPACT = (26, 11)    # pinned header size
 INFO_W = 38
 MIN_SHELL_ROWS = 10   # rows that must stay free below a pinned header
-SPIN_SECONDS = 12.0   # how long a pinned header turns after the terminal opens or a command ends
+SPIN_SECONDS = math.inf  # a pinned header keeps turning (OZI_FETCH_SPIN=seconds to rest after a while)
 
 
 def spin_seconds():
-    """Seconds a pinned header turns before it rests (OZI_FETCH_SPIN; 0 never turns)."""
+    """Seconds a pinned header turns before it rests: always, unless
+    OZI_FETCH_SPIN gives a number of seconds (0 never turns)."""
     try:
         value = float(os.environ.get("OZI_FETCH_SPIN", SPIN_SECONDS))
     except ValueError:
@@ -398,9 +399,9 @@ def pin(ascii_mode):
     except OSError:
         pass
 
-    # The figure turns for a while when the terminal opens and again after each
-    # command, then rests on its last frame: a header that never stopped kept every
-    # open terminal drawing 15 frames a second.
+    # The figure keeps turning while the shell waits; it rests while a command
+    # runs (the region is the command's then). With OZI_FETCH_SPIN it also
+    # rests after that many seconds, and turns again after the next command.
     start = time.monotonic()
     awake_until = start + spin_seconds()
     turned, last, dirty = 0.0, start, True
