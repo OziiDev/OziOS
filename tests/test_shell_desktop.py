@@ -56,7 +56,7 @@ class DesktopEntries(unittest.TestCase):
     def test_exec_field_codes_are_dropped(self):
         self.assertEqual(shell.command_for("konsole %U"), ["konsole"])
         self.assertEqual(shell.command_for('env A=1 "my app" --x %f'), ["env", "A=1", "my app", "--x"])
-        self.assertEqual(shell.command_for("htop", terminal=True), ["konsole", "-e", "htop"])
+        self.assertEqual(shell.command_for("htop", terminal=True), shell.terminal_argv() + ["htop"])
 
 
 class Search(unittest.TestCase):

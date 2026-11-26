@@ -1,0 +1,5 @@
+# Defaults of the OziOS desktop (XDG_CURRENT_DESKTOP=OziOS); a choice in
+# ~/.config/mimeapps.list still wins.
+[Default Applications]
+inode/directory=ozi-files.desktop
+x-scheme-handler/terminal=ozi-terminal.desktop

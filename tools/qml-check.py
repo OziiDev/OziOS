@@ -37,6 +37,8 @@ engine.addImportPath(os.path.join(root, "apps"))
 engine.rootContext().setContextProperty("backend", backend)
 import ozi_qt  # noqa: E402  the apps' own start-up: the palette of the theme in use (OZIOS_THEME)
 ozi_qt.apply_theme(engine)
+if hasattr(module, "setup"):
+    module.setup(engine)          # an app's own image providers and such
 engine.load(QUrl.fromLocalFile(os.path.join(app_dir, "Main.qml")))
 loaded = bool(engine.rootObjects())
 QTimer.singleShot(int(seconds * 1000), app.quit)

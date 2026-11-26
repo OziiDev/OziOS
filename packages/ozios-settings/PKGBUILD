@@ -4,7 +4,7 @@ pkgrel=7
 pkgdesc="OziOS identity, desktop look and system tools"
 arch=(any)
 license=(MIT)
-depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib ttf-overpass kdialog)
+depends=(bash python polkit python-pyqt6 qt6-declarative podman bubblewrap pacman-contrib ttf-overpass kdialog udisks2 libarchive glib2 xdg-utils)
 optdepends=(
   'snapper: snapshots before package changes'
   'gamemode: ozi play uses it when it is installed'
@@ -148,12 +148,17 @@ package() {
   install -Dm644 "$src/apps/ozi-store/Main.qml" "$apps/ozi-store/Main.qml"
   install -Dm755 "$src/apps/ozi-welcome/ozi-welcome" "$apps/ozi-welcome/ozi-welcome"
   install -Dm644 "$src/apps/ozi-welcome/Main.qml" "$apps/ozi-welcome/Main.qml"
+  install -Dm755 "$src/apps/ozi-files/ozi-files" "$apps/ozi-files/ozi-files"
+  install -Dm644 "$src/apps/ozi-files/Main.qml" "$apps/ozi-files/Main.qml"
+  install -Dm644 "$src/apps/ozi-files.desktop" "$pkgdir/usr/share/applications/ozi-files.desktop"
+  install -Dm644 "$src/session/ozios-mimeapps.list" "$pkgdir/usr/share/applications/ozios-mimeapps.list"
   install -Dm755 "$src/apps/ozi-look/ozi-look" "$apps/ozi-look/ozi-look"
   install -Dm644 "$src/apps/ozi-look/Main.qml" "$apps/ozi-look/Main.qml"
   install -d "$pkgdir/usr/bin"
   ln -s /usr/lib/ozios/apps/ozi-store/ozi-store "$pkgdir/usr/bin/ozi-store"
   ln -s /usr/lib/ozios/apps/ozi-welcome/ozi-welcome "$pkgdir/usr/bin/ozi-welcome"
   ln -s /usr/lib/ozios/apps/ozi-look/ozi-look "$pkgdir/usr/bin/ozi-look"
+  ln -s /usr/lib/ozios/apps/ozi-files/ozi-files "$pkgdir/usr/bin/ozi-files"
   install -Dm644 "$src/apps/ozi-store.desktop" "$pkgdir/usr/share/applications/ozi-store.desktop"
   install -Dm644 "$src/apps/ozi-welcome.desktop" "$pkgdir/usr/share/applications/ozi-welcome.desktop"
   # Look, and the card of keys that Meta+K opens.

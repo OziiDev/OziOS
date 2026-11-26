@@ -1,0 +1,158 @@
+#!/usr/bin/python3
+"""Ozi Files: the OziOS file manager. The file work is ozipkg/files.py; this
+starts the window and gives it the clipboard, folder watching and icons."""
+import json
+import os
+import sys
+
+sys.path.insert(0, "/usr/lib/ozios/apps")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))   # a checkout wins
+
+import ozi_qt  # noqa: E402
+from PyQt6.QtCore import QFileSystemWatcher, QMimeData, QSize, QTimer, QUrl, pyqtSignal, pyqtSlot  # noqa: E402
+from PyQt6.QtGui import QGuiApplication, QIcon  # noqa: E402
+from PyQt6.QtQuick import QQuickImageProvider  # noqa: E402
+from ozipkg import files  # noqa: E402
+
+CUT_TYPE = "x-special/gnome-copied-files"   # what other file managers read for cut and copy
+
+
+def _list(path, hidden, sort, reverse):
+    return files.trash_list() if path == "trash:" else files.listdir(path, hidden, sort, reverse)
+
+
+def _places():
+    return {"places": files.places(), "drives": files.drives()}
+
+
+class FilesBackend(ozi_qt.Backend):
+    folderChanged = pyqtSignal()
+
+    allowed = {
+        "list": (_list, False),
+        "places": (_places, False),
+        "search": (files.search, False),
+        "transfer": (files.transfer, True),
+        "trash": (files.trash, False),
+        "restore": (files.restore, False),
+        "emptyTrash": (files.empty_trash, False),
+        "delete": (files.delete, False),
+        "rename": (files.rename, False),
+        "mkdir": (files.make_folder, False),
+        "mkfile": (files.make_file, False),
+        "extract": (files.extract, True),
+        "compress": (files.compress, True),
+        "open": (files.open_path, False),
+        "openWith": (files.open_with, False),
+        "appsFor": (files.apps_for, False),
+        "terminal": (files.terminal_here, False),
+        "properties": (files.properties, False),
+        "mount": (files.mount, False),
+        "unmount": (files.unmount, False),
+        "executable": (files.set_executable, False),
+    }
+
+    _watcher = None
+
+    @pyqtSlot(str)
+    def watch(self, path):
+        if self._watcher is None:      # made once the application runs
+            self._watcher = QFileSystemWatcher(self)
+            # Many changes at once (a copy of 1000 files) make one refresh.
+            self._calm = QTimer(self)
+            self._calm.setSingleShot(True)
+            self._calm.setInterval(250)
+            self._calm.timeout.connect(self.folderChanged)
+            self._watcher.directoryChanged.connect(lambda _p: self._calm.start())
+        old = self._watcher.directories()
+        if old:
+            self._watcher.removePaths(old)
+        target = os.path.join(files.trash_dir(), "files") if path == "trash:" else path
+        if os.path.isdir(target):
+            self._watcher.addPath(target)
+
+    @pyqtSlot(result=str)
+    def startPath(self):
+        for arg in sys.argv[1:]:
+            if arg.startswith("file://"):
+                arg = QUrl(arg).toLocalFile()
+            if not arg.startswith("-") and os.path.exists(arg):
+                return os.path.abspath(arg if os.path.isdir(arg) else os.path.dirname(arg))
+        return os.path.expanduser("~")
+
+    @pyqtSlot("QStringList", bool)
+    def setClipboard(self, paths, cut):
+        data = QMimeData()
+        urls = [QUrl.fromLocalFile(p) for p in paths]
+        data.setUrls(urls)
+        data.setText("\n".join(paths))
+        data.setData(CUT_TYPE, ("%s\n%s" % ("cut" if cut else "copy",
+                                            "\n".join(u.toString() for u in urls))).encode())
+        QGuiApplication.clipboard().setMimeData(data)
+
+    @pyqtSlot(result="QVariantMap")
+    def clipboard(self):
+        data = QGuiApplication.clipboard().mimeData()
+        if data is None:
+            return {"paths": [], "cut": False}
+        paths = [u.toLocalFile() for u in data.urls() if u.isLocalFile()]
+        cut = False
+        if data.hasFormat(CUT_TYPE):
+            lines = bytes(data.data(CUT_TYPE)).decode(errors="replace").splitlines()
+            cut = bool(lines) and lines[0] == "cut"
+        return {"paths": paths, "cut": cut}
+
+    @pyqtSlot("QStringList", result="QStringList")
+    def localPaths(self, urls):
+        return [QUrl(u).toLocalFile() if u.startswith("file:") else u for u in urls]
+
+    @pyqtSlot("QStringList", result=str)
+    def uriList(self, paths):
+        return "\r\n".join(QUrl.fromLocalFile(p).toString() for p in paths) + "\r\n"
+
+    @pyqtSlot(float, result=str)
+    def dateText(self, stamp):
+        from datetime import datetime
+        if not stamp:
+            return ""
+        when, now = datetime.fromtimestamp(stamp), datetime.now()
+        if when.date() == now.date():
+            return when.strftime("%H:%M")
+        if when.year == now.year:
+            return when.strftime("%d.%m %H:%M")
+        return when.strftime("%d.%m.%Y")
+
+    @pyqtSlot(str, result=str)
+    def json(self, value):
+        return json.dumps(value)
+
+
+class IconProvider(QQuickImageProvider):
+    """image://icon/name1|name2: the first name the icon theme has."""
+
+    def __init__(self):
+        super().__init__(QQuickImageProvider.ImageType.Pixmap)
+
+    def requestPixmap(self, ids, requested, size=None):
+        side = max(requested.width(), requested.height(), 48) if requested.isValid() else 64
+        icon = QIcon()
+        for name in ids.split("|"):
+            icon = QIcon.fromTheme(name)
+            if not icon.isNull():
+                break
+        if icon.isNull():
+            icon = QIcon.fromTheme("text-x-generic")
+        pixmap = icon.pixmap(QSize(side, side))
+        return pixmap, pixmap.size()
+
+
+def setup(engine):
+    if not QIcon.themeName() or QIcon.themeName() == "hicolor":
+        QIcon.setThemeName("breeze-dark")
+    engine.addImageProvider("icon", IconProvider())
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), FilesBackend(), "Files", "ozi-files", "system-file-manager",
+                        setup=setup))

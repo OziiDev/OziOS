@@ -101,7 +101,7 @@ pub fn action_for(mods: Mods, sym: Keysym, nested: bool) -> Option<Action> {
     }
     let action = match (mods.shift, sym) {
         (false, Keysym::Return) => Action::Spawn(terminal()),
-        (false, Keysym::e) => Action::Spawn(vec!["dolphin".into()]),
+        (false, Keysym::e) => Action::Spawn(vec![if on_path("ozi-files") { "ozi-files" } else { "dolphin" }.into()]),
         (false, Keysym::q) => Action::CloseFocused,
         (false, Keysym::space) | (false, Keysym::a) => Action::ToggleLauncher,
         (false, Keysym::t) => Action::ToggleTiling,

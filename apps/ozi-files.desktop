@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+Name[tr]=Dosyalar
+GenericName=File Manager
+GenericName[tr]=Dosya Yöneticisi
+Comment=Browse, copy and tidy your files
+Comment[tr]=Dosyalarına göz at, kopyala, düzenle
+Exec=ozi-files %U
+Icon=system-file-manager
+Terminal=false
+Categories=System;FileTools;FileManager;Utility;Core;
+MimeType=inode/directory;
+Keywords=folder;files;explorer;dolphin;klasör;dosya;gezgin;
+StartupWMClass=ozi-files

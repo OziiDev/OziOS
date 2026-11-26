@@ -10,7 +10,8 @@ import sys
 import threading
 
 HERE = os.path.dirname(os.path.realpath(__file__))
-for root in ("/usr/lib/ozios/python", os.path.join(HERE, "..", "python")):
+# Next to the apps first: a checkout runs its own code, an installed app finds /usr/lib/ozios/python.
+for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python"):
     if os.path.isdir(os.path.join(root, "ozipkg")):
         sys.path.insert(0, root)
         break
@@ -75,10 +76,29 @@ class Backend(QObject):
         return QUrl(url).toLocalFile() if url.startswith("file:") else url
 
 
+def desktop_palette():
+    """The OziUi palette from the OziOS desktop's look (~/.config/ozios/desktop.json):
+    the wallpaper's colours with the "auto" theme. None outside the OziOS desktop."""
+    from ozipkg import shell
+    if not os.path.exists(shell.desktop_config_path()):
+        return None
+    look = shell.look()
+    c = shell.palette(look["theme"], look.get("colors"))
+
+    def mix(a, b, t):
+        a, b = QColor(a), QColor(b)
+        return QColor(round(a.red() + (b.red() - a.red()) * t), round(a.green() + (b.green() - a.green()) * t),
+                      round(a.blue() + (b.blue() - a.blue()) * t)).name()
+    return {"ink": c["ink"], "raised": c["raised"], "control": c["control"], "cyan": c["accent"],
+            "mid": mix(c["accent"], c["ink"], 0.35), "far": mix(c["accent"], c["ink"], 0.7), "ice": c["text"],
+            "muted": c["muted"], "onAccent": c["onAccent"], "light": bool(c.get("light"))}
+
+
 def apply_theme(engine, theme_id=None):
-    """Give the OziUi palette the colours of the OziOS theme in use, before any window exists,
-    so the apps follow `ozi theme` like the rest of the desktop."""
-    palette = themes.app_palette(theme_id or themes.theme_for_apps())
+    """Give the OziUi palette the colours of the desktop, before any window exists:
+    the OziOS desktop's look (from the wallpaper), else the older `ozi theme`."""
+    palette = None if theme_id or os.environ.get("OZIOS_THEME") else desktop_palette()
+    palette = palette or themes.app_palette(theme_id or themes.theme_for_apps())
     component = QQmlComponent(engine)
     component.setData(b"import QtQuick\nimport OziUi\nQtObject { property QtObject theme: Theme }",
                       QUrl.fromLocalFile(os.path.join(HERE, "theme-probe.qml")))
@@ -92,7 +112,7 @@ def apply_theme(engine, theme_id=None):
     return True
 
 
-def run(qml_file, backend, title, desktop_name, icon="ozios"):
+def run(qml_file, backend, title, desktop_name, icon="ozios", setup=None):
     app = QGuiApplication(sys.argv[:1])
     app.setApplicationName(title)
     app.setDesktopFileName(desktop_name)
@@ -101,6 +121,8 @@ def run(qml_file, backend, title, desktop_name, icon="ozios"):
     engine.addImportPath(HERE)
     engine.rootContext().setContextProperty("backend", backend)
     apply_theme(engine)
+    if setup:
+        setup(engine)
     engine.load(QUrl.fromLocalFile(qml_file))
     if not engine.rootObjects():
         return 1
