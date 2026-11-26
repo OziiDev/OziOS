@@ -81,6 +81,24 @@ class Translations(unittest.TestCase):
                 self.assertNotEqual(english, turkish, english)
 
 
+class OtherLanguages(unittest.TestCase):
+    """Tables besides Turkish may be partial (English fills the gaps), but what
+    they have must be current and keep every {field}."""
+
+    def test_every_table(self):
+        known = source_strings()
+        folder = os.path.join(ROOT, "data", "i18n")
+        names = [f for f in os.listdir(folder) if f.endswith(".json") and f != "tr.json"]
+        self.assertGreaterEqual(len(names), 20)
+        for name in names:
+            with open(os.path.join(folder, name), encoding="utf-8") as fh:
+                table = json.load(fh)
+            for english, text in table.items():
+                self.assertIn(english, known, name)
+                self.assertTrue(text.strip(), (name, english))
+                self.assertEqual(fields(english), fields(text), (name, english))
+
+
 class Lookup(unittest.TestCase):
     def setUp(self):
         self.old = {k: os.environ.get(k) for k in ("LC_ALL", "LC_MESSAGES", "LANGUAGE", "LANG", "OZIOS_DATA")}
