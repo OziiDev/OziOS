@@ -6,6 +6,14 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 sys.path.insert(0, "/usr/lib/ozios/apps")
 
+# On a Wayland desktop with layer-shell (OziOS's own, Plasma, Hyprland...) the
+# drawing layer and the toolbar are overlay layers: above every window and the
+# bars, the toolbar along the bottom. Elsewhere they are ordinary windows.
+LAYER_QML = [os.path.join(p, "org", "kde", "layershell") for p in ("/usr/lib/qt6/qml", "/usr/lib64/qt6/qml")]
+LAYER = bool(os.environ.get("WAYLAND_DISPLAY")) and "--window" not in sys.argv and any(os.path.isdir(p) for p in LAYER_QML)
+if LAYER:
+    os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"
+
 import ozi_qt  # noqa: E402
 from PyQt6.QtCore import QStandardPaths, pyqtSlot  # noqa: E402
 
@@ -17,6 +25,10 @@ class PenBackend(ozi_qt.Backend):
     def demo(self):
         """--demo draws a few strokes, to check the drawing without a pointer."""
         return "--demo" in sys.argv
+
+    @pyqtSlot(result=bool)
+    def layerShell(self):
+        return LAYER
 
     @pyqtSlot(result=str)
     def picturesDir(self):
@@ -30,6 +42,40 @@ class PenBackend(ozi_qt.Backend):
         return path
 
 
+def layered(qml_file):
+    """Main.qml with the layer-shell settings filled in at its "// layer:" lines."""
+    import tempfile
+    with open(qml_file, encoding="utf-8") as f:
+        text = f.read()
+    parts = {
+        "// layer: import": 'import org.kde.layershell 1.0 as LS',
+        "// layer: board": "\n".join([
+            'LS.Window.scope: "ozi-pen"',
+            "LS.Window.layer: LS.Window.LayerOverlay",
+            "LS.Window.anchors: LS.Window.AnchorTop | LS.Window.AnchorBottom | LS.Window.AnchorLeft | LS.Window.AnchorRight",
+            "LS.Window.exclusionZone: -1",
+            "LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityOnDemand",
+        ]),
+        "// layer: bar": "\n".join([
+            'LS.Window.scope: "ozi-pen-bar"',
+            "LS.Window.layer: LS.Window.LayerOverlay",
+            "LS.Window.anchors: LS.Window.AnchorBottom | LS.Window.AnchorLeft",
+            "LS.Window.margins.left: bar.left",
+            "LS.Window.margins.bottom: bar.bottom",
+            "LS.Window.exclusionZone: -1",
+            "LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone",
+        ]),
+    }
+    for mark, code in parts.items():
+        text = text.replace(mark, code)
+    out = tempfile.mkdtemp(prefix="ozi-pen-")
+    path = os.path.join(out, "Main.qml")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return path
+
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.realpath(__file__))
-    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), PenBackend(), "Screen pen", "ozi-pen"))
+    qml = os.path.join(here, "Main.qml")
+    sys.exit(ozi_qt.run(layered(qml) if LAYER else qml, PenBackend(), "Screen pen", "ozi-pen"))

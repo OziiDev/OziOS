@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Window
 import OziUi
+// layer: import
 
 // A transparent layer over the whole screen holds the strokes; a small toolbar
 // (a child window, so it always stays above the layer) chooses the tool. While
@@ -10,12 +11,16 @@ import OziUi
 // programs underneath.
 Window {
     id: board
-    visibility: Window.FullScreen
+    readonly property bool layer: backend.layerShell()
+    visibility: layer ? Window.AutomaticVisibility : Window.FullScreen
+    width: Screen.width
+    height: Screen.height
     visible: true
     color: "transparent"
     title: backend.tr("Screen pen")
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
            | (passThrough ? Qt.WindowTransparentForInput : 0)
+    // layer: board
 
     // pen | marker | line | arrow | box | circle | eraser | laser | spot
     property string tool: "pen"
@@ -301,6 +306,11 @@ Window {
         color: "transparent"
         title: backend.tr("Screen pen")
         flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+        // As a layer the bar sits at these margins from the bottom left corner.
+        property real left: Math.max(0, (Screen.width - width) / 2)
+        property real bottom: 24
+        property point grabbed
+        // layer: bar
 
         Rectangle {
             anchors.fill: parent
@@ -312,7 +322,15 @@ Window {
             // Dragging the empty parts moves the whole bar.
             DragHandler {
                 target: null
-                onActiveChanged: if (active) bar.startSystemMove()
+                onActiveChanged: {
+                    if (!active) return
+                    if (board.layer) bar.grabbed = Qt.point(bar.left, bar.bottom)
+                    else bar.startSystemMove()
+                }
+                onTranslationChanged: if (active && board.layer) {
+                    bar.left = Math.max(0, Math.min(Screen.width - bar.width, bar.grabbed.x + translation.x))
+                    bar.bottom = Math.max(0, Math.min(Screen.height - bar.height, bar.grabbed.y - translation.y))
+                }
             }
 
             ColumnLayout {
