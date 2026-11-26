@@ -139,13 +139,27 @@ impl OziWm {
     }
 
     fn on_key<E: KeyboardKeyEvent<B>, B: InputBackend>(&mut self, event: E) {
+        let time = Event::time_msec(&event);
+        self.handle_key(event.key_code(), event.state(), time);
+    }
+
+    /// The IPC "press" request: press the keys (evdev codes) in order and let go
+    /// of them in reverse, like a chord; tests type with it.
+    pub fn ipc_press(&mut self, evdev: &[u32]) {
+        let time = self.start_time.elapsed().as_millis() as u32;
+        for code in evdev {
+            self.handle_key((code + 8).into(), KeyState::Pressed, time);
+        }
+        for code in evdev.iter().rev() {
+            self.handle_key((code + 8).into(), KeyState::Released, time + 1);
+        }
+    }
+
+    fn handle_key(&mut self, code: smithay::input::keyboard::Keycode, state: KeyState, time: u32) {
         let Some(keyboard) = self.seat.get_keyboard() else {
             return;
         };
         let serial = SERIAL_COUNTER.next_serial();
-        let time = Event::time_msec(&event);
-        let code = event.key_code();
-        let state = event.state();
         let nested = self.nested;
 
         // Scroll Lock (evdev 70, xkb 78) lights its lamp; xkb keymaps leave that to us.

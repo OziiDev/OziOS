@@ -112,7 +112,12 @@ class Dock(unittest.TestCase):
     def test_pins_come_from_the_config(self):
         with tempfile.TemporaryDirectory() as cfg:
             env = {"XDG_CONFIG_HOME": cfg}
-            self.assertEqual(shell.pins(self.APPS, env), ["firefox", "org.kde.konsole"])  # defaults that exist
+            self.assertEqual(shell.pins(self.APPS, env), ["firefox"])  # defaults that exist
+            # A Konsole pin shows Ozi Terminal once it is there, and only once.
+            shell.write_config({"dock": ["org.kde.konsole", "firefox", "ozi-terminal"]}, env)
+            self.assertEqual(shell.pins(self.APPS, env), ["org.kde.konsole", "firefox"])
+            apps = dict(self.APPS, **{"ozi-terminal": {"id": "ozi-terminal"}})
+            self.assertEqual(shell.pins(apps, env), ["ozi-terminal", "firefox"])
             shell.write_config({"dock": ["firefox", "missing"]}, env)
             self.assertEqual(shell.pins(self.APPS, env), ["firefox"])
             shell.write_config({"theme": "mint"}, env)

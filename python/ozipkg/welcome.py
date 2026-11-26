@@ -14,7 +14,7 @@ INSTALLER = "/usr/lib/ozios/start-installer"
 
 # Button name -> command. A fixed table: the interface can only pick a name.
 ACTIONS = {
-    "gaming": ["konsole", "--hold", "-e", "ozi", "gaming", "--yes"],
+    "gaming": ["ozi-terminal", "--hold", "-e", "ozi", "gaming", "--yes"],
     "store": ["ozi-store"],
     # Windows computers nearby and their shared folders: the SMB worker of kio-extras
     # finds them (WS-Discovery). network:/ is gone from Plasma 6; seen failing in a
@@ -26,7 +26,7 @@ ACTIONS = {
     "look": ["ozi-look"],
     "keys": ["ozi-look", "--keys"],
     "settings": ["systemsettings"],
-    "terminal": ["konsole"],
+    "terminal": ["ozi-terminal"],
     "network": ["systemsettings", "kcm_networkmanagement"],
     "display": ["systemsettings", "kcm_kscreen"],
     "install": [INSTALLER],

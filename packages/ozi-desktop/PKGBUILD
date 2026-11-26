@@ -8,8 +8,8 @@ pkgdesc="OziOS desktop: its own window manager and shell"
 arch=(x86_64)
 license=(MIT)
 depends=(
-  'ozios-settings>=0.3.0-4'
-  seatd libinput mesa libxkbcommon systemd-libs libdrm pam
+  'ozios-settings>=0.3.0-7'
+  seatd libinput mesa libxkbcommon systemd-libs libdrm pam fontconfig
   python python-pyqt6 qt6-declarative layer-shell-qt
   ttf-overpass wireplumber networkmanager
   xdg-desktop-portal-kde xdg-desktop-portal-gtk bluez-utils power-profiles-daemon
@@ -20,7 +20,6 @@ optdepends=(
   'xwayland-satellite: run X11 programs (Steam, older games)'
   'breeze: the default pointer theme'
   'polkit-kde-agent: password prompts for administrator tasks'
-  'konsole: the terminal Super+Return opens'
   'dolphin: the file manager Super+E opens'
 )
 backup=(etc/pam.d/oziwm)
@@ -30,17 +29,22 @@ build() {
   local src="${OZI_SRC:?OZI_SRC must point at the OziOS source tree}"
   export CARGO_TARGET_DIR="$srcdir/target"
   cargo build --release --locked --manifest-path "$src/oziwm/Cargo.toml"
+  cargo build --release --locked --manifest-path "$src/ozi-terminal/Cargo.toml"
 }
 
 check() {
   local src="${OZI_SRC:?}"
   export CARGO_TARGET_DIR="$srcdir/target"
   cargo test --release --locked --manifest-path "$src/oziwm/Cargo.toml"
+  cargo test --release --locked --manifest-path "$src/ozi-terminal/Cargo.toml"
 }
 
 package() {
   local src="${OZI_SRC:?}"
   install -Dm755 "$srcdir/target/release/oziwm" "$pkgdir/usr/bin/oziwm"
+  install -Dm755 "$srcdir/target/release/ozi-terminal" "$pkgdir/usr/bin/ozi-terminal"
+  install -Dm644 "$src/ozi-terminal/data/ozi-terminal.desktop" "$pkgdir/usr/share/applications/ozi-terminal.desktop"
+  install -Dm644 "$src/ozi-terminal/data/ozi-terminal.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/ozi-terminal.svg"
   install -Dm755 "$src/shell/ozi-shell" "$pkgdir/usr/bin/ozi-shell"
   install -Dm755 "$src/session/ozi-session" "$pkgdir/usr/bin/ozi-session"
   install -Dm755 "$src/session/ozi-session-start" "$pkgdir/usr/lib/ozios/ozi-session-start"

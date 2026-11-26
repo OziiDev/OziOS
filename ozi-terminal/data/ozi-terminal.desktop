@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Name[tr]=Terminal
+GenericName=Terminal
+GenericName[tr]=Uçbirim
+Comment=Command line in the OziOS colours, with tabs
+Comment[tr]=Sekmeli komut satırı, OziOS renklerinde
+Exec=ozi-terminal
+Icon=ozi-terminal
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=shell;prompt;command;commandline;cmd;konsole;uçbirim;komut;
+StartupWMClass=ozi-terminal
+Actions=NewWindow;
+
+[Desktop Action NewWindow]
+Name=New Window
+Name[tr]=Yeni pencere
+Exec=ozi-terminal

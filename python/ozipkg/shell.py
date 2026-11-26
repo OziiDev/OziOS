@@ -8,7 +8,14 @@ import re
 import shutil
 import subprocess
 
-DEFAULT_PINS = ("org.kde.dolphin", "firefox", "org.kde.konsole", "ozi-store", "ozi-look", "systemsettings")
+DEFAULT_PINS = ("org.kde.dolphin", "firefox", "ozi-terminal", "ozi-store", "ozi-look", "systemsettings")
+# Programs OziOS replaced with its own: a pin of the old one shows the new one.
+REPLACED = {"org.kde.konsole": "ozi-terminal"}
+
+
+def terminal_argv():
+    """The terminal to run a command in: Ozi Terminal, else Konsole."""
+    return ["ozi-terminal", "-e"] if shutil.which("ozi-terminal") else ["konsole", "-e"]
 
 
 def data_dirs(environ=os.environ):
@@ -101,7 +108,7 @@ def command_for(exec_line, terminal=False):
     argv = [_FIELD.sub(lambda m: "%" if m.group() == "%%" else "", a) for a in argv]
     argv = [a for a in argv if a]
     if terminal:
-        argv = ["konsole", "-e"] + argv
+        argv = terminal_argv() + argv
     return argv
 
 
@@ -179,7 +186,8 @@ def write_config(changes, environ=os.environ):
 
 def pins(apps_by_id, environ=os.environ):
     wanted = read_config(environ).get("dock") or list(DEFAULT_PINS)
-    return [i for i in wanted if i in apps_by_id]
+    wanted = [REPLACED[i] if i in REPLACED and REPLACED[i] in apps_by_id else i for i in wanted]
+    return list(dict.fromkeys(i for i in wanted if i in apps_by_id))
 
 
 def dock_items(apps_by_id, pinned, windows):

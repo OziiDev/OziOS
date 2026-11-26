@@ -71,8 +71,13 @@ pub struct Mods {
 pub fn terminal() -> Vec<String> {
     match std::env::var("OZIWM_TERMINAL") {
         Ok(cmd) if !cmd.trim().is_empty() => cmd.split_whitespace().map(String::from).collect(),
-        _ => vec!["konsole".into()],
+        _ => vec![if on_path("ozi-terminal") { "ozi-terminal" } else { "konsole" }.into()],
     }
+}
+
+fn on_path(program: &str) -> bool {
+    std::env::var_os("PATH")
+        .is_some_and(|paths| std::env::split_paths(&paths).any(|dir| dir.join(program).is_file()))
 }
 
 /// `sym` is the layout's Latin key (so Q/F Turkish layouts give the same letter).

@@ -44,6 +44,8 @@ pub enum Request {
     /// Move the pointer (and click, with a button code) as if the mouse did:
     /// lets tests drive the desktop without a hand on the mouse.
     Pointer { x: i32, y: i32, button: Option<u32> },
+    /// Press keys (evdev codes) as a chord, for tests.
+    Press(Vec<u32>),
     Quit,
     Subscribe(Vec<String>),
 }
@@ -74,6 +76,15 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("close") => Ok(Request::Close(id()?)),
         Some("minimize") => Ok(Request::Minimize(id()?)),
         Some("quit") => Ok(Request::Quit),
+        Some("press") => Ok(Request::Press(
+            value
+                .get("keys")
+                .and_then(Value::as_array)
+                .ok_or("\"keys\" must be a list of key codes")?
+                .iter()
+                .filter_map(|k| k.as_u64().map(|k| k as u32))
+                .collect(),
+        )),
         Some("pointer") => Ok(Request::Pointer {
             x: value.get("x").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"x\" (a number) is missing")?,
             y: value.get("y").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"y\" (a number) is missing")?,
@@ -276,6 +287,10 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
         }
         Request::ToggleClipboard => {
             emit(state, "shell", json!({ "event": "clipboard" }));
+            ok(Value::Null)
+        }
+        Request::Press(keys) => {
+            state.ipc_press(&keys);
             ok(Value::Null)
         }
         Request::Pointer { x, y, button } => {

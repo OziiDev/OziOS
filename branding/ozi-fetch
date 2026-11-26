@@ -178,6 +178,9 @@ def ozios_version():
 def sysinfo():
     info = [("OS", "OziOS " + ozios_version()), ("Kernel", platform.release())]
     desktop = os.environ.get("XDG_CURRENT_DESKTOP")
+    if os.environ.get("OZIWM_SOCKET"):
+        # The OziOS desktop says "OziOS:KDE" so KDE programs feel at home; it is oziwm.
+        desktop = "OziOS (oziwm)"
     if desktop:
         session = os.environ.get("XDG_SESSION_TYPE")
         info.append(("Desktop", "%s (%s)" % (desktop, session) if session else desktop))

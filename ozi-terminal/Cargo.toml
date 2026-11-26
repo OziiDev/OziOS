@@ -1,0 +1,21 @@
+[package]
+name = "ozi-terminal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alacritty_terminal = "0.26"
+fontdue = "0.9"
+serde_json = "1"
+smithay-clipboard = "0.7"
+softbuffer = "0.4"
+winit = "0.30"
+
+# softbuffer with an alpha channel on Wayland (Argb8888 instead of Xrgb8888):
+# the terminal is a little see-through, like the rest of the desktop.
+[patch.crates-io]
+softbuffer = { path = "vendor/softbuffer" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
