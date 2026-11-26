@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OziOS Shell
+Comment=The bar, dock and wallpaper of the OziOS desktop
+Exec=ozi-shell
+Icon=ozios
+NoDisplay=true
+X-KDE-StartupNotify=false

@@ -46,6 +46,7 @@ package() {
   install -Dm644 "$src/ozi-terminal/data/ozi-terminal.desktop" "$pkgdir/usr/share/applications/ozi-terminal.desktop"
   install -Dm644 "$src/ozi-terminal/data/ozi-terminal.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/ozi-terminal.svg"
   install -Dm755 "$src/shell/ozi-shell" "$pkgdir/usr/bin/ozi-shell"
+  install -Dm644 "$src/session/ozi-shell.desktop" "$pkgdir/usr/share/applications/ozi-shell.desktop"
   install -Dm755 "$src/session/ozi-session" "$pkgdir/usr/bin/ozi-session"
   install -Dm755 "$src/session/ozi-session-start" "$pkgdir/usr/lib/ozios/ozi-session-start"
   install -Dm644 "$src/session/ozios.desktop" "$pkgdir/usr/share/wayland-sessions/ozios.desktop"

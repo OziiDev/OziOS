@@ -84,8 +84,20 @@ Window {
         fillMode: Image.PreserveAspectCrop
         sourceSize: Qt.size(win.width, win.height)
         asynchronous: true
-        opacity: win.front === 0 && !win.live && status === Image.Ready ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: win.shell.ms(500) } }
+        // Shown or not is worked out on each change, not bound: a binding over
+        // the picture's state looped while it loaded.
+        property bool shown: false
+        function sync() {
+            const want = win.front === 0 && !win.live && status === Image.Ready
+            if (want === shown) return
+            shown = want
+            fade0.to = want ? 1 : 0
+            fade0.restart()
+        }
+        onStatusChanged: sync()
+        Connections { target: win; function onFrontChanged() { pictureA.sync() } function onLiveChanged() { pictureA.sync() } }
+        opacity: 0
+        NumberAnimation on opacity { id: fade0; running: false; duration: win.shell.ms(500) }
     }
     Image {
         id: pictureB
@@ -93,7 +105,19 @@ Window {
         fillMode: Image.PreserveAspectCrop
         sourceSize: Qt.size(win.width, win.height)
         asynchronous: true
-        opacity: win.front === 1 && !win.live && status === Image.Ready ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: win.shell.ms(500) } }
+        // Shown or not is worked out on each change, not bound: a binding over
+        // the picture's state looped while it loaded.
+        property bool shown: false
+        function sync() {
+            const want = win.front === 1 && !win.live && status === Image.Ready
+            if (want === shown) return
+            shown = want
+            fade1.to = want ? 1 : 0
+            fade1.restart()
+        }
+        onStatusChanged: sync()
+        Connections { target: win; function onFrontChanged() { pictureB.sync() } function onLiveChanged() { pictureB.sync() } }
+        opacity: 0
+        NumberAnimation on opacity { id: fade1; running: false; duration: win.shell.ms(500) }
     }
 }
