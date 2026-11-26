@@ -1,5 +1,8 @@
-"""Discord Rich Presence: friends on Discord see "OziOS" under your name, and
-which program is in front (its name only, never a window title).
+"""Discord Rich Presence: friends on Discord see "Using OziOS" under your name.
+
+Nothing about what you run is sent: no program names, no window titles. (A
+name like a modded Discord client showing up there could get an account in
+trouble, and it is nobody's business anyway.)
 
 Talks to the Discord app on this computer (Discord, Vesktop, the Flatpak or
 Snap) over its local socket; nothing goes anywhere else. Started with the
@@ -69,12 +72,11 @@ def client_id(environ=os.environ):
     return value if value.isdigit() else ""
 
 
-def activity(app_name, started, version):
-    """What Discord shows: OziOS, the program in front, since when."""
-    details = tr("Using {app}", app=app_name) if app_name else tr("On the desktop")
+def activity(started, version):
+    """What Discord shows: OziOS and since when; never which programs run."""
     return {
-        "details": details[:128],
-        "state": "OziOS %s" % version if version else "OziOS",
+        "details": tr("Using OziOS"),
+        "state": tr("Its own Linux desktop"),
         "timestamps": {"start": int(started)},
         "assets": {"large_image": "ozios", "large_text": tr("OziOS: its own desktop, from scratch")},
         "buttons": [{"label": tr("See OziOS"), "url": LINK}],
@@ -130,50 +132,11 @@ class Discord:
             self.sock = None
 
 
-def front_app(windows, apps_by_wm):
-    """The name of the program whose window has the focus, or ""."""
-    for w in windows or []:
-        if w.get("focused") and not w.get("minimized"):
-            app_id = (w.get("app_id") or "").casefold()
-            return apps_by_wm.get(app_id) or (w.get("app_id") or "").rsplit(".", 1)[-1].replace("-", " ").title()
-    return ""
-
-
-def _wm(request):
-    path = os.environ.get("OZIWM_SOCKET") or os.path.join(
-        os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "oziwm-%s.sock" % os.environ.get("WAYLAND_DISPLAY", "wayland-0"))
-    try:
-        with socket.socket(socket.AF_UNIX) as s:
-            s.settimeout(2)
-            s.connect(path)
-            s.sendall((json.dumps(request) + "\n").encode())
-            data = b""
-            while not data.endswith(b"\n"):
-                chunk = s.recv(65536)
-                if not chunk:
-                    break
-                data += chunk
-        return json.loads(data or b"{}").get("ok")
-    except (OSError, ValueError):
-        return None
-
-
-def _apps_by_wm():
-    out = {}
-    for app in shell.applications():
-        name = app.get("name") or ""
-        for key in (app.get("id"), app.get("wm_class")):
-            if key:
-                out[key.casefold()] = name
-    return out
-
-
 def run(once=False):
     if not enabled():
         return 0
     started = time.time()
     version = shell_version()
-    apps = _apps_by_wm()
     cid = client_id()
     if not cid:
         print("ozi-presence: no Discord application id yet", file=sys.stderr)
@@ -190,14 +153,14 @@ def run(once=False):
             if discord.connect():
                 shown = None
         if discord.sock is not None:
-            act = activity(front_app(_wm({"get": "windows"}), apps), started, version)
+            act = activity(started, version)
             if act != shown and now - last_sent >= MIN_GAP:
                 if discord.set(act):
                     shown, last_sent = act, now
         if once:
             discord.close()
             return 0 if shown else 1
-        time.sleep(3)
+        time.sleep(10)
 
 
 def shell_version():
