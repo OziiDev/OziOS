@@ -41,6 +41,9 @@ pub enum Request {
     ToggleClipboard,
     /// Drive Alt+Tab without a keyboard: "next", "previous", "finish" or "cancel".
     Switcher(String),
+    /// Move the pointer (and click, with a button code) as if the mouse did:
+    /// lets tests drive the desktop without a hand on the mouse.
+    Pointer { x: i32, y: i32, button: Option<u32> },
     Quit,
     Subscribe(Vec<String>),
 }
@@ -71,6 +74,11 @@ pub fn parse(line: &[u8]) -> Result<Request, String> {
         Some("close") => Ok(Request::Close(id()?)),
         Some("minimize") => Ok(Request::Minimize(id()?)),
         Some("quit") => Ok(Request::Quit),
+        Some("pointer") => Ok(Request::Pointer {
+            x: value.get("x").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"x\" (a number) is missing")?,
+            y: value.get("y").and_then(Value::as_i64).map(|v| v as i32).ok_or("\"y\" (a number) is missing")?,
+            button: value.get("button").and_then(Value::as_u64).map(|b| b as u32),
+        }),
         Some("reload-look") => Ok(Request::ReloadLook),
         Some("toggle-launcher") => Ok(Request::ToggleLauncher),
         Some("toggle-panel") => Ok(Request::TogglePanel),
@@ -268,6 +276,10 @@ fn handle(state: &mut OziWm, request: Request) -> Outcome {
         }
         Request::ToggleClipboard => {
             emit(state, "shell", json!({ "event": "clipboard" }));
+            ok(Value::Null)
+        }
+        Request::Pointer { x, y, button } => {
+            state.ipc_pointer((x as f64, y as f64).into(), button);
             ok(Value::Null)
         }
         Request::Quit => {

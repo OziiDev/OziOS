@@ -14,16 +14,35 @@ Window {
     readonly property int iconSize: 40
     visible: true
     color: "transparent"
-    width: Math.max(shelf.width + 24, menu.visible ? 260 : 0)
-    // Taller only while a name or the menu shows above the icons.
-    height: menu.visible ? 96 + menu.height : hovering ? 112 : 76
+    // The window never changes size: a dock that grew under the pointer would
+    // move its own edge past it and flicker. It is tall enough for a name or
+    // the menu above the icons; only the shelf (and the open menu) take the
+    // pointer, the clear part above lets clicks through to the windows below.
+    width: Screen.width > 0 ? Screen.width : 1366
+    height: 250
     LS.Window.scope: "ozi-dock"
     LS.Window.layer: LS.Window.LayerTop
-    LS.Window.anchors: LS.Window.AnchorBottom
+    LS.Window.anchors: LS.Window.AnchorBottom | LS.Window.AnchorLeft | LS.Window.AnchorRight
     LS.Window.exclusionZone: 70
     LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone
 
-    property bool hovering: false
+    function updateInput() {
+        if (menu.visible)
+            Shell.setInputRegion(dock, [0, 0, dock.width, dock.height])
+        else
+            Shell.setInputRegion(dock, [shelf.x, shelf.y, shelf.width, shelf.height + 8])
+    }
+    Component.onCompleted: Qt.callLater(updateInput)
+    onWidthChanged: Qt.callLater(updateInput)
+    onHeightChanged: Qt.callLater(updateInput)
+
+    // With the menu open the whole window listens, so a click beside it
+    // closes it; leaving the window upwards closes it too.
+    HoverHandler {
+        id: inside
+        onHoveredChanged: if (!hovered && menu.visible) leaveTimer.restart()
+    }
+    Timer { id: leaveTimer; interval: 500; onTriggered: if (!inside.hovered) menu.close() }
 
     Rectangle {
         id: shelf
@@ -35,6 +54,8 @@ Window {
         border.width: 1
         border.color: Qt.alpha(dock.c.text, 0.08)
         Behavior on width { NumberAnimation { duration: dock.shell.ms(200); easing.type: Easing.OutCubic } }
+        onXChanged: Qt.callLater(dock.updateInput)
+        onWidthChanged: Qt.callLater(dock.updateInput)
     }
 
     Row {
@@ -86,7 +107,6 @@ Window {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
-                    onContainsMouseChanged: dock.hovering = containsMouse
                     onClicked: (ev) => {
                         if (ev.button === Qt.RightButton) { menu.openFor(item); return }
                         menu.close()
@@ -105,6 +125,7 @@ Window {
         property var target: null
         readonly property var app: target ? target.modelData : null
         visible: target !== null
+        onVisibleChanged: Qt.callLater(dock.updateInput)
         width: 220
         height: menuColumn.height + 12
         radius: 12

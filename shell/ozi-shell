@@ -70,7 +70,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "wayland")
 
 from PyQt6.QtCore import QFileSystemWatcher, QObject, QTimer, QUrl, pyqtClassInfo, pyqtProperty, pyqtSignal, pyqtSlot  # noqa: E402
 from PyQt6.QtDBus import QDBusAbstractAdaptor, QDBusConnection, QDBusMessage  # noqa: E402
-from PyQt6.QtGui import QGuiApplication, QIcon  # noqa: E402
+from PyQt6.QtGui import QGuiApplication, QIcon, QRegion  # noqa: E402
 from PyQt6.QtQml import QQmlApplicationEngine  # noqa: E402
 
 
@@ -266,6 +266,20 @@ class Shell(QObject):
     @pyqtSlot(int)
     def useClip(self, index):
         ask({"do": "clipboard-use", "index": index})
+
+    @pyqtSlot(QObject, "QVariantList")
+    def setInputRegion(self, window, rects):
+        """Only these parts of a shell window take the pointer; the rest lets it
+        through to what is below. Flat list: x, y, w, h, x, y, w, h... Empty: all of it."""
+        region = QRegion()
+        for i in range(0, len(rects) - 3, 4):
+            x, y, w, h = (round(float(v)) for v in rects[i:i + 4])
+            if w > 0 and h > 0:
+                region = region.united(QRegion(x, y, w, h))
+        try:
+            window.setMask(region)
+        except AttributeError:
+            pass
 
     @pyqtSlot(int)
     def forgetClip(self, index):
