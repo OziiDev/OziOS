@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OziOS — kendi masaüstüne sahip, hızlı ve güzel Linux</title>
-  <meta name="description" content="OziOS: CachyOS tabanlı, Rust ile yazılmış kendi masaüstüne sahip Linux. Temalar, ışıltılı pencereler, döşeme, tek tıkla güncellemeler.">
+  <meta name="description" content="OziOS: CachyOS tabanlı, sıfırdan yazılmış kendi masaüstüne sahip Linux. Kendi pencere yöneticisi, dosya yöneticisi ve terminali; akıllı tahtalar için Eğitim sürümü.">
   <meta property="og:title" content="OziOS">
-  <meta property="og:description" content="Sıfırdan yazılmış kendi masaüstüne sahip, hızlı ve güzel Linux.">
+  <meta property="og:description" content="Sıfırdan yazılmış kendi masaüstüne sahip, hızlı ve güzel Linux. Akıllı tahtalar için Eğitim sürümüyle.">
   <meta property="og:image" content="img/night.png">
+  <meta name="theme-color" content="#080b10">
   <link rel="icon" href="logo.svg">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -17,26 +18,28 @@
       <a class="brand" href="#"><img src="logo.svg" alt="">OziOS</a>
       <nav>
         <a href="#ozellikler">Özellikler</a>
-        <a href="#temalar">Temalar</a>
+        <a href="#egitim">Eğitim</a>
         <a href="#galeri">Galeri</a>
         <a href="#indir">İndir</a>
+        <a href="#sss">SSS</a>
         <a href="https://github.com/OziiDev/OziOS">GitHub</a>
       </nav>
-      <a class="btn" href="demo/">Tarayıcıda dene</a>
+      <a class="btn" href="#indir">İndir</a>
     </div>
   </header>
 
   <main>
     <section class="hero">
       <div class="wrap">
-        <span class="tag">0.4 "Öz" · beta</span>
+        <span class="tag">0.4 "Öz" · beta · ücretsiz ve açık kaynak</span>
         <h1>Hyprland kadar güzel,<br><span class="glow">Plasma kadar kolay</span> bir Linux.</h1>
         <p class="lead">OziOS, CachyOS'un hızlı temeli üstüne sıfırdan yazılmış kendi masaüstüyle gelir:
-          ışıltılı pencereler, altı tema, döşeme, kilit ekranı, hızlı ayarlar. Terminal bilmeden kullanılır,
-          tek komutla güncellenir.</p>
+          kendi pencere yöneticisi, kendi dosya yöneticisi, kendi terminali. Renkler duvar kâğıdından gelir,
+          21 dil konuşur, terminal bilmeden kullanılır, tek komutla güncellenir.</p>
         <div class="actions">
           <a class="btn primary" href="#indir">OziOS'u indir</a>
-          <a class="btn" href="demo/">Masaüstünü tarayıcıda dene →</a>
+          <a class="btn" href="#egitim">Akıllı tahtalar için Eğitim sürümü</a>
+          <a class="btn" href="demo/">Tarayıcıda dene →</a>
         </div>
         <div class="shot"><img src="img/night.png" alt="OziOS masaüstü: gece şehri duvar kâğıdı, üç adalı çubuk ve dock" width="1280" height="706"></div>
       </div>
@@ -45,15 +48,35 @@
     <section id="ozellikler">
       <div class="wrap">
         <h2>Her şey sıfırdan, her şey OziOS'un</h2>
-        <p class="sub">Masaüstü başka bir masaüstünün üstüne giydirilmiş bir tema değil. Pencere yöneticisi
-          <b>oziwm</b> Rust ile, kabuk <b>ozi-shell</b> Qt ile yazıldı; ikisi de OziOS için.</p>
+        <p class="sub">Başka bir masaüstünün üstüne giydirilmiş bir tema değil. Pencere yöneticisi
+          <b>oziwm</b> Rust ile, kabuk <b>ozi-shell</b> Qt ile, uygulamalar OziOS için yazıldı.</p>
         <div class="grid">
-          <div class="card"><div class="icon">⧉</div><h3>Işıltılı pencereler</h3><p>Yuvarlak köşeler, gölge, odaktaki pencerenin çevresinde temanın iki renginde akan ışıltı. Hepsi ekran kartında çizilir.</p></div>
-          <div class="card"><div class="icon">◐</div><h3>Altı tema, canlı ayar</h3><p>Camgöbeği, Kutup Işığı, Kor, Nane, Gül, Ayaz. Işıltı, köşe ve hareket kaydırıcıları oynarken bütün pencereler o an değişir.</p></div>
-          <div class="card"><div class="icon">▦</div><h3>Döşeme ve çalışma alanları</h3><p>Super+T ile pencereler kendini düzenler, Super+1…4 ile dört masaüstü. Pencereler yerlerine akarak geçer.</p></div>
-          <div class="card"><div class="icon">✦</div><h3>Hızlı ayarlar</h3><p>Wi-Fi ve ağlar, Bluetooth cihazları, uçak modu, parlaklık, ses, güç profili. Klavyedeki tuşlar ekranda gösterilir.</p></div>
-          <div class="card"><div class="icon">🔒</div><h3>Kilit ekranı ve bildirimler</h3><p>Kilit ekranı pencere yöneticisinin içinde çizilir; hiçbir uygulama onu atlatamaz. Bildirimler, rahatsız etme kipi.</p></div>
+          <div class="card"><div class="icon">⧉</div><h3>Işıltılı pencereler</h3><p>Yuvarlak köşeler, gölge, odaktaki pencerenin çevresinde akan ışıltı. Hepsi ekran kartında çizilir.</p></div>
+          <div class="card"><div class="icon">◐</div><h3>Duvar kâğıdından renkler</h3><p>"Otomatik" tema, duvar kâğıdındaki renkleri bulur; çubuk, dock, pencereler ve açılış ekranı ona uyar.</p></div>
+          <div class="card"><div class="icon">▦</div><h3>Döşeme ve çalışma alanları</h3><p>Super+T ile pencereler kendini düzenler, Super+1…4 ile dört masaüstü.</p></div>
+          <div class="card"><div class="icon">🗂</div><h3>Ozi Dosyalar</h3><p>Kendi dosya yöneticisi: önizlemeler, arama, çöp kutusu, arşivi açma, USB bellekleri bağlama.</p></div>
+          <div class="card"><div class="icon">❯_</div><h3>Ozi Terminal</h3><p>Rust ile yazılmış hızlı terminal: sekmeler, temanın renkleri, açılışta dönen OziOS logosu.</p></div>
+          <div class="card"><div class="icon">✦</div><h3>Hızlı ayarlar ve tepsi</h3><p>Wi-Fi, Bluetooth, parlaklık, ses, güç profili; arka planda çalışan uygulamalar çubuktaki tepside.</p></div>
+          <div class="card"><div class="icon">🌐</div><h3>21 dil</h3><p>Türkçe, İngilizce, Almanca, Arapça, Japonca ve daha fazlası. Sistemin dilini kendiliğinden kullanır.</p></div>
+          <div class="card"><div class="icon">🔒</div><h3>Kilit ekranı ve bildirimler</h3><p>Kilit ekranı pencere yöneticisinin içinde çizilir; hiçbir uygulama onu atlatamaz.</p></div>
           <div class="card"><div class="icon">↻</div><h3>Kendi kendine güncellenir</h3><p>Düzeltmeler GitHub'daki OziOS deposundan gelir: <code>sudo pacman -Syu</code> ve bitti.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="egitim" class="edu">
+      <div class="wrap">
+        <span class="tag">OziOS Eğitim</span>
+        <h2>Akıllı tahtada, parmakla</h2>
+        <p class="sub">Sınıftaki etkileşimli tahtalar ve okul bilgisayarları için ayrı bir ISO. USB bellekten açılır,
+          kurmadan da çalışır.</p>
+        <div class="grid">
+          <div class="card"><div class="icon">☝</div><h3>Dokunmatik</h3><p>Tahtanın dokunma çerçevesi parmakla ve kalemle çalışır: dokun, kaydır, pencereyi başlığından sürükle.</p></div>
+          <div class="card"><div class="icon">⌨</div><h3>Ekran klavyesi</h3><p>Türkçe Q düzeninde büyük tuşlu klavye; çubuktaki düğmeyle açılır, yazı alanına dokununca kendiliğinden gelir.</p></div>
+          <div class="card"><div class="icon">✎</div><h3>Ekran kalemi</h3><p>Her şeyin üstüne çiz: kalem, fosforlu kalem, ok, kutu, lazer, spot ışığı. Çizimi resim olarak kaydet.</p></div>
+          <div class="card"><div class="icon">👥</div><h3>Sınıf</h3><p>Rastgele öğrenci seç, grupları karıştır, sayaç kur. Sınıf listeleri bilgisayarda kalır.</p></div>
+          <div class="card"><div class="icon">📄</div><h3>Ders araçları</h3><p>Beyaz tahta (Xournal++), LibreOffice, PDF okuma; menüde EBA, e-Okul ve MEB.</p></div>
+          <div class="card"><div class="icon">☀</div><h3>Ders ortasında kararmaz</h3><p>Kilit ekranı ve uyku kapalı, büyük imleç, Türkçe arayüz ve klavye hazır.</p></div>
         </div>
       </div>
     </section>
@@ -69,28 +92,47 @@
           <figure><img src="img/sakura.png" alt="Sakura duvar kâğıdı" loading="lazy" width="1280" height="706"><figcaption>OziOS'un kendi duvar kâğıtları.</figcaption></figure>
           <figure><img src="img/lock.png" alt="Kilit ekranı" loading="lazy" width="1280" height="706"><figcaption>Kilit ekranı.</figcaption></figure>
         </div>
-        <div class="themes" id="temalar" aria-label="Temalar">
-          <span style="background:linear-gradient(90deg,#00e5ff,#7c5cff)" title="Camgöbeği"></span>
-          <span style="background:linear-gradient(90deg,#b08cff,#ff5cc8)" title="Kutup Işığı"></span>
-          <span style="background:linear-gradient(90deg,#ff8c40,#e8408c)" title="Kor"></span>
-          <span style="background:linear-gradient(90deg,#3ce6a0,#3c8cff)" title="Nane"></span>
-          <span style="background:linear-gradient(90deg,#ff5e8c,#a05cff)" title="Gül"></span>
-          <span style="background:linear-gradient(90deg,#0091ac,#6e50e6)" title="Ayaz"></span>
-        </div>
       </div>
     </section>
 
     <section id="indir">
       <div class="wrap">
         <h2>İndir ve kur</h2>
-        <p class="sub">USB belleğe yaz (Ventoy ya da balenaEtcher), bilgisayarı ondan aç, "Kur"a bas.</p>
+        <p class="sub">ISO iki parça hâlinde gelir (GitHub tek dosyada 2 GB'tan büyüğünü kabul etmiyor).
+          İki parçayı indir, birleştir, USB belleğe yaz, bilgisayarı ondan aç.</p>
         <div class="install">
-          <div class="card">
-            <h3>OziOS ISO</h3>
-            <p>Masaüstü, uygulama mağazası ve OziOS çekirdeği hazır gelir. 0.4 ISO'su hazırlanıyor;
-              sürüm notları ve paketler şimdiden sürüm sayfasında.</p>
-            <p style="margin-top:14px"><a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/tag/v0.4.0-beta2">0.4 sürüm sayfası</a></p>
+          <div class="card download">
+            <h3>OziOS</h3>
+            <p>Masaüstü, uygulama mağazası ve OziOS çekirdeği hazır gelir.</p>
+            <div class="parts">
+              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios.iso.001">Parça 1</a>
+              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios.iso.002">Parça 2</a>
+            </div>
           </div>
+          <div class="card download">
+            <h3>OziOS Eğitim</h3>
+            <p>Akıllı tahtalar ve okul bilgisayarları için: dokunma, ekran klavyesi, ders araçları.</p>
+            <div class="parts">
+              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios-edu.iso.001">Parça 1</a>
+              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios-edu.iso.002">Parça 2</a>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Parçaları birleştir</h3>
+            <p><b>Windows:</b> iki parçanın olduğu klasörde komut istemine yaz:</p>
+            <pre>copy /b ozios.iso.001+ozios.iso.002 ozios.iso</pre>
+            <p style="margin-top:10px">ya da 7-Zip'te <i>.001</i> dosyasına sağ tıkla → <i>Dosyaları birleştir</i>.</p>
+            <p style="margin-top:10px"><b>Linux / macOS:</b></p>
+            <pre>cat ozios.iso.00? &gt; ozios.iso</pre>
+            <p style="margin-top:10px">Doğrulamak için: <a href="https://github.com/OziiDev/OziOS/releases/download/iso/SHA256SUMS">SHA256SUMS</a></p>
+          </div>
+        </div>
+        <ol class="steps">
+          <li><b>USB'ye yaz.</b> <a href="https://www.ventoy.net">Ventoy</a> kurulu belleğe ISO'yu kopyalamak yeter; ya da balenaEtcher ile yaz.</li>
+          <li><b>USB'den aç.</b> Açılışta F12, F11, F8 ya da Esc ile önyükleme menüsünü aç, belleği seç.</li>
+          <li><b>Dene ya da kur.</b> Masaüstü kurmadan açılır; beğenirsen "Kur"a bas.</li>
+        </ol>
+        <div class="install" style="margin-top:28px">
           <div class="card">
             <h3>Arch / CachyOS'a yalnız masaüstü</h3>
             <p>Sistemin kalır, giriş ekranına "OziOS" oturumu eklenir.</p>
@@ -98,7 +140,7 @@
           </div>
           <div class="card">
             <h3>Güncellemeler</h3>
-            <p>OziOS sistemleri bu depoyu kullanır; her yeni düzeltme tek komutla gelir.</p>
+            <p>OziOS sistemleri bu depoyu kullanır; her düzeltme tek komutla gelir.</p>
             <pre>[ozios]
 SigLevel = Optional TrustAll
 Server = https://github.com/OziiDev/OziOS/releases/download/repo</pre>
@@ -106,11 +148,31 @@ Server = https://github.com/OziiDev/OziOS/releases/download/repo</pre>
         </div>
       </div>
     </section>
+
+    <section id="sss">
+      <div class="wrap">
+        <h2>Sık sorulanlar</h2>
+        <div class="faq">
+          <details><summary>USB'den açılmıyor, ne yapayım?</summary>
+            <p>BIOS/UEFI ayarlarında <b>Secure Boot</b>'u kapat. Ventoy kullanıyorsan ilk açılışta çıkan
+              "Enroll key" ekranında Ventoy'un anahtarını kaydetmek de olur. Bazı bilgisayarlarda USB'den açma
+              ayarda ayrıca açılmalıdır.</p></details>
+          <details><summary>Tahtada dokunma çalışmıyor.</summary>
+            <p>Çoğu akıllı tahta bilgisayara sıradan bir USB dokunmatik ekran olarak bağlanır ve kendiliğinden çalışır.
+              Tahtanın USB dokunma kablosunun (genelde "Touch" yazan USB-B girişi) tahtadaki bilgisayara ya da
+              dizüstüne takılı olduğundan emin ol. Birden çok ekran varsa dokunma ilk ekrana eşlenir.</p></details>
+          <details><summary>Bilgisayarımdaki dosyalar silinir mi?</summary>
+            <p>USB'den açıp denemek hiçbir şeye dokunmaz. Yalnız "Kur"a basıp diski seçersen kurulum o diske yazar.</p></details>
+          <details><summary>Ücretli mi?</summary>
+            <p>Hayır. OziOS ücretsiz ve açık kaynaktır; kaynak kodu MIT lisanslıdır.</p></details>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
     <div class="wrap">
-      <span>© 2026 OziOS. Her hakkı saklıdır. Kaynak kodu MIT lisanslıdır.</span>
+      <span>© 2026 OziOS. Kaynak kodu MIT lisanslıdır. CachyOS ve Arch Linux üzerine kuruludur.</span>
       <span><a href="https://github.com/OziiDev/OziOS">GitHub</a> · <a href="demo/">Tarayıcıda dene</a> · <a href="https://github.com/OziiDev/OziOS/issues">Sorun bildir</a></span>
     </div>
   </footer>

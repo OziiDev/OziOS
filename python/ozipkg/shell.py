@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 
-DEFAULT_PINS = ("ozi-files", "firefox", "ozi-terminal", "ozi-store", "ozi-look", "systemsettings")
+DEFAULT_PINS = ("ozi-files", "firefox", "ozi-terminal", "ozi-store", "ozi-look")
 # Programs OziOS replaced with its own: a pin of the old one shows the new one.
 REPLACED = {"org.kde.konsole": "ozi-terminal", "org.kde.dolphin": "ozi-files"}
 
