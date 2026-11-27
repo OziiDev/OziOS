@@ -7,6 +7,7 @@ the logic lives in ozipkg.shell, this file only carries it to QML.
     ozi-shell                start the shell
     ozi-shell --launcher     open or close the launcher of the running shell
 """
+import ctypes
 import json
 import os
 import socket
@@ -22,6 +23,14 @@ for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python", "/usr/
         break
 
 from ozipkg import i18n, mode, osk, shell, tray  # noqa: E402
+
+# Our own process name instead of "python3": the system's CPU rules (ananicy)
+# give the shell the compositor's priority by it, so the bar and dock animate
+# smoothly while something heavy runs.
+try:
+    ctypes.CDLL(None).prctl(15, b"ozi-shell", 0, 0, 0)    # PR_SET_NAME
+except (OSError, AttributeError):
+    pass
 
 QML_DIRS = (os.path.join(HERE, "qml"), "/usr/share/ozios/shell/qml")
 

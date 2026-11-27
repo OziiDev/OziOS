@@ -1,0 +1,6 @@
+# OziOS desktop: the compositor and the shell get the CPU first, as KWin does,
+# so animations stay smooth while something heavy (a build, a game's shader
+# cache) uses every core. Read by ananicy-cpp (CachyOS runs it).
+{ "name": "oziwm", "type": "LowLatency_RT" }
+{ "name": "ozi-shell", "type": "LowLatency_RT" }
+{ "name": "xwayland-satell", "type": "LowLatency_RT" }

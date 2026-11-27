@@ -365,6 +365,16 @@ impl OziWm {
             Some(display) => command.env("DISPLAY", display),
             None => command.env_remove("DISPLAY"),
         };
+        // oziwm runs with a high priority (ananicy gives it one, as to KWin) so
+        // animations stay smooth under load; the programs it starts must not
+        // inherit it, or a build started from the dock would starve everything.
+        use std::os::unix::process::CommandExt;
+        unsafe {
+            command.pre_exec(|| {
+                libc::setpriority(libc::PRIO_PROCESS, 0, 0);
+                Ok(())
+            });
+        }
     }
 
     /// The client surface under a point: overlay and top layers (bar, dock,

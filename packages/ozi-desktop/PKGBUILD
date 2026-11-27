@@ -58,6 +58,8 @@ package() {
   install -Dm644 "$src/session/ozios-portals.conf" "$pkgdir/usr/share/xdg-desktop-portal/ozios-portals.conf"
   install -d "$pkgdir/usr/share/ozios/wallpapers"
   install -m644 "$src"/branding/wallpapers/*.svg "$pkgdir/usr/share/ozios/wallpapers/"
+  # The compositor first when the CPU is busy (ananicy-cpp, as for KWin).
+  install -Dm644 "$src/session/ananicy/ozios.rules" "$pkgdir/etc/ananicy.d/00-default/DEs-and-WMs/ozios.rules"
   install -d "$pkgdir/usr/share/ozios/mascot"
   install -m644 "$src"/branding/mascot/*.svg "$pkgdir/usr/share/ozios/mascot/"
   install -d "$pkgdir/usr/share/ozios/shell/qml"
