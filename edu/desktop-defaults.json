@@ -1,4 +1,6 @@
 {
+  "wallpaper": "/usr/share/ozios/wallpapers/ozi-chan-sinif.svg",
+  "theme": "auto",
   "lock_after_minutes": 0,
   "osk": "auto",
   "dock": [
