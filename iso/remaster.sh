@@ -2,7 +2,7 @@
 # Turn a CachyOS live ISO into an OziOS live ISO without rebuilding it.
 #
 #   sudo iso/remaster.sh [--iso <file-or-device>] [--work <dir>] [--add "<pkg> ..."]
-#                        [--archive <YYYY/MM/DD>] [--kernel <dir>] [--edition edu] [--keep-root]
+#                        [--archive <YYYY/MM/DD>] [--kernel <dir>] [--edition edu] [--tanitim] [--keep-root]
 #
 #   --add "<pkg> ..."   extra packages for the image. The OziOS package needs
 #                       python-pyqt6; podman runs boxed .deb apps.
@@ -13,6 +13,9 @@
 #   --edition edu  the Education edition for smart boards: adds the ozios-edu
 #                   package and what it needs, Turkish defaults for the live
 #                   session, and names the ISO ozios-edu-*.
+#   --tanitim      the presentation USB: the Education edition where Ozi-chan's
+#                   tour (ozi-tour) starts by itself and goes round; named
+#                   ozios-tanitim-edu-*. Implies --edition edu.
 #   --kernel <dir>  directory with the packages built by kernel/build.sh
 #                   (linux-ozios, linux-ozios-nvidia-open, linux-ozios-zfs).
 #                   They replace the linux-cachyos* ones, and the live boot
@@ -29,7 +32,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
-src="" work="" add="" keep=false kernel="" archive="" edition=""
+src="" work="" add="" keep=false kernel="" archive="" edition="" tanitim=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --keep-root) keep=true; shift ;;   # reuse the root unpacked by an earlier run
@@ -39,6 +42,7 @@ while [ $# -gt 0 ]; do
     --archive) archive="${2:?}"; shift 2 ;;
     --kernel) kernel="${2:?}"; shift 2 ;;
     --edition) edition="${2:?}"; shift 2 ;;
+    --tanitim) tanitim=true; edition=edu; shift ;;
     *) echo "remaster: unknown argument $1" >&2; exit 2 ;;
   esac
 done
@@ -47,7 +51,7 @@ die() { echo "remaster: $*" >&2; exit 1; }
 case "$edition" in "" | edu) ;; *) die "unknown edition: $edition (only edu exists)" ;; esac
 # What the Education edition needs besides what ozios-edu itself ships.
 if [ "$edition" = edu ]; then
-  add="$add xournalpp gnome-calculator libreoffice-still libreoffice-still-tr"
+  add="$add xournalpp gnome-calculator libreoffice-still libreoffice-still-tr qrencode rsync"
 fi
 step() { printf '\n==> %s (%s)\n' "$*" "$(date +%H:%M:%S)"; }
 
@@ -235,6 +239,11 @@ if [ "$edition" = edu ]; then
   echo 'KEYMAP=trq' > "$root/etc/vconsole.conf"
   ln -sf /usr/share/zoneinfo/Europe/Istanbul "$root/etc/localtime"
 fi
+if $tanitim; then
+  step "The presentation USB: Ozi-chan's tour starts by itself"
+  mkdir -p "$root/usr/share/ozios"
+  echo "Bu medya tanıtım içindir: ozi-shell açılınca OziOS turu kendiliğinden başlar." > "$root/usr/share/ozios/tanitim"
+fi
 
 step "Removing CachyOS programs and branding"
 drop=()
@@ -344,6 +353,7 @@ mkdir -p "$work/cfg"
 n=0
 product=OziOS
 [ "$edition" != edu ] || product="OziOS Education"
+! $tanitim || product="OziOS Education Demo"
 while IFS= read -r cfg; do
   if grep -qE '^[[:space:]]*(menuentry|submenu|title|MENU LABEL|MENU TITLE).*CachyOS' "$cfg" ||
      { [ -n "$kernel" ] && grep -qE 'linux-cachyos' "$cfg"; }; then
@@ -361,6 +371,7 @@ step "Writing the ISO"
 version="$(tr -d '[:space:]' < "$repo/VERSION")"
 name=ozios
 [ "$edition" != edu ] || name=ozios-edu
+! $tanitim || name=ozios-tanitim-edu
 out="$work/$name-$version-$(date +%y%m%d)-x86_64.iso"
 rm -f "$out"
 # The boot loaders look the medium up by its volume id, which is its creation
