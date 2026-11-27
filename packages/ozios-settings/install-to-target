@@ -157,6 +157,24 @@ late() {
     done
   fi
 
+  # The login screen (plasma-login-manager) offers the session each person used
+  # last; nobody has used one yet, so start them on the OziOS desktop, not Plasma.
+  if [ -f "$root/usr/share/wayland-sessions/ozios.desktop" ]; then
+    users="$(awk -F: '$3 >= 1000 && $3 < 60000 { printf "%s\"%s\":\"ozios.desktop\"", (n++ ? "," : ""), $1 }' "$root/etc/passwd" 2>/dev/null)"
+    # A board can start on its own (autologin) to Plasma: make that OziOS too.
+    for conf in "$root/etc/plasmalogin.conf" "$root"/etc/plasmalogin.conf.d/*.conf; do
+      [ -f "$conf" ] && sed -i 's/^Session=plasma\(\.desktop\)\{0,1\}$/Session=ozios.desktop/' "$conf"
+    done
+    if [ -n "$users" ] && grep -q '^plasmalogin:' "$root/etc/passwd"; then
+      state="$root/var/lib/plasmalogin/.local/state"
+      mkdir -p "$state" &&
+        printf '[General]\nLastLoggedInSession={%s}\nLastLoggedInUser=%s\n' "$users" \
+          "$(awk -F: '$3 >= 1000 && $3 < 60000 { print $1; exit }' "$root/etc/passwd")" > "$state/plasma-login-greeterstaterc" &&
+        arch-chroot "$root" chown -R plasmalogin:plasmalogin /var/lib/plasmalogin/.local ||
+        echo "ozios: could not set the OziOS desktop as the first session"
+    fi
+  fi
+
   # Windows keeps the hardware clock in local time. Next to it OziOS does the same;
   # otherwise the clock is off by the time zone after every switch between the two.
   if windows_beside; then

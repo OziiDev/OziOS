@@ -247,6 +247,24 @@ class Stages(Target):
         self.run_stage("early", FAKE_FAIL="ozios")
         self.run_stage("late")
 
+    def test_people_start_on_the_ozios_desktop_not_plasma(self):
+        t = self.target
+        os.makedirs(os.path.join(t, "usr/share/wayland-sessions"))
+        open(os.path.join(t, "usr/share/wayland-sessions/ozios.desktop"), "w").close()
+        with open(os.path.join(t, "etc/passwd"), "w") as fh:
+            fh.write("root:x:0:0::/root:/bin/bash\nplasmalogin:x:964:964::/var/lib/plasmalogin:/usr/bin/nologin\n"
+                     "ogretmen:x:1000:1000::/home/ogretmen:/bin/bash\n")
+        os.makedirs(os.path.join(t, "etc/plasmalogin.conf.d"))
+        with open(os.path.join(t, "etc/plasmalogin.conf.d/autologin.conf"), "w") as fh:
+            fh.write("[Autologin]\nUser=ogretmen\nSession=plasma.desktop\n")
+        self.run_stage("late")
+        with open(os.path.join(t, "etc/plasmalogin.conf.d/autologin.conf")) as fh:
+            self.assertIn("Session=ozios.desktop", fh.read())
+        with open(os.path.join(t, "var/lib/plasmalogin/.local/state/plasma-login-greeterstaterc")) as fh:
+            state = fh.read()
+        self.assertIn('LastLoggedInSession={"ogretmen":"ozios.desktop"}', state)
+        self.assertIn("LastLoggedInUser=ogretmen", state)
+
     def test_nothing_mounted_means_nothing_to_do(self):
         executable(os.path.join(self.bin, "findmnt"), "#!/bin/sh\nexit 0\n")
         env = dict(os.environ, PATH=self.bin + os.pathsep + os.environ["PATH"], OZIOS_PACKAGES=self.packages,

@@ -8,7 +8,7 @@ pkgdesc="OziOS desktop: its own window manager and shell"
 arch=(x86_64)
 license=(MIT)
 depends=(
-  'ozios-settings>=0.3.0-9'
+  'ozios-settings>=0.3.0-10'
   seatd libinput mesa libxkbcommon systemd-libs libdrm pam fontconfig
   python python-pyqt6 qt6-declarative layer-shell-qt
   ttf-overpass wireplumber networkmanager

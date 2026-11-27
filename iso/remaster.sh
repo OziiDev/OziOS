@@ -225,6 +225,13 @@ install -Dm644 "$repo/iso/live/pacman-init-nice.conf" "$root/etc/systemd/system/
 # The live session opens on the OziOS desktop instead of Plasma. Plasma stays
 # on the login screen for a machine where oziwm does not start.
 install -Dm644 "$repo/iso/live/sddm-ozios.conf" "$root/etc/sddm.conf.d/ozios-live.conf"
+# The login manager of CachyOS is plasma-login-manager, which logs the live user
+# straight in to Plasma: to the OziOS desktop instead.
+for conf in "$root/etc/plasmalogin.conf" "$root"/etc/plasmalogin.conf.d/*.conf; do
+  [ -f "$conf" ] && sed -i 's/^Session=plasma\(\.desktop\)\{0,1\}$/Session=ozios.desktop/' "$conf"
+done
+grep -rqs '^Session=ozios.desktop' "$root/etc/plasmalogin.conf" "$root/etc/plasmalogin.conf.d" ||
+  printf '[Autologin]\nUser=liveuser\nSession=ozios.desktop\n' > "$root/etc/plasmalogin.conf.d/zz-ozios-live.conf"
 # Started from a Ventoy stick, downloads are saved on the stick itself.
 install -Dm755 "$repo/iso/live/ozi-live-usb" "$root/usr/lib/ozios/ozi-live-usb"
 install -Dm644 "$repo/iso/live/ozi-live-usb.service" "$root/etc/systemd/system/ozi-live-usb.service"
