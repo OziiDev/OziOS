@@ -5,7 +5,7 @@ pkgdesc="OziOS Education: smart board desktop, screen pen and school defaults"
 arch=(any)
 license=(MIT)
 depends=(ozios-settings ozi-desktop xournalpp gnome-calculator
-         libreoffice-still libreoffice-still-tr qrencode)
+         libreoffice-still libreoffice-still-tr qrencode rsync polkit)
 install=ozios-edu.install
 options=(!strip !debug)
 
@@ -47,4 +47,20 @@ package() {
   install -Dm644 "$src/edu/firewall/ozi-bridge-firewall.service" "$pkgdir/usr/lib/systemd/system/ozi-bridge-firewall.service"
   install -d "$pkgdir/usr/lib/systemd/system/multi-user.target.wants"
   ln -s ../ozi-bridge-firewall.service "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/ozi-bridge-firewall.service"
+
+  # Kısıtlı / Yetkili and Dondurma: the teacher's app, its root helper (pkexec,
+  # no password prompt: it checks the teacher's password itself), the polkit
+  # rule that refuses admin actions on a restricted board, and the start-up
+  # service that puts a frozen home folder back.
+  install -Dm755 "$src/apps/ozi-mode/ozi-mode" "$apps/ozi-mode/ozi-mode"
+  install -Dm644 "$src/apps/ozi-mode/Main.qml" "$apps/ozi-mode/Main.qml"
+  ln -s /usr/lib/ozios/apps/ozi-mode/ozi-mode "$pkgdir/usr/bin/ozi-mode"
+  install -Dm644 "$src/apps/ozi-mode.desktop" "$pkgdir/usr/share/applications/ozi-mode.desktop"
+  install -Dm644 "$src/apps/ozi-mode/ozi-mode.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/ozi-mode.svg"
+  install -Dm755 "$src/edu/mode/ozi-mode-helper" "$pkgdir/usr/lib/ozios/ozi-mode-helper"
+  install -Dm755 "$src/edu/mode/ozi-mode-allowed" "$pkgdir/usr/lib/ozios/ozi-mode-allowed"
+  install -Dm644 "$src/edu/mode/org.ozios.mode.policy" "$pkgdir/usr/share/polkit-1/actions/org.ozios.mode.policy"
+  install -Dm644 "$src/edu/mode/50-ozios-kisitli.rules" "$pkgdir/usr/share/polkit-1/rules.d/50-ozios-kisitli.rules"
+  install -Dm644 "$src/edu/mode/ozi-freeze.service" "$pkgdir/usr/lib/systemd/system/ozi-freeze.service"
+  ln -s ../ozi-freeze.service "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/ozi-freeze.service"
 }

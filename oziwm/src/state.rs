@@ -298,6 +298,10 @@ impl OziWm {
         let Some((program, args)) = argv.split_first() else {
             return;
         };
+        if !crate::policy::allowed(argv) {
+            tracing::info!(?argv, "not started: the board is in restricted mode");
+            return;
+        }
         let mut command = Command::new(program);
         command.args(args);
         self.prepare_child(&mut command);

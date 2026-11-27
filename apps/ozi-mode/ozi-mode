@@ -1,0 +1,27 @@
+#!/usr/bin/python3
+"""Öğretmen: switch the board between Kısıtlı and Yetkili mode, and set up
+Dondurma. The checks run as root in ozi-mode-helper."""
+import os
+import sys
+
+# The apps folder this one sits in wins over the installed one (a checkout runs its own code).
+sys.path.insert(0, "/usr/lib/ozios/apps")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+
+import ozi_qt  # noqa: E402
+from ozipkg import mode  # noqa: E402
+
+
+class ModeBackend(ozi_qt.Backend):
+    allowed = {
+        "status": (mode.status, False),
+        "unlock": (lambda password: (mode.helper("unlock", password=password), mode.status())[1], False),
+        "lock": (lambda: (mode.helper("lock"), mode.status())[1], False),
+        "password": (lambda new: (mode.helper("password", password=new), mode.status())[1], False),
+        "freeze": (lambda what: (mode.helper("freeze", what), mode.status())[1], False),
+    }
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    sys.exit(ozi_qt.run(os.path.join(here, "Main.qml"), ModeBackend(), "Öğretmen", "ozi-mode"))

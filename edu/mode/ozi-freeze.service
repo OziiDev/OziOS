@@ -1,0 +1,14 @@
+[Unit]
+Description=Put the board's home folder back to its frozen state (Dondurma)
+DefaultDependencies=no
+After=local-fs.target home.mount
+Before=display-manager.service systemd-user-sessions.service
+ConditionPathExists=/etc/ozios/dondurma.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ozios/ozi-mode-helper restore
+TimeoutStartSec=10min
+
+[Install]
+WantedBy=multi-user.target

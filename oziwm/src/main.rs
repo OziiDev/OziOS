@@ -13,6 +13,7 @@ mod keyboard;
 mod layout;
 mod lock;
 mod placement;
+mod policy;
 mod render;
 mod shot;
 mod state;

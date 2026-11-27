@@ -1,0 +1,60 @@
+#!/usr/bin/python3 -I
+"""The root side of the Education edition's modes, reached through pkexec
+(no password prompt: it checks the teacher's password itself).
+
+    ozi-mode-helper unlock            the password on standard input
+    ozi-mode-helper lock
+    ozi-mode-helper password          the new password on standard input (authorised only)
+    ozi-mode-helper freeze on|off|save                                   (authorised only)
+    ozi-mode-helper restore           at start, from the freeze service
+
+It prints a JSON answer; on a refusal, the reason on standard error.
+"""
+import json
+import os
+import pwd
+import sys
+
+sys.path.insert(0, "/usr/lib/ozios/python")
+from ozipkg import mode  # noqa: E402
+
+
+def caller():
+    uid = int(os.environ.get("PKEXEC_UID", "-1"))
+    if uid < 1000:
+        raise ValueError("Bunu bir kullanıcı oturumu sormalı.")
+    entry = pwd.getpwuid(uid)
+    return entry.pw_name, entry.pw_dir
+
+
+def main(args):
+    if os.geteuid() != 0:
+        raise ValueError("Yönetici olarak çalışmalı.")
+    if not mode.is_education():
+        raise ValueError("Bu yalnız Eğitim sürümünde var.")
+    what = args[0] if args else ""
+    if what == "restore":
+        return {"restored": mode.freeze_restore()}
+    if what == "unlock":
+        return {"mode": mode.unlock(sys.stdin.readline().rstrip("\n"))}
+    if what == "lock":
+        return {"mode": mode.lock()}
+    if mode.current() != mode.AUTHORISED:
+        raise ValueError("Önce yetkili moda geç.")
+    if what == "password":
+        return mode.set_password(sys.stdin.readline().rstrip("\n"))
+    if what == "freeze" and len(args) == 2:
+        user, home = caller()
+        if args[1] == "save":
+            return mode.freeze_save(user, home)
+        if args[1] in ("on", "off"):
+            return mode.freeze_enable(args[1] == "on", user, home)
+    raise ValueError("Bilinmeyen istek.")
+
+
+if __name__ == "__main__":
+    try:
+        print(json.dumps(main(sys.argv[1:])))
+    except ValueError as err:
+        print(err, file=sys.stderr)
+        sys.exit(1)

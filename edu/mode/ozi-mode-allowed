@@ -1,0 +1,5 @@
+#!/bin/sh
+# Exit 0 when the board may do admin things: not the Education edition, or in
+# authorised mode (Yetkili). For polkit's rule and anything else that asks.
+[ "$(cat /usr/share/ozios/edition 2>/dev/null)" = edu ] || exit 0
+[ "$(cat /run/ozios/mode 2>/dev/null)" = yetkili ]

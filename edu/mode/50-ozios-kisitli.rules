@@ -1,0 +1,40 @@
+// OziOS Education: a board in restricted mode (Kısıtlı) refuses admin
+// actions; joining Wi-Fi, USB sticks, sound and power still work. The mode
+// switch itself (org.ozios.mode) is always allowed: it asks for the teacher's
+// password on its own.
+polkit.addRule(function (action, subject) {
+    if (action.id === "org.ozios.mode")
+        return polkit.Result.NOT_HANDLED;
+    var denied = [
+        "org.freedesktop.policykit.exec",
+        "org.freedesktop.packagekit.",
+        "org.freedesktop.systemd1.manage-",
+        "org.freedesktop.accounts.",
+        "org.freedesktop.timedate1.",
+        "org.freedesktop.hostname1.",
+        "org.freedesktop.locale1.",
+        "org.freedesktop.udisks2.modify-device",
+        "org.freedesktop.udisks2.open-device",
+        "org.freedesktop.udisks2.encrypted-",
+        "org.freedesktop.udisks2.loop-",
+        "org.freedesktop.udisks2.rescan",
+        "org.freedesktop.login1.set-",
+        "org.freedesktop.NetworkManager.settings.modify.hostname",
+        "org.freedesktop.Flatpak.",
+        "com.ubuntu.pkexec.",
+        "org.ozios.admin"
+    ];
+    var match = false;
+    for (var i = 0; i < denied.length; i++) {
+        if (action.id.indexOf(denied[i]) === 0) { match = true; break; }
+    }
+    if (!match)
+        return polkit.Result.NOT_HANDLED;
+    try {
+        // Exits 0 when the board is in authorised mode.
+        polkit.spawn(["/usr/lib/ozios/ozi-mode-allowed"]);
+        return polkit.Result.NOT_HANDLED;
+    } catch (error) {
+        return polkit.Result.NO;
+    }
+});

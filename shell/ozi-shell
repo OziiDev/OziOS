@@ -21,7 +21,7 @@ for root in (os.path.join(HERE, "..", "python"), "/usr/lib/ozios/python", "/usr/
         sys.path.insert(0, root)
         break
 
-from ozipkg import i18n, osk, shell, tray  # noqa: E402
+from ozipkg import i18n, mode, osk, shell, tray  # noqa: E402
 
 QML_DIRS = (os.path.join(HERE, "qml"), "/usr/share/ozios/shell/qml")
 
@@ -123,6 +123,8 @@ class Shell(QObject):
         self._apps = shell.applications()
         self._wallpapers = shell.wallpapers()
         self._by_id = {a["id"]: a for a in self._apps}
+        if mode.is_education():
+            self._watch_mode()
         self._status = {"volume": {"available": False, "percent": 0, "muted": False},
                         "battery": {"present": False}, "network": {"kind": "none", "name": ""},
                         "wifi": {"available": False, "wifi": False, "wifi_hw": False},
@@ -424,7 +426,13 @@ class Shell(QObject):
 
     @pyqtProperty("QVariantList", notify=windowsChanged)
     def dock(self):
-        return shell.dock_items(self._by_id, shell.pins(self._by_id), self._windows)
+        items = shell.dock_items(self._by_id, shell.pins(self._by_id), self._windows)
+        if mode.restricted():
+            def allowed(item):
+                app = self._by_id.get(item["id"], {})
+                return item["windows"] or mode.app_allowed(item["id"], app.get("exec", ""), app.get("terminal", False))
+            items = [i for i in items if allowed(i)]
+        return items
 
     @pyqtProperty(str, notify=windowsChanged)
     def activeTitle(self):
@@ -432,7 +440,32 @@ class Shell(QObject):
 
     @pyqtProperty("QVariantList", notify=appsChanged)
     def apps(self):
-        return self._apps
+        return self._allowed_apps()
+
+    def _allowed_apps(self):
+        """The apps this board may start now: a restricted Education board hides
+        the terminal, settings, the store and the like."""
+        if not mode.restricted():
+            return self._apps
+        return [a for a in self._apps if mode.app_allowed(a["id"], a.get("exec", ""), a.get("terminal", False))]
+
+    @pyqtProperty(str, notify=appsChanged)
+    def boardMode(self):
+        """"" outside the Education edition, else "yetkili" or "kisitli"."""
+        return mode.current() if mode.is_education() else ""
+
+    def _watch_mode(self):
+        last = [self.boardMode]
+
+        def check():
+            now = self.boardMode
+            if now != last[0]:
+                last[0] = now
+                self.appsChanged.emit()
+                self.windowsChanged.emit()      # the dock hides what may not start
+        self._mode_timer = QTimer(self)
+        self._mode_timer.timeout.connect(check)
+        self._mode_timer.start(2500)
 
     @pyqtProperty("QVariantMap", notify=statusChanged)
     def status(self):
@@ -481,12 +514,17 @@ class Shell(QObject):
 
     @pyqtSlot(str, result="QVariantList")
     def search(self, query):
-        return shell.search(self._apps, query)
+        return shell.search(self._allowed_apps(), query)
 
     @pyqtSlot(str)
     def launch(self, app_id):
         app = self._by_id.get(app_id)
         if not app:
+            return
+        if not mode.app_allowed(app_id, app.get("exec", ""), app.get("terminal", False)):
+            subprocess.Popen(["notify-send", "-a", "OziOS", "-i", "ozi-mode", i18n.tr("Closed in restricted mode"),
+                              i18n.tr("The teacher can open it in Teacher mode.")], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return
         argv = shell.command_for(app["exec"], app["terminal"])
         # Some programs take seconds to show a window; say so in the bar meanwhile.

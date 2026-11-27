@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Teacher mode
+Name[tr]=Öğretmen modu
+Comment=Switch the board between restricted and authorised mode; freeze it
+Comment[tr]=Tahtayı kısıtlı ve yetkili mod arasında değiştir, dondur
+Exec=ozi-mode
+Icon=ozi-mode
+Categories=Education;Settings;
+Keywords=teacher;lock;freeze;öğretmen;kilit;yetkili;kısıtlı;dondur;
+Terminal=false
+StartupWMClass=ozi-mode

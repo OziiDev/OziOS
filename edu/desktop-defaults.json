@@ -13,6 +13,7 @@
     "ozi-eba",
     "ozi-files",
     "org.gnome.Calculator",
-    "ozi-store"
+    "ozi-store",
+    "ozi-mode"
   ]
 }

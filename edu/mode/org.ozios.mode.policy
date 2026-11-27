@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>OziOS</vendor>
+  <action id="org.ozios.mode">
+    <description>Switch the board between restricted and authorised mode</description>
+    <description xml:lang="tr">Tahtayı kısıtlı ve yetkili mod arasında değiştir</description>
+    <message>The teacher's password is asked by OziOS itself</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/ozios/ozi-mode-helper</annotate>
+  </action>
+</policyconfig>

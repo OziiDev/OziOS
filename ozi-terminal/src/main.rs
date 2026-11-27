@@ -771,7 +771,20 @@ fn watch_look(proxy: EventLoopProxy<UserEvent>) {
     });
 }
 
+/// A restricted Education board (Kısıtlı) has no terminal until the teacher unlocks it.
+fn restricted() -> bool {
+    let read = |p: &str| std::fs::read_to_string(p).map(|s| s.trim().to_string()).unwrap_or_default();
+    read("/usr/share/ozios/edition") == "edu" && read("/run/ozios/mode") != "yetkili"
+}
+
 fn main() {
+    if restricted() {
+        eprintln!("ozi-terminal: the board is in restricted mode; the teacher can open it in Teacher mode");
+        let _ = std::process::Command::new("notify-send")
+            .args(["-a", "OziOS", "-i", "ozi-mode", "Kısıtlı modda kapalı", "Terminali öğretmen, Öğretmen modundan açabilir."])
+            .status();
+        std::process::exit(1);
+    }
     let args = parse_args();
     tty::setup_env();
     let event_loop = match EventLoop::<UserEvent>::with_user_event().build() {
