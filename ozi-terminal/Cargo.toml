@@ -6,9 +6,11 @@ edition = "2024"
 [dependencies]
 alacritty_terminal = "0.26"
 fontdue = "0.9"
+png = "0.17"
 serde_json = "1"
 smithay-clipboard = "0.7"
 softbuffer = "0.4"
+ttf-parser = "0.25"
 winit = "0.30"
 
 # softbuffer with an alpha channel on Wayland (Argb8888 instead of Xrgb8888):

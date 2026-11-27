@@ -41,6 +41,9 @@ impl Canvas<'_> {
 
     /// A glyph's coverage over what is there, in an opaque colour.
     fn glyph(&mut self, x: i32, y: i32, g: &crate::font::Glyph, c: Rgb, clip_right: i32) {
+        if let Some(rgba) = &g.rgba {
+            return self.picture(x, y, g.width, g.height, rgba, clip_right);
+        }
         for gy in 0..g.height {
             let py = y + gy as i32;
             if py < 0 || py as usize >= self.h {
@@ -66,6 +69,33 @@ impl Canvas<'_> {
     }
 }
 
+impl Canvas<'_> {
+    /// A colour picture (premultiplied RGBA) over what is there.
+    fn picture(&mut self, x: i32, y: i32, w: usize, h: usize, rgba: &[[u8; 4]], clip_right: i32) {
+        for gy in 0..h {
+            let py = y + gy as i32;
+            if py < 0 || py as usize >= self.h {
+                continue;
+            }
+            for gx in 0..w {
+                let px = x + gx as i32;
+                if px < 0 || px as usize >= self.w || px >= clip_right {
+                    continue;
+                }
+                let [r, g, b, a] = rgba[gy * w + gx];
+                if a == 0 {
+                    continue;
+                }
+                let i = py as usize * self.w + px as usize;
+                let d = self.px[i];
+                let inv = 255 - a as u32;
+                let over = |src: u8, shift: u32| ((src as u32 + (((d >> shift) & 0xFF) * inv + 127) / 255).min(255)) << shift;
+                self.px[i] = over(a, 24) | over(r, 16) | over(g, 8) | over(b, 0);
+            }
+        }
+    }
+}
+
 pub fn tab_width(window_width: usize, tabs: usize) -> usize {
     (window_width / tabs.max(1)).min(260)
 }
@@ -80,7 +110,7 @@ fn draw_text(app: &mut App, canvas: &mut Canvas, mut x: i32, baseline: i32, text
         chars.into_iter().take(fits).collect()
     };
     for c in shown {
-        if let Some(g) = app.fonts.glyph(c, false) {
+        if let Some(g) = app.fonts.glyph(c, crate::font::Style { bold: false, italic: false }, 1) {
             canvas.glyph(x + g.left, baseline - g.top, g, color, max_x);
         }
         x += cw;
@@ -208,8 +238,8 @@ pub fn draw(app: &mut App, buffer: &mut [u32], w: usize, h: usize) {
     let right = (w as i32) - pad / 2;
     for it in &items {
         if it.c != ' ' && !it.flags.contains(Flags::HIDDEN) {
-            let bold = it.flags.contains(Flags::BOLD);
-            if let Some(g) = app.fonts.glyph(it.c, bold) {
+            let style = crate::font::Style { bold: it.flags.contains(Flags::BOLD), italic: it.flags.contains(Flags::ITALIC) };
+            if let Some(g) = app.fonts.glyph(it.c, style, it.width) {
                 canvas.glyph(it.x + g.left, it.y + baseline - g.top, g, it.fg, right);
             }
         }

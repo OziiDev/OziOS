@@ -6,6 +6,7 @@
 //!   Ctrl+Shift+C copy         Ctrl+Shift+V paste         Ctrl+Shift+N new window
 //!   Ctrl+= / Ctrl+- / Ctrl+0  text size                  Shift+PageUp/PageDown scroll back
 
+mod boxdraw;
 mod font;
 mod keys;
 mod look;
