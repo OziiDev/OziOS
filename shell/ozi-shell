@@ -136,8 +136,7 @@ class Shell(QObject):
             self._watch_mode()
         if os.path.exists("/usr/share/ozios/tanitim"):
             # The presentation USB: Ozi-chan's tour starts by itself once the desktop is up.
-            QTimer.singleShot(8000, lambda: subprocess.Popen(["ozi-tour", "--loop"], start_new_session=True,
-                                                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+            QTimer.singleShot(8000, self._start_tour)
         self._status = {"volume": {"available": False, "percent": 0, "muted": False},
                         "battery": {"present": False}, "network": {"kind": "none", "name": ""},
                         "wifi": {"available": False, "wifi": False, "wifi_hw": False},
@@ -471,6 +470,14 @@ class Shell(QObject):
     def boardMode(self):
         """"" outside the Education edition, else "yetkili" or "kisitli"."""
         return mode.current() if mode.is_education() else ""
+
+    def _start_tour(self):
+        # An exception in a Qt callback ends the whole shell: never let a missing tour do that.
+        try:
+            subprocess.Popen(["ozi-tour", "--loop"], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError as err:
+            print("ozi-shell: the tour did not start: %s" % err, file=sys.stderr)
 
     def _watch_mode(self):
         last = [self.boardMode]
