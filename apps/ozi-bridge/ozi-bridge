@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..
 
 import ozi_qt  # noqa: E402
 from ozipkg import bridge  # noqa: E402
-from PyQt6.QtCore import QBuffer, QIODevice, QMarginsF, QSizeF, Qt  # noqa: E402
+from PyQt6.QtCore import QBuffer, QIODevice, QMarginsF, QSizeF, Qt, pyqtSlot  # noqa: E402
 from PyQt6.QtGui import QImage, QPageLayout, QPageSize, QPainter, QPdfWriter  # noqa: E402
 
 SERVER = None
@@ -123,6 +123,15 @@ def open_folder():
 
 
 class BridgeBackend(ozi_qt.Backend):
+    @pyqtSlot(result=str)
+    def mascot(self):
+        """Ozi-chan's picture: the checkout's, else the installed one; "" when neither is there."""
+        here = os.path.dirname(os.path.realpath(__file__))
+        for path in (os.path.join(here, "..", "..", "branding", "mascot", "ozi-chan.svg"), "/usr/share/ozios/mascot/ozi-chan.svg"):
+            if os.path.exists(path):
+                return "file://" + os.path.realpath(path)
+        return ""
+
     allowed = {
         "start": (start, False),
         "info": (info, False),

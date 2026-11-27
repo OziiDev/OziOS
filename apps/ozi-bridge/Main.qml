@@ -62,9 +62,9 @@ ApplicationWindow {
             Layout.fillWidth: true
             spacing: 16
             Image {
-                source: "file:///usr/share/ozios/mascot/ozi-chan.svg"
+                source: backend.mascot ? backend.mascot() : ""
                 sourceSize.height: 72
-                visible: status === Image.Ready
+                visible: source != ""
             }
             ColumnLayout {
                 Layout.fillWidth: true
