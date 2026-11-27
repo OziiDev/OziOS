@@ -99,33 +99,29 @@
     <section id="indir">
       <div class="wrap">
         <h2>İndir ve kur</h2>
-        <p class="sub">ISO iki parça hâlinde gelir (GitHub tek dosyada 2 GB'tan büyüğünü kabul etmiyor).
-          İki parçayı indir, birleştir, USB belleğe yaz, bilgisayarı ondan aç.</p>
+        <p class="sub">ISO'yu indir, USB belleğe yaz, bilgisayarı ondan aç. Kurmadan da çalışır.</p>
         <div class="install">
           <div class="card download">
             <h3>OziOS</h3>
-            <p>Masaüstü, uygulama mağazası ve OziOS çekirdeği hazır gelir.</p>
+            <p>Masaüstü, uygulama mağazası ve OziOS çekirdeği hazır gelir. Tek dosya, 3,5 GB.</p>
             <div class="parts">
-              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios.iso.001">Parça 1</a>
-              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios.iso.002">Parça 2</a>
+              <a class="btn primary" href="https://archive.org/download/ozios/ozios.iso">OziOS'u indir</a>
             </div>
           </div>
           <div class="card download">
             <h3>OziOS Eğitim</h3>
-            <p>Akıllı tahtalar ve okul bilgisayarları için: dokunma, ekran klavyesi, ders araçları.</p>
+            <p>Akıllı tahtalar ve okul bilgisayarları için: dokunma, ekran klavyesi, ders araçları. Tek dosya, 3,7 GB.</p>
             <div class="parts">
-              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios-edu.iso.001">Parça 1</a>
-              <a class="btn primary" href="https://github.com/OziiDev/OziOS/releases/download/iso/ozios-edu.iso.002">Parça 2</a>
+              <a class="btn primary" href="https://archive.org/download/ozios/ozios-edu.iso">Eğitim sürümünü indir</a>
             </div>
           </div>
           <div class="card">
-            <h3>Parçaları birleştir</h3>
-            <p><b>Windows:</b> iki parçanın olduğu klasörde komut istemine yaz:</p>
+            <h3>Doğrula ve yedek bağlantı</h3>
+            <p>İndirilen dosyanın bozulmadığını <a href="https://archive.org/download/ozios/SHA256SUMS">SHA256SUMS</a> ile denetleyebilirsin.</p>
+            <p style="margin-top:10px">Aynı ISO'lar GitHub'da iki parça hâlinde de var
+              (<a href="https://github.com/OziiDev/OziOS/releases/tag/iso">sürüm sayfası</a>). Parçaları birleştirmek için:</p>
             <pre>copy /b ozios.iso.001+ozios.iso.002 ozios.iso</pre>
-            <p style="margin-top:10px">ya da 7-Zip'te <i>.001</i> dosyasına sağ tıkla → <i>Dosyaları birleştir</i>.</p>
-            <p style="margin-top:10px"><b>Linux / macOS:</b></p>
-            <pre>cat ozios.iso.00? &gt; ozios.iso</pre>
-            <p style="margin-top:10px">Doğrulamak için: <a href="https://github.com/OziiDev/OziOS/releases/download/iso/SHA256SUMS">SHA256SUMS</a></p>
+            <p style="margin-top:10px">Linux / macOS: <code>cat ozios.iso.00? &gt; ozios.iso</code></p>
           </div>
         </div>
         <ol class="steps">

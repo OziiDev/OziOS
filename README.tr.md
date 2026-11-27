@@ -16,6 +16,11 @@ masaüstüyle açılıyor; paket kurucu `.deb`, AppImage ve Arch paketleri için
 çalışıyor. 0.4 masaüstü (`ozi-desktop`) gerçek bir bilgisayarda günlük oturum
 olarak çalışıyor; hâlâ beta. Ayrıntılar: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+**İndir:** [OziOS ISO](https://archive.org/download/ozios/ozios.iso) (3,5 GB) ·
+[OziOS Eğitim ISO](https://archive.org/download/ozios/ozios-edu.iso), akıllı tahtalar için (3,7 GB) ·
+[SHA256SUMS](https://archive.org/download/ozios/SHA256SUMS) · aynı dosyalar iki parça hâlinde
+[GitHub sürümünde](https://github.com/OziiDev/OziOS/releases/tag/iso).
+
 Denemek için: [docs/KURULUM.md](docs/KURULUM.md). ISO'yu USB belleğe koy, bellekten
 başlat, Kur'a bas.
 

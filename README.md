@@ -21,6 +21,11 @@ packages. The 0.4 desktop (`ozi-desktop`) runs as the daily session on a real
 PC; it is still a beta. See
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+**Download:** [OziOS ISO](https://archive.org/download/ozios/ozios.iso) (3.5 GB) ·
+[OziOS Education ISO](https://archive.org/download/ozios/ozios-edu.iso) for smart boards (3.7 GB) ·
+[SHA256SUMS](https://archive.org/download/ozios/SHA256SUMS) · the same files in two parts on the
+[GitHub release](https://github.com/OziiDev/OziOS/releases/tag/iso).
+
 To try it, follow [docs/INSTALL.md](docs/INSTALL.md): put the ISO on a USB stick,
 start from it, press Install.
 
