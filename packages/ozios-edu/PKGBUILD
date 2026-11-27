@@ -1,11 +1,11 @@
 pkgname=ozios-edu
 pkgver=0.3.0
-pkgrel=2
+pkgrel=3
 pkgdesc="OziOS Education: smart board desktop, screen pen and school defaults"
 arch=(any)
 license=(MIT)
 depends=(ozios-settings ozi-desktop xournalpp gnome-calculator
-         libreoffice-still libreoffice-still-tr)
+         libreoffice-still libreoffice-still-tr qrencode)
 install=ozios-edu.install
 options=(!strip !debug)
 
@@ -35,4 +35,16 @@ package() {
   install -Dm644 "$src/apps/ozi-classroom/Main.qml" "$apps/ozi-classroom/Main.qml"
   ln -s /usr/lib/ozios/apps/ozi-classroom/ozi-classroom "$pkgdir/usr/bin/ozi-classroom"
   install -Dm644 "$src/apps/ozi-classroom.desktop" "$pkgdir/usr/share/applications/ozi-classroom.desktop"
+
+  # Tahta Köprüsü: phones as the board's remote, the lesson's notes for the class.
+  install -Dm755 "$src/apps/ozi-bridge/ozi-bridge" "$apps/ozi-bridge/ozi-bridge"
+  install -Dm644 "$src/apps/ozi-bridge/Main.qml" "$apps/ozi-bridge/Main.qml"
+  ln -s /usr/lib/ozios/apps/ozi-bridge/ozi-bridge "$pkgdir/usr/bin/ozi-bridge"
+  install -Dm644 "$src/apps/ozi-bridge.desktop" "$pkgdir/usr/share/applications/ozi-bridge.desktop"
+  install -Dm644 "$src/apps/ozi-bridge/ozi-bridge.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/ozi-bridge.svg"
+  # ufw is closed to incoming connections: open the bridge's ports to the local network.
+  install -Dm755 "$src/edu/firewall/ozi-bridge-firewall" "$pkgdir/usr/lib/ozios/ozi-bridge-firewall"
+  install -Dm644 "$src/edu/firewall/ozi-bridge-firewall.service" "$pkgdir/usr/lib/systemd/system/ozi-bridge-firewall.service"
+  install -d "$pkgdir/usr/lib/systemd/system/multi-user.target.wants"
+  ln -s ../ozi-bridge-firewall.service "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/ozi-bridge-firewall.service"
 }

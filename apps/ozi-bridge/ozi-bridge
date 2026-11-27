@@ -1,0 +1,142 @@
+#!/usr/bin/python3
+"""Tahta Köprüsü: the board's QR codes for the teacher's phone remote and the
+students' notes. The web server runs while this window is open."""
+import base64
+import os
+import sys
+
+# The apps folder this one sits in wins over the installed one (a checkout runs its own code).
+sys.path.insert(0, "/usr/lib/ozios/apps")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+
+import ozi_qt  # noqa: E402
+from ozipkg import bridge  # noqa: E402
+from PyQt6.QtCore import QBuffer, QIODevice, QMarginsF, QSizeF, Qt  # noqa: E402
+from PyQt6.QtGui import QImage, QPageLayout, QPageSize, QPainter, QPdfWriter  # noqa: E402
+
+SERVER = None
+HOTSPOT = {"on": False}
+
+
+def snapshot():
+    """The board now, small enough for a phone, as JPEG bytes."""
+    path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "ozi-bridge-live.png")
+    if bridge.oziwm({"do": "screenshot", "path": path}) is None:
+        return None
+    import time
+    for _ in range(30):
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            break
+        time.sleep(0.05)
+    image = QImage(path)
+    if image.isNull():
+        return None
+    image = image.scaledToWidth(min(960, image.width()), Qt.TransformationMode.SmoothTransformation)
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    image.save(buf, "JPEG", 72)
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    return bytes(buf.data())
+
+
+def make_pdf(images, out):
+    """One landscape A4 page per picture, each fitted to its page."""
+    writer = QPdfWriter(out)
+    writer.setPageLayout(QPageLayout(QPageSize(QPageSize.PageSizeId.A4), QPageLayout.Orientation.Landscape,
+                                     QMarginsF(8, 8, 8, 8)))
+    writer.setResolution(150)
+    writer.setTitle("Ders notları")
+    painter = QPainter()
+    if not painter.begin(writer):
+        return False
+    first = True
+    for path in images:
+        image = QImage(path)
+        if image.isNull():
+            continue
+        if not first:
+            writer.newPage()
+        first = False
+        area = painter.viewport()
+        size = QSizeF(image.size()).scaled(QSizeF(area.size()), Qt.AspectRatioMode.KeepAspectRatio)
+        x = area.x() + (area.width() - size.width()) / 2
+        y = area.y() + (area.height() - size.height()) / 2
+        # A white page under see-through pen drawings.
+        painter.fillRect(int(x), int(y), int(size.width()), int(size.height()), Qt.GlobalColor.white)
+        painter.drawImage(int(x), int(y), image.scaled(size.toSize(), Qt.AspectRatioMode.KeepAspectRatio,
+                                                       Qt.TransformationMode.SmoothTransformation))
+    painter.end()
+    return not first
+
+
+def data_uri(svg):
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode() if svg else ""
+
+
+def start():
+    global SERVER
+    if SERVER is None:
+        SERVER = bridge.Bridge(snapshot=snapshot, make_pdf=make_pdf)
+        SERVER.start()
+    return info()
+
+
+def info():
+    addresses = bridge.local_addresses()
+    if HOTSPOT["on"] and "10.42.0.1" in addresses:
+        addresses.remove("10.42.0.1")
+        addresses.insert(0, "10.42.0.1")
+    if not addresses:
+        return {"online": False, "notes": len(SERVER.notes())}
+    urls = SERVER.urls(addresses[0])
+    result = {"online": True, "address": addresses[0], "teacher": urls["teacher"], "students": urls["students"],
+              "teacherQr": data_uri(bridge.qr_svg(urls["teacher"])),
+              "studentsQr": data_uri(bridge.qr_svg(urls["students"])),
+              "notes": len(SERVER.notes()), "hotspot": HOTSPOT["on"]}
+    if HOTSPOT["on"]:
+        result.update(ssid=HOTSPOT["ssid"], password=HOTSPOT["password"], wifiQr=data_uri(bridge.qr_svg(HOTSPOT["wifi"])))
+    return result
+
+
+def hotspot(on):
+    if on:
+        HOTSPOT.update(bridge.hotspot_on(bridge.new_password()), on=True)
+    else:
+        bridge.hotspot_off()
+        HOTSPOT["on"] = False
+    return info()
+
+
+def share():
+    return {"path": SERVER.share_board(), "notes": len(SERVER.notes())}
+
+
+def open_folder():
+    folder = SERVER.dirs[0]
+    os.makedirs(folder, exist_ok=True)
+    import subprocess
+    subprocess.Popen(["xdg-open", folder], start_new_session=True)
+    return {}
+
+
+class BridgeBackend(ozi_qt.Backend):
+    allowed = {
+        "start": (start, False),
+        "info": (info, False),
+        "hotspot": (hotspot, False),
+        "share": (share, False),
+        "folder": (open_folder, False),
+    }
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    code = ozi_qt.run(os.path.join(here, "Main.qml"), BridgeBackend(), "Tahta Köprüsü", "ozi-bridge")
+    if SERVER:
+        SERVER.stop()
+    if HOTSPOT["on"]:
+        bridge.hotspot_off()
+    sys.exit(code)

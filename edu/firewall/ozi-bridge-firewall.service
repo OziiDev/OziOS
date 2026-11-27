@@ -1,0 +1,11 @@
+[Unit]
+Description=Let classroom phones reach Tahta Köprüsü
+After=ufw.service
+ConditionPathExists=/usr/bin/ufw
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ozios/ozi-bridge-firewall
+
+[Install]
+WantedBy=multi-user.target

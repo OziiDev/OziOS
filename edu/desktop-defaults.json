@@ -5,6 +5,7 @@
   "osk": "auto",
   "dock": [
     "ozi-pen",
+    "ozi-bridge",
     "com.github.xournalpp.xournalpp",
     "libreoffice-impress",
     "ozi-classroom",

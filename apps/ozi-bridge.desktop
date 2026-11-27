@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Board Bridge
+Name[tr]=Tahta Köprüsü
+Comment=Phones become the board's remote and get the lesson's notes, with a QR code
+Comment[tr]=QR kodla telefon tahtanın kumandası olur, öğrenciler ders notlarını alır
+Exec=ozi-bridge
+Icon=ozi-bridge
+Categories=Education;Utility;
+Keywords=qr;phone;remote;notes;telefon;kumanda;not;
+Terminal=false
+StartupWMClass=ozi-bridge

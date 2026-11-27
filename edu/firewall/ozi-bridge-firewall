@@ -1,0 +1,9 @@
+#!/bin/sh
+# Let phones in the classroom reach Tahta Köprüsü (ports 8765-8784), from the
+# local network only. ufw is on and closed to incoming connections by
+# default; this opens just these ports, just for private addresses. Running it
+# again changes nothing (ufw skips rules it already has).
+command -v ufw >/dev/null 2>&1 || exit 0
+for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do
+    ufw allow proto tcp from "$net" to any port 8765:8784 comment "Tahta Köprüsü" >/dev/null 2>&1 || true
+done
