@@ -31,6 +31,9 @@ for name in ozios-settings ozi-desktop; do
 done
 file="$(newest ozios-decoration "$here"/out/*.pkg.tar.zst /opt/ozios/*.pkg.tar.zst)"
 [ -n "$file" ] && cp "$file" "$out/"
+# The Education package: installed boards get their updates from here too.
+file="$(newest ozios-edu "$here"/out/*.pkg.tar.zst)"
+[ -n "$file" ] && cp "$file" "$out/"
 cp "$here"/.kernel-pkgs/linux-ozios*.pkg.tar.zst "$out/" 2>/dev/null || echo "no kernel packages in .kernel-pkgs; the repository will not carry the kernel" >&2
 
 (cd "$out" && repo-add -q ozios.db.tar.gz ./*.pkg.tar.zst)
