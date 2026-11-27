@@ -83,6 +83,60 @@ Sınıf uygulaması dört bölümden oluşur.
 4. **Zamanlayıcı:** 1 ile 180 dakika arası geri sayım yapar. Süre dolunca ses çalar
    ve ekrandaki yazı yanıp söner. Boşluk tuşu başlatır ve durdurur.
 
+## Tahta Köprüsü
+
+Dock'taki **Tahta Köprüsü** tahtada iki QR kod gösterir. Telefonlar tahtayla aynı
+Wi-Fi'da olmalı; hiçbir uygulama kurulmaz, internet gerekmez.
+
+- **Öğretmen kodu:** telefonu tahtanın kumandası yapar: önceki ve sonraki slayt,
+  sunumu başlat, karart, bitir; dokunmatik fare (dokun = tıkla, iki parmak = sağ
+  tık); tahtanın canlı görüntüsü; **Bu tahtayı paylaş**. Kodda rastgele bir
+  anahtar vardır: okuttuktan sonra **Kodu gizle**'ye bas, öğrenciler göremesin.
+- **Öğrenci kodu:** bugün paylaşılan tahtalar ve ekran kalemiyle kaydedilen
+  çizimler listelenir; dokununca telefona iner. **Hepsini tek PDF olarak indir**
+  bütün dersi tek dosya yapar.
+- Okulda Wi-Fi yoksa **Tahtanın kendi Wi-Fi'ı** tahtayı bir erişim noktası
+  yapar; ağ adı ve şifresi ile bir Wi-Fi QR kodu çıkar. O sırada tahtanın kendi
+  interneti kesilir.
+- Paylaşılanlar `Belgeler/Ders Notları` klasöründe durur (**Notlar klasörü**).
+- Telefonlar yalnız yerel ağdan, yalnız 8765-8784 portlarından bağlanabilir;
+  güvenlik duvarı (ufw) gerisini kapalı tutar.
+
+## Kısıtlı ve yetkili mod
+
+Tahta her açılışta **kısıtlı** modda başlar: dersler her zamanki gibi çalışır ama
+terminal, ayarlar, mağaza, kurulum ve yönetici yetkileri kapalıdır. Wi-Fi'a
+bağlanmak, USB bellek takmak, ses ve kapatma çalışır.
+
+- **Öğretmen modu** uygulamasında öğretmen şifresi yazılınca **yetkili** moda
+  geçilir; bir sonraki açılışa kadar her şey açıktır. **Kısıtlı moda dön** hemen
+  kilitler.
+- İlk şifre `ogretmen`dir. Yetkili moddayken **Yeni öğretmen şifresi** ile
+  değiştir. Şifre beş kez yanlış yazılırsa 30 saniye beklemek gerekir.
+
+## Dondurma
+
+Yetkili modda **Tahtayı dondur** açılınca masaüstü ve dosyalar o anki hâliyle
+kaydedilir ve her açılışta bu hâline döner: öğrencilerin masaüstüne bıraktığı,
+sildiği ya da değiştirdiği her şey ertesi sabah eski hâlindedir. Ders notları
+(`Belgeler/Ders Notları` ve `Resimler/ozi-pen`) korunur. Tahtayı yeniden
+düzenledikten sonra **Bu hâli dondurulmuş hâl olarak kaydet**'e bas.
+
+## OziOS turu
+
+**OziOS turu** uygulamasında Ozi-chan ekranın altından Eğitim sürümünü anlatır ve
+her bölümde ilgili programı kendisi açar. Konuşma balonuna dokunmak durdurur,
+oklar ileri ve geri götürür, × bitirir. Tanıtım USB'sinde
+(`ozios-tanitim-edu-*.iso`) tur masaüstü açılınca kendiliğinden başlar ve
+sürekli döner.
+
+## Güncelleme
+
+Hoş Geldin'deki **Şimdi güncelle** (ya da terminalde `ozi update`, yetkili modda)
+önce sistemin anlık kopyasını alır, sonra günceller ve sistemin açılabildiğini
+denetler. Bir şey bozulduysa yeniden başlatmadan önce kendiliğinden eski hâline
+döner.
+
 ## Bir şey ters giderse
 
 - Bir terminalde `ozi doctor` kurulumu denetler ve bulduğu her sorun için ne

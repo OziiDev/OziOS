@@ -43,12 +43,21 @@ başlat, Kur'a bas.
   klasörleri Hoş Geldin penceresinden tek tıkla açılır; VirtualBox'ta
   Windows'la paylaşılan klasörler dosya yöneticisinde açılır; Windows'un yanına
   kurulunca saat iki sistemde de doğru kalır.
+- **Bozulmayan güncelleme:** `ozi update` ve Mağaza önce anlık kopya alır,
+  günceller, sonra sistemin açılabildiğini denetler (çekirdek, modüller,
+  açılış menüsü, masaüstü kütüphaneleri). Bir şey bozulduysa yeniden
+  başlatmadan önce kendiliğinden eski hâline döner.
+- **Maskot Ozi-chan ve duvar kâğıtları:** OziOS kapüşonlu küçük bir kedi kız;
+  onunla altı, soyut ve renkli altı yeni duvar kâğıdı Görünüm'den seçilir.
 - **Kendi çekirdeği:** CachyOS çekirdek tarifi `linux-ozios` adıyla derlenir
   ve bu depodan yayımlanır. İmajda ve kurulan sistemde CachyOS çekirdeği,
   programı ya da görseli yok.
 - **Akıllı tahtalar için Eğitim sürümü:** tahta düzeni, ekran kalemi, beyaz
   tahta, sınıf uygulaması (öğrenci seçici, gruplar, zamanlayıcı), Türkçe
-  varsayılanlar. Öğretmen kılavuzu: [docs/EGITIM.md](docs/EGITIM.md); teknik
+  varsayılanlar. **Tahta Köprüsü:** öğretmen QR kodu okutunca telefonu tahtanın
+  kumandası olur, öğrenciler ders notlarını telefona indirir; uygulama ya da
+  internet gerekmez. Tahta her sabah **kısıtlı** açılır, öğretmen şifresiyle
+  **yetkili** olur; **dondurma** açıksa her açılışta tertemiz hâline döner. Öğretmen kılavuzu: [docs/EGITIM.md](docs/EGITIM.md); teknik
   ayrıntılar: [docs/EDUCATION.md](docs/EDUCATION.md).
 
 Lisans: bu depodaki kod MIT. KDE, CachyOS ve diğer projelerden türeyen

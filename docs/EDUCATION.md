@@ -44,6 +44,37 @@ to be accepted as it; it gives the same kind of day-to-day experience on a board
 - **Larger pointer.** A 36 px cursor.
 - **Links.** EBA, e-Okul and MEB in the menu.
 
+## Board Bridge, modes, freezing, the tour
+
+- **Tahta Köprüsü** (`ozi-bridge`, `python/ozipkg/bridge.py`): a web server on
+  the board while its window is open, two QR codes (made with `qrencode`). The
+  teacher's pages (`/k/<random key>/`) are a phone remote: keys through oziwm
+  IPC (`press`: Page Up/Down, F5, Esc, B), a touchpad (`pointer`), a live view
+  (`screenshot`, shrunk to JPEG) and "share this board", which saves a
+  screenshot in `Documents/Ders Notları`. The students' page (`/`) lists
+  today's PNG/JPEG/PDF from that folder and `Pictures/ozi-pen`, and makes one
+  PDF of them (QPdfWriter). Only listed names are served. `nmcli device wifi
+  hotspot` makes the board an access point. `ozi-bridge-firewall.service`
+  opens ports 8765-8784 in ufw to private addresses only.
+- **Kısıtlı / Yetkili** (`python/ozipkg/mode.py`, `edu/mode/`): the mode is in
+  `/run/ozios/mode`, so a board always starts restricted. oziwm
+  (`src/policy.rs`), ozi-shell (launcher, dock, search) and Ozi Terminal
+  refuse the programs in `BLOCKED_PROGRAMS`; `50-ozios-kisitli.rules` makes
+  polkit refuse admin actions (`DENIED_ACTIONS`) unless `ozi-mode-allowed`
+  says the board is authorised. `ozi-mode-helper` (root, through pkexec with
+  the `org.ozios.mode` action, no polkit password) checks the teacher password
+  (PBKDF2 in `/etc/ozios/ogretmen.sifre`, default `ogretmen`) and makes a
+  guesser wait 30 s after five wrong tries.
+- **Dondurma**: the home folder is copied with rsync to
+  `/var/lib/ozios/dondurma/<user>`; `ozi-freeze.service` copies it back at
+  every start before the login screen, keeping `Belgeler/Ders Notları`,
+  `Resimler/ozi-pen` and `.cache`.
+- **OziOS turu** (`ozi-tour`, `python/ozipkg/tour.py`): a layer-shell bar
+  along the bottom where Ozi-chan presents each part while the program opens
+  above her; programs a scene opened are closed when it ends. With
+  `/usr/share/ozios/tanitim` (the `--tanitim` ISO) ozi-shell starts it with
+  `--loop`.
+
 ## Building the ISO
 
 Same as the ordinary image, with `--edition edu`:

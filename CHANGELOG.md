@@ -9,6 +9,16 @@ the rules for releases are in [docs/RELEASING.md](docs/RELEASING.md).
 compositor in Rust, on Smithay) and `ozi-shell` (Qt/QML) come in the
 `ozi-desktop` package, from the OziOS repository or the AUR.
 
+- Ozi Terminal draws box lines, blocks, braille and powerline arrows itself, so
+  frames in btop or mc and powerline prompts line up; colour emoji; italics.
+- Ozi-chan, the mascot (`tools/mascot.py`, `branding/mascot/`), and twelve
+  new wallpapers.
+- Education: Tahta Köprüsü (phone remote and the lesson's notes over QR
+  codes), Kısıtlı/Yetkili modes with the teacher's password, Dondurma (freeze),
+  the OziOS tour, and `remaster.sh --tanitim` for a presentation USB.
+- `ozi-safe-update`: `ozi update` and the store's update check the system will
+  start and undo the update (snapper + the boot files) if it would not.
+- oziwm waits for the programs it starts (they were left as zombies).
 - Removed: the Windows guest. `ozi-winsetup`, `ozi-winrun`, `ozi winsetup`,
   `ozi reboot-windows`, `ozi hw`, the Windows tile in the quick settings and the
   control widget, the Welcome row and the installer slide are gone, and the ISO

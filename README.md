@@ -58,7 +58,17 @@ start from it, press Install.
 - **An Education edition** for smart boards: board layout, a screen pen,
   whiteboard, a classroom app (student picker, groups, timer), Turkish
   defaults. See [docs/EDUCATION.md](docs/EDUCATION.md); a Turkish guide for
-  teachers is in [docs/EGITIM.md](docs/EGITIM.md).
+  teachers is in [docs/EGITIM.md](docs/EGITIM.md). **Board Bridge:** the teacher scans a QR code and the
+  phone becomes the board's remote; students scan theirs and get the lesson's
+  notes, no app and no internet needed. Boards start **restricted** every
+  morning, the teacher's password makes them **authorised**, and **freezing**
+  puts them back to a clean state at every start.
+- **Updates that cannot break it.** `ozi update` and the store take a
+  snapshot, update, then check the system will start (kernel, modules, boot
+  menu, the desktop's libraries) and go back by themselves before any reboot
+  if something broke.
+- **Ozi-chan, the mascot,** a small cat girl in an OziOS hoodie, with six
+  wallpapers of her and six abstract, colourful ones.
 
 ## Layout
 
