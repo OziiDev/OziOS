@@ -63,4 +63,11 @@ package() {
   install -Dm644 "$src/edu/mode/50-ozios-kisitli.rules" "$pkgdir/usr/share/polkit-1/rules.d/50-ozios-kisitli.rules"
   install -Dm644 "$src/edu/mode/ozi-freeze.service" "$pkgdir/usr/lib/systemd/system/ozi-freeze.service"
   ln -s ../ozi-freeze.service "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/ozi-freeze.service"
+
+  # OziOS turu: Ozi-chan shows the edition by herself (on the presentation USB at start).
+  install -Dm755 "$src/apps/ozi-tour/ozi-tour" "$apps/ozi-tour/ozi-tour"
+  install -Dm644 "$src/apps/ozi-tour/Main.qml" "$apps/ozi-tour/Main.qml"
+  ln -s /usr/lib/ozios/apps/ozi-tour/ozi-tour "$pkgdir/usr/bin/ozi-tour"
+  install -Dm644 "$src/apps/ozi-tour.desktop" "$pkgdir/usr/share/applications/ozi-tour.desktop"
+  install -Dm644 "$src/apps/ozi-tour/ozi-tour.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/ozi-tour.svg"
 }

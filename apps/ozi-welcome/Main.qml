@@ -290,10 +290,14 @@ ApplicationWindow {
                 id: rows
                 width: listing.width
                 Repeater {
-                    model: (window.edu ? [
+                    model: (window.live ? [] : [
+                        { key: "update", title: backend.tr("Update now"), text: backend.tr("Get the newest OziOS. The update checks the system before you restart and goes back by itself if anything broke.") }
+                    ]).concat(window.edu ? [
                         { key: "pen", title: backend.tr("Screen pen"), text: backend.tr("Draw on top of anything on the screen with a pen or a finger.") },
                         { key: "whiteboard", title: backend.tr("Whiteboard"), text: backend.tr("A blank page to write on, with pages, images and PDF markup.") },
                         { key: "classroom", title: backend.tr("Classroom"), text: backend.tr("Pick a student, make groups and time an activity.") },
+                        { key: "bridge", title: backend.tr("Board Bridge"), text: backend.tr("Phones scan a QR code: the teacher's becomes a remote, students get the lesson's notes.") },
+                        { key: "mode", title: backend.tr("Teacher mode"), text: backend.tr("The board starts restricted; the teacher's password opens everything. Freeze the board here.") },
                         { key: "eba", title: backend.tr("EBA portal"), text: backend.tr("Open the Education Information Network in the browser.") }
                     ] : [
                         { key: "gaming", title: backend.tr("Games"), text: backend.tr("Install Steam, game mode and the graphics libraries that fit this computer.") }

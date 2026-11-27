@@ -3,12 +3,12 @@
 # Built from a checkout like ozios-settings: OZI_SRC points at it.
 pkgname=ozi-desktop
 pkgver=0.4.0beta4
-pkgrel=3
+pkgrel=4
 pkgdesc="OziOS desktop: its own window manager and shell"
 arch=(x86_64)
 license=(MIT)
 depends=(
-  'ozios-settings>=0.3.0-8'
+  'ozios-settings>=0.3.0-9'
   seatd libinput mesa libxkbcommon systemd-libs libdrm pam fontconfig
   python python-pyqt6 qt6-declarative layer-shell-qt
   ttf-overpass wireplumber networkmanager

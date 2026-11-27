@@ -125,6 +125,10 @@ class Shell(QObject):
         self._by_id = {a["id"]: a for a in self._apps}
         if mode.is_education():
             self._watch_mode()
+        if os.path.exists("/usr/share/ozios/tanitim"):
+            # The presentation USB: Ozi-chan's tour starts by itself once the desktop is up.
+            QTimer.singleShot(8000, lambda: subprocess.Popen(["ozi-tour", "--loop"], start_new_session=True,
+                                                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         self._status = {"volume": {"available": False, "percent": 0, "muted": False},
                         "battery": {"present": False}, "network": {"kind": "none", "name": ""},
                         "wifi": {"available": False, "wifi": False, "wifi_hw": False},
@@ -223,7 +227,12 @@ class Shell(QObject):
             self._refresh_windows()
 
     def _key(self, key):
-        """Sound, brightness, media and radio keys, forwarded by oziwm."""
+        """Sound, brightness, media and radio keys, forwarded by oziwm. Also
+        keyboard-show / keyboard-hide, for the tour to show the on-screen keyboard."""
+        if key in ("keyboard-show", "keyboard-hide"):
+            self.keyboardWanted.emit(key == "keyboard-show")
+            return
+
         def run():
             if key in ("volume-up", "volume-down"):
                 current = shell.volume()

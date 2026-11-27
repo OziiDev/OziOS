@@ -1,0 +1,71 @@
+#!/usr/bin/python3
+"""OziOS turu: Ozi-chan shows the Education edition by herself along the
+bottom of the screen, opening the real programs. A touch pauses her.
+
+    ozi-tour [--loop] [--window]
+"""
+import os
+import sys
+
+# The apps folder this one sits in wins over the installed one (a checkout runs its own code).
+sys.path.insert(0, "/usr/lib/ozios/apps")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+
+# A layer along the bottom of the screen, above every window (as the screen pen does).
+LAYER_QML = [os.path.join(p, "org", "kde", "layershell") for p in ("/usr/lib/qt6/qml", "/usr/lib64/qt6/qml")]
+LAYER = bool(os.environ.get("WAYLAND_DISPLAY")) and "--window" not in sys.argv and any(os.path.isdir(p) for p in LAYER_QML)
+if LAYER:
+    os.environ["QT_WAYLAND_SHELL_INTEGRATION"] = "layer-shell"
+
+import ozi_qt  # noqa: E402
+from ozipkg import tour  # noqa: E402
+from PyQt6.QtCore import pyqtSlot  # noqa: E402
+
+TOUR = tour.Tour()
+
+
+class TourBackend(ozi_qt.Backend):
+    allowed = {
+        "scenes": (lambda: {"scenes": tour.scenes()}, False),
+        "enter": (TOUR.enter, False),
+        "leave": (TOUR.leave, False),
+    }
+
+    @pyqtSlot(result=bool)
+    def loop(self):
+        return "--loop" in sys.argv
+
+    @pyqtSlot(str, result=str)
+    def mascot(self, name):
+        for root in (os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "branding", "mascot"),
+                     "/usr/share/ozios/mascot"):
+            path = os.path.realpath(os.path.join(root, name))
+            if os.path.exists(path):
+                return "file://" + path
+        return ""
+
+
+def layered(qml_file):
+    import tempfile
+    with open(qml_file, encoding="utf-8") as f:
+        text = f.read()
+    text = text.replace("// layer: import", "import org.kde.layershell 1.0 as LS").replace("// layer: window", "\n".join([
+        'LS.Window.scope: "ozi-tour"',
+        "LS.Window.layer: LS.Window.LayerOverlay",
+        "LS.Window.anchors: LS.Window.AnchorBottom | LS.Window.AnchorLeft | LS.Window.AnchorRight",
+        "LS.Window.exclusionZone: 0",
+        "LS.Window.keyboardInteractivity: LS.Window.KeyboardInteractivityNone",
+    ]))
+    out = tempfile.mkdtemp(prefix="ozi-tour-")
+    path = os.path.join(out, "Main.qml")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return path
+
+
+if __name__ == "__main__":
+    here = os.path.dirname(os.path.realpath(__file__))
+    qml = os.path.join(here, "Main.qml")
+    code = ozi_qt.run(layered(qml) if LAYER else qml, TourBackend(), "OziOS turu", "ozi-tour")
+    TOUR.leave()
+    sys.exit(code)

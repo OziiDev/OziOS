@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=OziOS tour
+Name[tr]=OziOS turu
+Comment=Ozi-chan shows OziOS by herself
+Comment[tr]=Ozi-chan OziOS'u kendisi tanıtır
+Exec=ozi-tour
+Icon=ozi-tour
+Categories=Education;
+Keywords=tour;demo;presentation;tanıtım;tur;sunum;
+Terminal=false
+StartupWMClass=ozi-tour

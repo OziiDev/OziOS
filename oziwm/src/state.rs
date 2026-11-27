@@ -306,7 +306,13 @@ impl OziWm {
         command.args(args);
         self.prepare_child(&mut command);
         match command.spawn() {
-            Ok(_) => tracing::info!(?argv, "started"),
+            Ok(mut child) => {
+                tracing::info!(?argv, "started");
+                // Wait for it somewhere, or every program that ends stays behind as a zombie.
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
+            }
             Err(err) => tracing::warn!(?argv, %err, "could not start"),
         }
     }
@@ -331,7 +337,10 @@ impl OziWm {
         command.arg(&x_name);
         self.prepare_child(&mut command);
         match command.spawn() {
-            Ok(_) => {
+            Ok(mut child) => {
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
                 tracing::info!(x_display = %x_name, "X11 programs go through xwayland-satellite");
                 self.x_display = Some(x_name);
             }

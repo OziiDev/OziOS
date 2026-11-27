@@ -16,6 +16,8 @@ INSTALLER = "/usr/lib/ozios/start-installer"
 ACTIONS = {
     "gaming": ["ozi-terminal", "--hold", "-e", "ozi", "gaming", "--yes"],
     "store": ["ozi-store"],
+    # The checked update: it goes back by itself if the result would not start.
+    "update": ["ozi-terminal", "--hold", "-e", "ozi", "update"],
     # Windows computers nearby and their shared folders: the SMB worker of kio-extras
     # finds them (WS-Discovery). network:/ is gone from Plasma 6; seen failing in a
     # Plasma session. In a VirtualBox guest the folders the host shares are added
@@ -34,6 +36,8 @@ ACTIONS = {
     "pen": ["ozi-pen"],
     "whiteboard": ["xournalpp"],
     "classroom": ["ozi-classroom"],
+    "bridge": ["ozi-bridge"],
+    "mode": ["ozi-mode"],
     "eba": ["xdg-open", "https://eba.gov.tr"],
 }
 MARKER = "ozi-welcome-hidden"

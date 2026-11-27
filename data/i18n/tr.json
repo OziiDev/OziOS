@@ -677,5 +677,9 @@
   "Save this state as the frozen one": "Bu hâli dondurulmuş hâl olarak kaydet",
   "New teacher password": "Yeni öğretmen şifresi",
   "Change": "Değiştir",
-  "Back to restricted mode": "Kısıtlı moda dön"
+  "Back to restricted mode": "Kısıtlı moda dön",
+  "Update now": "Şimdi güncelle",
+  "Get the newest OziOS. The update checks the system before you restart and goes back by itself if anything broke.": "OziOS'un en yenisini al. Güncelleme, yeniden başlatmadan önce sistemi kontrol eder; bir şey bozulduysa kendiliğinden geri döner.",
+  "Phones scan a QR code: the teacher's becomes a remote, students get the lesson's notes.": "Telefonlar QR kodu okutur: öğretmeninki kumanda olur, öğrenciler ders notlarını alır.",
+  "The board starts restricted; the teacher's password opens everything. Freeze the board here.": "Tahta kısıtlı açılır; öğretmen şifresi her şeyi açar. Tahtayı buradan dondur."
 }
