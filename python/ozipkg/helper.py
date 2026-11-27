@@ -39,6 +39,8 @@ class HelperError(Exception):
     pass
 
 
+SAFE_UPDATE = "/usr/bin/ozi-safe-update"
+
 def check_names(names):
     if not names:
         raise HelperError("no package names given")
@@ -176,6 +178,9 @@ def plan(argv, staging=STAGING, stage=stage_file):
     if verb == "upgrade":
         if args:
             raise HelperError("upgrade takes no arguments")
+        # The checked update when it is there: it goes back by itself if the result would not start.
+        if os.path.exists(SAFE_UPDATE):
+            return [[SAFE_UPDATE, "--noconfirm"]], []
         return [["pacman", "-Syu", "--noconfirm"]], []
     if verb == "snapshot":
         return [["snapper", "-c", "root", "create", "-d", clean_description(" ".join(args))]], []

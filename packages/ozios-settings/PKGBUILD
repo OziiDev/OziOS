@@ -24,6 +24,7 @@ package() {
   install -Dm755 "$src/packages/ozi-cli/ozi-pkg" "$pkgdir/usr/bin/ozi-pkg"
   install -Dm755 "$src/packages/ozi-cli/ozi-box" "$pkgdir/usr/bin/ozi-box"
   install -Dm755 "$src/packages/ozi-cli/ozi-tools" "$pkgdir/usr/bin/ozi-tools"
+  install -Dm755 "$src/packages/ozi-cli/ozi-safe-update" "$pkgdir/usr/bin/ozi-safe-update"
   install -d "$pkgdir/usr/lib/ozios/python"
   cp -r "$src/python/ozipkg" "$pkgdir/usr/lib/ozios/python/"
   find "$pkgdir/usr/lib/ozios/python" -name __pycache__ -prune -exec rm -rf {} +

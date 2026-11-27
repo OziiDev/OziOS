@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 sys.path.insert(0, os.path.dirname(__file__))
@@ -36,7 +37,10 @@ class Plan(unittest.TestCase):
                          [["pacman", "-S", "--needed", "--noconfirm", "--", "vlc"]])
         self.assertEqual(helper.plan(["remove", "vlc", "mpv"])[0],
                          [["pacman", "-Rns", "--noconfirm", "--", "vlc", "mpv"]])
-        self.assertEqual(helper.plan(["upgrade"])[0], [["pacman", "-Syu", "--noconfirm"]])
+        with mock.patch.object(helper, "SAFE_UPDATE", "/nonexistent/ozi-safe-update"):
+            self.assertEqual(helper.plan(["upgrade"])[0], [["pacman", "-Syu", "--noconfirm"]])
+        with mock.patch.object(helper, "SAFE_UPDATE", sys.executable):
+            self.assertEqual(helper.plan(["upgrade"])[0], [[sys.executable, "--noconfirm"]])
         self.assertEqual(helper.plan(["undo", "12"])[0], [["snapper", "-c", "root", "undochange", "12..0"]])
 
     def test_unknown_verbs_and_bad_arguments(self):

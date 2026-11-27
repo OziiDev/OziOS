@@ -191,8 +191,13 @@ shift || true
 
 case "$cmd" in
   update)
-    snapshot update
-    sudo pacman -Syu "$@"
+    # Snapshot, update, check the system still starts, go back if it would not.
+    if [ -x /usr/bin/ozi-safe-update ]; then
+      sudo /usr/bin/ozi-safe-update "$@" || exit $?
+    else
+      snapshot update
+      sudo pacman -Syu "$@"
+    fi
     if command -v "$(helper)" >/dev/null; then "$(helper)" -Sua; fi
     ;;
   install)

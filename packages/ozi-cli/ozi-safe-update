@@ -1,0 +1,14 @@
+#!/usr/bin/python3 -I
+"""Update OziOS so that it cannot break: snapshot, update, check that the
+system will start, and go back to the snapshot if it would not.
+
+    sudo ozi-safe-update [--noconfirm] [pacman options]
+
+Exit status: 0 updated and checked, 2 something broke and was undone, 1
+anything else (the message says what)."""
+import sys
+
+sys.path.insert(0, "/usr/lib/ozios/python")
+from ozipkg import safeupdate  # noqa: E402
+
+sys.exit(safeupdate.main(sys.argv[1:]))
