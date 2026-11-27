@@ -324,7 +324,7 @@ class BaseSystem(unittest.TestCase):
             path = os.path.join(base, "modules", "pacstrap", "main.py")
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(PACSTRAP_MODULE + PACSTRAP_RUN_MODULE)
-            self.assertIn(path, installer.apply(bases=(base,), etc=base))
+            self.assertIn(path, installer.apply(bases=(base,), etc=base, libdir=os.path.join(base, "lib")))
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
             self.assertNotIn("linux-cachyos", text)
@@ -425,7 +425,7 @@ class LimineGroup(unittest.TestCase):
             path = os.path.join(base, "modules", "bootloader", "main.py")
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(LIMINE_MODULE)
-            self.assertIn(path, installer.apply(bases=(base,), etc=base))
+            self.assertIn(path, installer.apply(bases=(base,), etc=base, libdir=os.path.join(base, "lib")))
 
 
 # The shape of the installer's driver step: chwd in the new system, and a failure stops the installation.
@@ -661,14 +661,14 @@ class Apply(unittest.TestCase):
                 fh.write(NETINSTALL)
             with open(os.path.join(base, "scripts", "bootloader-post-setup"), "w", encoding="utf-8") as fh:
                 fh.write('TARGET_OS_NAME="CachyOS"\n')
-            changed = installer.apply(bases=(base,), etc=base)
+            changed = installer.apply(bases=(base,), etc=base, libdir=os.path.join(base, "lib"))
             self.assertEqual(len(changed), 3)
             self.assertTrue(os.path.isfile(os.path.join(base, "modules", "shellprocess_ozios_early.conf")))
             with open(os.path.join(base, "modules", "shellprocess_ozios.conf"), encoding="utf-8") as fh:
                 self.assertIn("install-to-target late", fh.read())
             with open(os.path.join(base, "modules", "shellprocess_ozios_kernel.conf"), encoding="utf-8") as fh:
                 self.assertIn("install-to-target kernel", fh.read())
-            self.assertEqual(installer.apply(bases=(base,), etc=base), [])
+            self.assertEqual(installer.apply(bases=(base,), etc=base, libdir=os.path.join(base, "lib")), [])
 
 
 if __name__ == "__main__":
