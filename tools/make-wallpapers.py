@@ -378,11 +378,6 @@ def chan_classroom():
             1260 + 70 * math.cos(a), 230 + 70 * math.sin(a), 1260 + 92 * math.cos(a), 230 + 92 * math.sin(a))
     body += '<path d="M 300 760 Q 300 640 300 600 M 300 680 q -50 -30 -70 -80 q 50 10 70 80 M 300 650 q 40 -40 80 -50 q -10 50 -80 50" %s/>' % chalk
     body += '<path d="M 260 760 L 340 760 L 330 800 L 270 800 Z" fill="none" stroke="#FF8FAB" stroke-width="5" stroke-linejoin="round" opacity="0.9"/>'
-    # Old chalk wiped off, as faint streaks.
-    for _ in range(7):
-        x, y = rng.uniform(560, 1250), rng.uniform(470, 780)
-        body += '<rect x="%.0f" y="%.0f" width="%.0f" height="%.0f" rx="20" fill="#F4F1E8" opacity="0.05"/>' % (
-            x, y, rng.uniform(120, 260), rng.uniform(26, 50))
     body += '<rect y="960" width="%d" height="120" fill="#C9B79A"/>' % W
     body += MASCOT.ozi_chan(1400, 440, 1.15)
     return svg(body, defs)
