@@ -23,7 +23,10 @@ use smithay::{
         egl::{EGLContext, EGLDisplay},
         input::InputEvent,
         libinput::{LibinputInputBackend, LibinputSessionInterface},
-        renderer::{gles::GlesRenderer, ImportDma},
+        renderer::{
+            gles::{ffi, GlesRenderer},
+            ImportDma,
+        },
         session::{libseat::LibSeatSession, Event as SessionEvent, Session},
         udev::{primary_gpu, UdevBackend, UdevEvent},
     },
@@ -44,6 +47,7 @@ use smithay::{
 use crate::{
     cursor::Cursor,
     render::{self, Shaders},
+    soft::{Shown, SoftScreen},
     OziWm,
 };
 
@@ -53,10 +57,21 @@ const BACKGROUND: [f32; 4] = [0.031, 0.043, 0.063, 1.0];
 type Compositor =
     DrmCompositor<GbmAllocator<DrmDeviceFd>, GbmFramebufferExporter<DrmDeviceFd>, (), DrmDeviceFd>;
 
+/// How frames reach a screen.
+enum Scanout {
+    /// A GPU draws straight into the buffers it shows.
+    Gpu(Box<Compositor>),
+    /// No GPU driver: drawn in memory, the changes copied to the screen.
+    Soft(Box<SoftScreen>),
+}
+
+/// Without a vblank for this long, the last frame is taken as shown.
+const VBLANK_TIMEOUT: Duration = Duration::from_millis(1000);
+
 struct Screen {
     output: Output,
     connector: connector::Handle,
-    compositor: Compositor,
+    scanout: Scanout,
     /// A frame is on its way to the screen; wait for its vblank.
     waiting: bool,
     /// When the frame we wait for was queued, to notice a vblank that never came.
@@ -70,6 +85,8 @@ pub struct Tty {
     gbm: GbmDevice<DrmDeviceFd>,
     node: DrmNode,
     renderer: GlesRenderer,
+    /// GL runs on the processor (no GPU driver): see `soft`.
+    software: bool,
     shaders: Shaders,
     cursor: Cursor,
     screens: HashMap<crtc::Handle, Screen>,
@@ -96,13 +113,34 @@ pub fn init_tty(
     // SAFETY: the context is current on this thread only; the renderer owns it.
     let mut renderer = unsafe { GlesRenderer::new(context)? };
     let shaders = Shaders::compile(&mut renderer)?;
+    let gl_name = renderer
+        .with_context(|gl| unsafe {
+            let name = gl.GetString(ffi::RENDERER);
+            if name.is_null() {
+                String::new()
+            } else {
+                std::ffi::CStr::from_ptr(name as *const _).to_string_lossy().into_owned()
+            }
+        })
+        .unwrap_or_default();
+    let software = match std::env::var("OZIWM_RENDER").as_deref() {
+        Ok("software") => true,
+        Ok("gpu") => false,
+        _ => !node.has_render() || is_software_gl(&gl_name),
+    };
+    tracing::info!(gl = %gl_name, software, "renderer");
 
-    // GPU-rendered clients (browsers, games, Qt Quick) share buffers through linux-dmabuf.
-    let formats = renderer.dmabuf_formats();
-    let feedback = DmabufFeedbackBuilder::new(node.dev_id(), formats.clone()).build()?;
-    state
-        .dmabuf_state
-        .create_global_with_default_feedback::<OziWm>(&state.display_handle, &feedback);
+    // GPU-rendered clients (browsers, games, Qt Quick) share buffers through
+    // linux-dmabuf. Without a GPU they draw on the processor and hand over
+    // plain memory; their dmabufs would live in video memory, which llvmpipe
+    // reads very slowly.
+    if !software {
+        let formats = renderer.dmabuf_formats();
+        let feedback = DmabufFeedbackBuilder::new(node.dev_id(), formats.clone()).build()?;
+        state
+            .dmabuf_state
+            .create_global_with_default_feedback::<OziWm>(&state.display_handle, &feedback);
+    }
 
     let mut libinput = Libinput::new_with_udev(LibinputSessionInterface::from(session.clone()));
     libinput
@@ -120,6 +158,7 @@ pub fn init_tty(
         gbm,
         node,
         renderer,
+        software,
         shaders,
         cursor: Cursor::load(),
         screens: HashMap::new(),
@@ -178,7 +217,12 @@ pub fn init_tty(
                     tracing::warn!(?err, "DRM did not come back");
                 }
                 for screen in tty.screens.values_mut() {
-                    let _ = screen.compositor.reset_state();
+                    match &mut screen.scanout {
+                        Scanout::Gpu(compositor) => {
+                            let _ = compositor.reset_state();
+                        }
+                        Scanout::Soft(soft) => soft.reset(),
+                    }
                     screen.waiting = false;
                 }
             }
@@ -192,9 +236,11 @@ pub fn init_tty(
             if let Some(tty) = state.tty.as_mut()
                 && let Some(screen) = tty.screens.get_mut(&crtc) {
                     screen.waiting = false;
-                    if let Err(err) = screen.compositor.frame_submitted() {
-                        tracing::warn!(?err, "frame_submitted failed");
-                    }
+                    screen.queued_at = None;
+                    if let Scanout::Gpu(compositor) = &mut screen.scanout
+                        && let Err(err) = compositor.frame_submitted() {
+                            tracing::warn!(?err, "frame_submitted failed");
+                        }
                 }
             if state.needs_redraw {
                 render_all(state);
@@ -247,6 +293,12 @@ fn open_gpu(
     let (drm, notifier) = DrmDevice::new(fd.clone(), true)?;
     let gbm = GbmDevice::new(fd)?;
     Ok((drm, gbm, node, notifier))
+}
+
+/// Mesa's renderers that run on the processor.
+fn is_software_gl(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    ["llvmpipe", "softpipe", "swrast", "software rasterizer"].iter().any(|s| name.contains(s))
 }
 
 /// Tap to click and natural feel on touchpads: what people coming from a phone expect.
@@ -370,6 +422,10 @@ impl Tty {
         let _global = output.create_global::<OziWm>(&state.display_handle);
         state.space.map_output(&output, (x, 0));
 
+        if self.software {
+            let soft = SoftScreen::new(surface, &mut self.renderer, &output)?;
+            return Ok(Screen { output, connector, scanout: Scanout::Soft(Box::new(soft)), waiting: false, queued_at: None });
+        }
         let allocator = GbmAllocator::new(self.gbm.clone(), GbmBufferFlags::RENDERING | GbmBufferFlags::SCANOUT);
         let exporter = GbmFramebufferExporter::new(self.gbm.clone(), Some(self.node));
         let compositor = DrmCompositor::new(
@@ -383,7 +439,7 @@ impl Tty {
             self.drm.cursor_size(),
             Some(self.gbm.clone()),
         )?;
-        Ok(Screen { output, connector, compositor, waiting: false, queued_at: None })
+        Ok(Screen { output, connector, scanout: Scanout::Gpu(Box::new(compositor)), waiting: false, queued_at: None })
     }
 
     pub fn import_dmabuf(&mut self, dmabuf: &smithay::backend::allocator::dmabuf::Dmabuf) -> bool {
@@ -414,11 +470,16 @@ pub fn render_all(state: &mut OziWm) {
             continue;
         };
         // A vblank that never arrives must not freeze the screen until the pointer moves.
-        if screen.waiting && screen.queued_at.is_some_and(|t| now.duration_since(t) > Duration::from_millis(200)) {
+        // Not too eager: a slow machine delivers the event late, and drawing
+        // over a flip the kernel still holds fails with "busy".
+        if screen.waiting && screen.queued_at.is_some_and(|t| now.duration_since(t) > VBLANK_TIMEOUT) {
             tracing::warn!(output = %screen.output.name(), "no vblank for the last frame; drawing again");
             if let Some(screen) = tty.screens.get_mut(&crtc) {
                 screen.waiting = false;
-                let _ = screen.compositor.frame_submitted();
+                screen.queued_at = None;
+                if let Scanout::Gpu(compositor) = &mut screen.scanout {
+                    let _ = compositor.frame_submitted();
+                }
             }
         }
         let Some(screen) = tty.screens.get(&crtc) else {
@@ -452,23 +513,37 @@ pub fn render_all(state: &mut OziWm) {
         let Some(screen) = tty.screens.get_mut(&crtc) else {
             continue;
         };
-        match screen
-            .compositor
-            .render_frame(&mut tty.renderer, &elements, BACKGROUND, FrameFlags::DEFAULT)
-        {
-            Ok(result) if !result.is_empty => match screen.compositor.queue_frame(()) {
-                Ok(()) => {
+        match &mut screen.scanout {
+            Scanout::Gpu(compositor) => {
+                match compositor.render_frame(&mut tty.renderer, &elements, BACKGROUND, FrameFlags::DEFAULT) {
+                    Ok(result) if !result.is_empty => match compositor.queue_frame(()) {
+                        Ok(()) => {
+                            screen.waiting = true;
+                            screen.queued_at = Some(Instant::now());
+                        }
+                        Err(err) => tracing::warn!(?err, "could not queue frame"),
+                    },
+                    Ok(_) => {}
+                    Err(err) => tracing::warn!(?err, "rendering failed"),
+                }
+            }
+            Scanout::Soft(soft) => match soft.render(&mut tty.renderer, &elements, BACKGROUND) {
+                Ok(Shown::Queued) => {
                     screen.waiting = true;
                     screen.queued_at = Some(Instant::now());
                 }
-                Err(err) => tracing::warn!(?err, "could not queue frame"),
+                Ok(Shown::Nothing) => {}
+                Err(err) => {
+                    // Most likely the previous flip is still pending; try again shortly.
+                    tracing::warn!(%err, "software frame not shown");
+                    still_moving = true;
+                }
             },
-            Ok(_) => {}
-            Err(err) => tracing::warn!(?err, "rendering failed"),
         }
         let took = started.elapsed().as_secs_f32() * 1000.0;
         state.stats.record(took);
-        if took > 20.0 {
+        // On the processor a frame takes longer; only warn about the stalls.
+        if took > if tty.software { 150.0 } else { 20.0 } {
             tracing::warn!(output = %output.name(), ms = took, "slow frame");
         }
         // A screenshot of this screen without the pointer.
@@ -494,4 +569,17 @@ pub fn render_all(state: &mut OziWm) {
     let _ = state.display_handle.flush_clients();
     state.needs_redraw = still_moving;
     state.tty = Some(tty);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_software_gl;
+
+    #[test]
+    fn tells_processor_gl_from_a_gpu() {
+        assert!(is_software_gl("llvmpipe (LLVM 22.1.8, 256 bits)"));
+        assert!(is_software_gl("softpipe"));
+        assert!(!is_software_gl("Mesa Intel(R) UHD Graphics 620 (KBL GT2)"));
+        assert!(!is_software_gl("AMD Radeon RX 6600 (radeonsi, navi23, LLVM 20.1.0)"));
+    }
 }

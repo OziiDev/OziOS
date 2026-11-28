@@ -19,6 +19,7 @@ mod shot;
 mod state;
 mod switcher;
 mod snap;
+mod soft;
 mod clipboard;
 mod theme;
 mod title;
@@ -123,7 +124,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         state.spawn_shell(command);
     }
 
-    let result = event_loop.run(None, &mut state, |state| state.check_text_input());
+    let result = event_loop.run(None, &mut state, |state| {
+        state.check_text_input();
+        // Answers to clients go out now, not with the next frame: with nothing
+        // to redraw, a client waiting for a reply (Qt's start-up roundtrip)
+        // would wait until something moved on screen.
+        let _ = state.display_handle.flush_clients();
+    });
     let _ = std::fs::remove_file(&state.ipc_path);
     result?;
     tracing::info!("oziwm stopped");

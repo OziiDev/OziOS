@@ -1,9 +1,13 @@
 #!/bin/sh
 # Runs inside oziwm once it is up: tell D-Bus and systemd where the session
 # lives, start the password prompt agent and keep ozi-shell alive.
+# Without a GPU driver ozi-session asks programs to draw on the processor;
+# the ones D-Bus starts (portals, the wallet) must hear that too.
+software=""
+[ -n "${QT_QUICK_BACKEND:-}" ] && software="QT_QUICK_BACKEND GSK_RENDERER LIBGL_ALWAYS_SOFTWARE"
 dbus-update-activation-environment --systemd \
     WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP KDE_SESSION_VERSION \
-    OZIWM_SOCKET QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE 2>/dev/null
+    OZIWM_SOCKET QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE $software 2>/dev/null
 
 for agent in /usr/lib/polkit-kde-authentication-agent-1 \
              /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; do
